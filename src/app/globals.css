@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Loading animation */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Table styles */
+.table-container {
+  @apply overflow-x-auto shadow-sm border border-gray-200 rounded-lg;
+}
+
+.table-header {
+  @apply bg-gray-50 text-gray-700 font-semibold text-sm;
+}
+
+.table-cell {
+  @apply px-4 py-3 text-sm border-b border-gray-100;
+}
+
+.table-row:hover {
+  @apply bg-gray-50;
+}
+
+/* Status indicators */
+.status-success {
+  @apply text-green-600 bg-green-50 px-2 py-1 rounded-full text-xs font-medium;
+}
+
+.status-error {
+  @apply text-red-600 bg-red-50 px-2 py-1 rounded-full text-xs font-medium;
+}
+
+.status-warning {
+  @apply text-yellow-600 bg-yellow-50 px-2 py-1 rounded-full text-xs font-medium;
+}
+
+/* Card styles */
+.card {
+  @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
+}
+
+.card-header {
+  @apply border-b border-gray-200 pb-4 mb-4;
+}
+
+.card-title {
+  @apply text-lg font-semibold text-gray-900;
+}
+
+.card-subtitle {
+  @apply text-sm text-gray-600 mt-1;
+}

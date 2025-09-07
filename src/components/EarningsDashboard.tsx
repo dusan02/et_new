@@ -1,0 +1,173 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { EarningsTable } from './EarningsTable';
+import { EarningsStats } from './EarningsStats';
+import { LoadingSpinner } from './ui/LoadingSpinner';
+import { ErrorMessage } from './ui/ErrorMessage';
+import { Header } from './Header';
+import { Footer } from './Footer';
+
+interface EarningsData {
+  id: number;
+  reportDate: string;
+  ticker: string;
+  reportTime: string;
+  epsActual: number | null;
+  epsEstimate: number | null;
+  revenueActual: bigint | null;
+  revenueEstimate: bigint | null;
+  sector: string | null;
+  movement: {
+    id: number;
+    ticker: string;
+    companyName: string;
+    currentPrice: number;
+    previousClose: number;
+    marketCap: bigint;
+    size: string;
+    marketCapDiff: bigint;
+    marketCapDiffBillions: number;
+    priceChangePercent: number;
+    sharesOutstanding: bigint;
+  } | null;
+}
+
+interface EarningsStats {
+  totalEarnings: number;
+  withEps: number;
+  withRevenue: number;
+  sizeDistribution: Array<{
+    size: string;
+    _count: { size: number };
+    _sum: { marketCap: bigint | null };
+  }>;
+  topGainers: Array<{
+    ticker: string;
+    companyName: string;
+    priceChangePercent: number;
+    marketCapDiffBillions: number;
+  }>;
+  topLosers: Array<{
+    ticker: string;
+    companyName: string;
+    priceChangePercent: number;
+    marketCapDiffBillions: number;
+  }>;
+}
+
+export function EarningsDashboard() {
+  const [earningsData, setEarningsData] = useState<EarningsData[]>([]);
+  const [stats, setStats] = useState<EarningsStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const [earningsResponse, statsResponse] = await Promise.all([
+        fetch('/api/earnings/today'),
+        fetch('/api/earnings/stats'),
+      ]);
+
+      if (!earningsResponse.ok || !statsResponse.ok) {
+        throw new Error('Failed to fetch data');
+      }
+
+      const earningsResult = await earningsResponse.json();
+      const statsResult = await statsResponse.json();
+
+      if (earningsResult.success) {
+        setEarningsData(earningsResult.data);
+      }
+
+      if (statsResult.success) {
+        setStats(statsResult.data);
+      }
+
+      setLastUpdated(new Date());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+
+    // TODO: Set up Socket.IO connection for real-time updates when backend is running
+    // const { io } = require('socket.io-client');
+    // const socket = io('http://localhost:3001', {
+    //   transports: ['websocket'],
+    //   timeout: 5000,
+    // });
+    
+    // socket.on('connect', () => {
+    //   socket.emit('join-earnings');
+    // });
+
+    // socket.on('earnings-updated', (data) => {
+    //   console.log('Earnings updated:', data);
+    //   fetchData();
+    // });
+
+    // socket.on('market-data-updated', (data) => {
+    //   console.log('Market data updated:', data);
+    //   fetchData();
+    // });
+
+    // socket.on('disconnect', () => {
+    //   console.log('Socket.IO disconnected');
+    // });
+
+    // socket.on('connect_error', (error) => {
+    //   console.error('Socket.IO error:', error);
+    // });
+
+    // return () => {
+    //   socket.disconnect();
+    // };
+  }, []);
+
+  if (isLoading && !earningsData.length) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <ErrorMessage message={error} onRetry={fetchData} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col min-h-screen bg-gray-50">
+      <Header 
+        lastUpdated={lastUpdated}
+      />
+      
+      <main className="flex-1 container mx-auto px-4 py-8">
+        {stats && <EarningsStats stats={stats} />}
+        
+        <div className="mt-8">
+          <EarningsTable 
+            data={earningsData} 
+            isLoading={isLoading}
+            onRefresh={fetchData}
+          />
+        </div>
+      </main>
+      
+      <Footer />
+    </div>
+  );
+}
