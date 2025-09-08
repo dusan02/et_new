@@ -4,44 +4,48 @@ import { pickEpsSurprise, pickRevSurprise, normalizeRevenueToUSD } from '@/utils
 import { getTodayStart } from '@/lib/dates'
 import { serializeBigInts } from '@/lib/bigint-utils'
 
+// Cache for 60 seconds
+export const revalidate = 60
+
 export async function GET() {
   try {
     // Use today's date since we have real data for 2025-09-08
     const today = new Date('2025-09-08')
     
-    // Fetch earnings data for today (where we have real data)
-    const rows = await prisma.earningsTickersToday.findMany({
-      where: { reportDate: today },
-      orderBy: { ticker: 'asc' },
-      take: 500,
-    })
+    // Fetch all data in parallel for better performance
+    const [rows, marketData, guidanceData] = await Promise.all([
+      // Fetch earnings data for today
+      prisma.earningsTickersToday.findMany({
+        where: { reportDate: today },
+        orderBy: { ticker: 'asc' },
+        take: 500,
+      }),
+      
+      // Fetch market data from TodayEarningsMovements
+      prisma.todayEarningsMovements.findMany({
+        where: { 
+          reportDate: today
+        },
+      }),
+      
+      // Fetch guidance data for all tickers
+      prisma.benzingaGuidance.findMany({
+        where: { 
+          fiscalYear: { not: null },
+          fiscalPeriod: { not: null },
+        },
+        orderBy: [{ releaseType: 'asc' }, { lastUpdated: 'desc' }],
+      })
+    ])
 
-    // Get unique tickers for guidance lookup
+    // Get unique tickers for filtering
     const tickers = rows.map(r => r.ticker)
-    
-    // Fetch market data from TodayEarningsMovements
-    const marketData = await prisma.todayEarningsMovements.findMany({
-      where: { 
-        ticker: { in: tickers },
-        reportDate: today
-      },
-    })
     
     // Create a map of market data per ticker
     const marketDataMap = new Map<string, typeof marketData[number]>()
     for (const m of marketData) {
       marketDataMap.set(m.ticker, m)
     }
-    
-    // Fetch guidance data for these tickers with fiscal period/year
-    const guidanceData = await prisma.benzingaGuidance.findMany({
-      where: { 
-        ticker: { in: tickers },
-        fiscalYear: { not: null },
-        fiscalPeriod: { not: null },
-      },
-      orderBy: [{ releaseType: 'asc' }, { lastUpdated: 'desc' }],
-    })
 
     // Create a map of the latest guidance per (ticker, period, year) - EXACT MATCH ONLY
     const gKey = (t: string, p?: string | null, y?: number | null) =>
@@ -66,38 +70,47 @@ export async function GET() {
       }
     }
 
-    // Process each earnings record with guidance calculations
+    // Process each earnings record with guidance calculations (optimized)
     const data = rows.map(r => {
       const key = gKey(r.ticker, r.fiscalPeriod, r.fiscalYear);
-      const guidance = latestGuidance[key]; // EXACT MATCH ONLY - no fallback
+      const guidance = latestGuidance[key];
       const market = marketDataMap.get(r.ticker);
       
-      // EPS surprise calculation
-      const epsS = pickEpsSurprise({
-        guide: guidance?.estimatedEpsGuidance ?? null,
-        est: r.epsEstimate ?? null,
-        consensusPct: guidance?.epsGuideVsConsensusPct ?? null,
-        prevMin: guidance?.previousMinEpsGuidance ?? null,
-        prevMax: guidance?.previousMaxEpsGuidance ?? null,
-        gFiscal: { fiscalPeriod: guidance?.fiscalPeriod, fiscalYear: guidance?.fiscalYear ?? null },
-        eFiscal: { fiscalPeriod: r.fiscalPeriod, fiscalYear: r.fiscalYear ?? null },
-        gMethod: guidance?.epsMethod ?? null, // Benzinga method
-        eMethod: null // Finnhub doesn't provide method info
-      });
+      // Pre-calculate normalized values to avoid repeated calls
+      const revGuide = guidance?.estimatedRevenueGuidance ? normalizeRevenueToUSD(guidance.estimatedRevenueGuidance) : null;
+      const revEst = r.revenueEstimate ? normalizeRevenueToUSD(r.revenueEstimate) : null;
+      const prevMinRev = guidance?.previousMinRevenueGuidance ? normalizeRevenueToUSD(guidance.previousMinRevenueGuidance) : null;
+      const prevMaxRev = guidance?.previousMaxRevenueGuidance ? normalizeRevenueToUSD(guidance.previousMaxRevenueGuidance) : null;
+      
+      // EPS surprise calculation (only if we have data)
+      let epsS = { value: null, basis: null, extreme: false };
+      if (guidance?.estimatedEpsGuidance != null || r.epsEstimate != null) {
+        epsS = pickEpsSurprise({
+          guide: guidance?.estimatedEpsGuidance ?? null,
+          est: r.epsEstimate ?? null,
+          consensusPct: guidance?.epsGuideVsConsensusPct ?? null,
+          prevMin: guidance?.previousMinEpsGuidance ?? null,
+          prevMax: guidance?.previousMaxEpsGuidance ?? null,
+          gFiscal: { fiscalPeriod: guidance?.fiscalPeriod, fiscalYear: guidance?.fiscalYear ?? null },
+          eFiscal: { fiscalPeriod: r.fiscalPeriod, fiscalYear: r.fiscalYear ?? null },
+          gMethod: guidance?.epsMethod ?? null,
+          eMethod: null
+        });
+      }
 
-      // Revenue surprise calculation with USD normalization
-      const revGuide = normalizeRevenueToUSD(guidance?.estimatedRevenueGuidance ?? null);
-      const revEst = normalizeRevenueToUSD(r.revenueEstimate ?? null);
-
-      const revS = pickRevSurprise({
-        guide: revGuide,
-        est: revEst,
-        consensusPct: guidance?.revenueGuideVsConsensusPct ?? null,
-        prevMin: normalizeRevenueToUSD(guidance?.previousMinRevenueGuidance ?? null),
-        prevMax: normalizeRevenueToUSD(guidance?.previousMaxRevenueGuidance ?? null),
-        gFiscal: { fiscalPeriod: guidance?.fiscalPeriod, fiscalYear: guidance?.fiscalYear ?? null },
-        eFiscal: { fiscalPeriod: r.fiscalPeriod, fiscalYear: r.fiscalYear ?? null }
-      });
+      // Revenue surprise calculation (only if we have data)
+      let revS = { value: null, basis: null, extreme: false };
+      if (revGuide != null || revEst != null) {
+        revS = pickRevSurprise({
+          guide: revGuide,
+          est: revEst,
+          consensusPct: guidance?.revenueGuideVsConsensusPct ?? null,
+          prevMin: prevMinRev,
+          prevMax: prevMaxRev,
+          gFiscal: { fiscalPeriod: guidance?.fiscalPeriod, fiscalYear: guidance?.fiscalYear ?? null },
+          eFiscal: { fiscalPeriod: r.fiscalPeriod, fiscalYear: r.fiscalYear ?? null }
+        });
+      }
 
       return {
         ticker: r.ticker,
@@ -129,7 +142,7 @@ export async function GET() {
         revenueGuideSurprise: (revS.value != null && isFinite(revS.value)) ? revS.value : null,
         revenueGuideBasis: revS.basis ?? null,
         revenueGuideExtreme: revS.extreme,
-        // Raw guidance data for debugging
+        // Raw guidance data for debugging (only if exists)
         guidanceData: guidance ? {
           estimatedEpsGuidance: guidance.estimatedEpsGuidance,
           estimatedRevenueGuidance: guidance.estimatedRevenueGuidance,

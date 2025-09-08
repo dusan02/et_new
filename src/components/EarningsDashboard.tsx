@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { EarningsTable } from './EarningsTable';
-import { EarningsStats } from './EarningsStats';
+import { useState, useEffect, Suspense, lazy } from 'react';
 import { LoadingSpinner } from './ui/LoadingSpinner';
 import { ErrorMessage } from './ui/ErrorMessage';
 import { Header } from './Header';
 import { Footer } from './Footer';
+
+// Lazy load heavy components
+const EarningsTable = lazy(() => import('./EarningsTable').then(module => ({ default: module.EarningsTable })));
+const EarningsStats = lazy(() => import('./EarningsStats').then(module => ({ default: module.EarningsStats })));
 
 interface EarningsData {
   ticker: string;
@@ -167,12 +169,16 @@ export function EarningsDashboard() {
         
         {/* Main Content - 70% */}
         <section className="w-[70%] px-4" aria-label="Earnings data and statistics">
-          {stats && <EarningsStats stats={stats} />}
-          <EarningsTable 
-            data={earningsData} 
-            isLoading={isLoading}
-            onRefresh={fetchData}
-          />
+          <Suspense fallback={<LoadingSpinner size="md" />}>
+            {stats && <EarningsStats stats={stats} />}
+          </Suspense>
+          <Suspense fallback={<LoadingSpinner size="lg" />}>
+            <EarningsTable 
+              data={earningsData} 
+              isLoading={isLoading}
+              onRefresh={fetchData}
+            />
+          </Suspense>
         </section>
         
         {/* Right Ad Space - 15% */}

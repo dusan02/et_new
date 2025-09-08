@@ -48,7 +48,19 @@ async function fetchFinnhubEarnings(date: string) {
 async function fetchPolygonMarketData(tickers: string[]) {
   const marketData: Record<string, any> = {}
   
-  for (const ticker of tickers) {
+  // Process tickers in batches to avoid overwhelming the API
+  const BATCH_SIZE = 10 // Process 10 tickers at a time
+  const batches = []
+  
+  for (let i = 0; i < tickers.length; i += BATCH_SIZE) {
+    batches.push(tickers.slice(i, i + BATCH_SIZE))
+  }
+  
+  console.log(`📦 Processing ${tickers.length} tickers in ${batches.length} batches of ${BATCH_SIZE}`)
+  
+  for (const batch of batches) {
+    // Process each batch in parallel
+    const tickerPromises = batch.map(async (ticker) => {
     try {
       // Fetch previous close
       const { data: prevData } = await axios.get(
@@ -159,22 +171,42 @@ async function fetchPolygonMarketData(tickers: string[]) {
           }
         }
         
-        marketData[ticker] = {
-          currentPrice,
-          previousClose: prevClose,
-          priceChangePercent,
-          companyName, // Now using real company name from Finnhub
-          size, // Determined by current market cap
-          marketCap: currentMarketCap, // Current market cap: currentPrice × sharesOutstanding
-          marketCapDiff, // Market cap change percentage
-          marketCapDiffBillions, // Market cap change in billions
-          sharesOutstanding, // From Polygon ticker details
-          companyType: null,
-          primaryExchange: null,
+        return {
+          ticker,
+          data: {
+            currentPrice,
+            previousClose: prevClose,
+            priceChangePercent,
+            companyName, // Now using real company name from Finnhub
+            size, // Determined by current market cap
+            marketCap: currentMarketCap, // Current market cap: currentPrice × sharesOutstanding
+            marketCapDiff, // Market cap change percentage
+            marketCapDiffBillions, // Market cap change in billions
+            sharesOutstanding, // From Polygon ticker details
+            companyType: null,
+            primaryExchange: null,
+          }
         }
       }
     } catch (error) {
       console.warn(`Failed to fetch market data for ${ticker}:`, error)
+      return null
+    }
+  })
+  
+    // Wait for all ticker promises in this batch to complete
+    const results = await Promise.all(tickerPromises)
+    
+    // Process results and build marketData object
+    results.forEach(result => {
+      if (result) {
+        marketData[result.ticker] = result.data
+      }
+    })
+    
+    // Small delay between batches to be respectful to the API
+    if (batches.indexOf(batch) < batches.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 100))
     }
   }
   
@@ -189,7 +221,19 @@ async function fetchBenzingaGuidance(tickers: string[]) {
   
   const guidanceData: any[] = []
   
-  for (const ticker of tickers) {
+  // Process tickers in batches to avoid overwhelming the API
+  const BATCH_SIZE = 15 // Benzinga can handle more concurrent requests
+  const batches = []
+  
+  for (let i = 0; i < tickers.length; i += BATCH_SIZE) {
+    batches.push(tickers.slice(i, i + BATCH_SIZE))
+  }
+  
+  console.log(`📦 Processing ${tickers.length} tickers for guidance in ${batches.length} batches of ${BATCH_SIZE}`)
+  
+  for (const batch of batches) {
+    // Process each batch in parallel
+    const tickerPromises = batch.map(async (ticker) => {
     try {
       console.log(`Fetching guidance data for ${ticker}...`)
       
@@ -211,6 +255,7 @@ async function fetchBenzingaGuidance(tickers: string[]) {
         console.log(`Found ${data.results.length} guidance records for ${ticker}`)
         
         // Process each guidance record
+        const tickerGuidance = []
         for (const record of data.results) {
           const guidance = {
             ticker: record.ticker,
@@ -228,14 +273,31 @@ async function fetchBenzingaGuidance(tickers: string[]) {
             lastUpdated: record.last_updated ? new Date(record.last_updated) : new Date()
           }
           
-          guidanceData.push(guidance)
+          tickerGuidance.push(guidance)
         }
+        return tickerGuidance
       } else {
         console.log(`No guidance data found for ${ticker}`)
+        return []
       }
       
     } catch (error: any) {
       console.warn(`Failed to fetch Benzinga guidance for ${ticker}:`, (error as Error).message)
+      return []
+    }
+  })
+  
+    // Wait for all ticker promises in this batch to complete
+    const results = await Promise.all(tickerPromises)
+    
+    // Flatten results into guidanceData array
+    results.forEach(tickerGuidance => {
+      guidanceData.push(...tickerGuidance)
+    })
+    
+    // Small delay between batches to be respectful to the API
+    if (batches.indexOf(batch) < batches.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 50))
     }
   }
   

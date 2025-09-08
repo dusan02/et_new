@@ -525,7 +525,7 @@ export function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps
                 <col style={{ width: '180px' }} />
                 {[...Array(5)].map((_, i) => <col key={i} style={{ width: 'var(--colW)' }} />)}
               </colgroup>
-              <thead ref={leftHeaderRef} className="bg-blue-100">
+              <thead ref={leftHeaderRef} className="bg-blue-100 border-b border-gray-300">
                 <tr>
                   <th 
                     className="text-xs font-medium text-gray-500 uppercase tracking-wider" 
@@ -647,7 +647,7 @@ export function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps
                 <colgroup>
                   {[...Array(6)].map((_, i) => <col key={i} style={{ width: '1fr' }} />)}
                 </colgroup>
-                <thead ref={rightHeaderRef} className="bg-blue-100">
+                <thead ref={rightHeaderRef} className="bg-blue-100 border-b border-gray-300">
                   <tr>
                     <th 
                       className="text-xs font-medium text-gray-500 uppercase tracking-wider" 
@@ -731,7 +731,7 @@ export function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps
                 <colgroup>
                   {[...Array(6)].map((_, i) => <col key={i} style={{ width: '1fr' }} />)}
                 </colgroup>
-                <thead ref={rightHeaderRef} className="bg-blue-100">
+                <thead ref={rightHeaderRef} className="bg-blue-100 border-b border-gray-300">
                   <tr>
                     <th 
                       className="text-xs font-medium text-gray-500 uppercase tracking-wider" 

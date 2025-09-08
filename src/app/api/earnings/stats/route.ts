@@ -3,6 +3,9 @@ import { serializeBigInts } from '@/lib/bigint-utils';
 import { prisma } from '@/lib/prisma';
 import { getTodayStart } from '@/lib/dates';
 
+// Cache for 60 seconds
+export const revalidate = 60
+
 export async function GET() {
   try {
     // Use today's date since we have real data for 2025-09-08
@@ -16,8 +19,7 @@ export async function GET() {
       sizeDistribution,
       topGainers,
       topLosers,
-      epsBeats,
-      revenueBeats
+      earningsWithActuals
     ] = await Promise.all([
       // Total earnings count
       prisma.earningsTickersToday.count({
@@ -83,29 +85,19 @@ export async function GET() {
         }
       }),
       
-      // EPS guidance (companies with EPS guidance data)
-      prisma.benzingaGuidance.findFirst({
+      // All earnings with actual and estimate data
+      prisma.earningsTickersToday.findMany({
         where: { 
-          estimatedEpsGuidance: { not: null }
+          reportDate: today,
+          epsActual: { not: null },
+          epsEstimate: { not: null }
         },
-        orderBy: { lastUpdated: 'desc' },
         select: {
           ticker: true,
-          estimatedEpsGuidance: true,
-          lastUpdated: true
-        }
-      }),
-      
-      // Revenue guidance (companies with revenue guidance data)
-      prisma.benzingaGuidance.findFirst({
-        where: { 
-          estimatedRevenueGuidance: { not: null }
-        },
-        orderBy: { lastUpdated: 'desc' },
-        select: {
-          ticker: true,
-          estimatedRevenueGuidance: true,
-          lastUpdated: true
+          epsActual: true,
+          epsEstimate: true,
+          revenueActual: true,
+          revenueEstimate: true
         }
       })
     ]);
@@ -143,6 +135,23 @@ export async function GET() {
       marketCapDiffBillions: item.marketCapDiffBillions
     }));
 
+    // Calculate beat/miss data
+    const epsBeats = earningsWithActuals
+      .filter(e => e.epsActual && e.epsEstimate && e.epsActual > e.epsEstimate)
+      .sort((a, b) => (b.epsActual! - b.epsEstimate!) - (a.epsActual! - a.epsEstimate!));
+    
+    const epsMisses = earningsWithActuals
+      .filter(e => e.epsActual && e.epsEstimate && e.epsActual < e.epsEstimate)
+      .sort((a, b) => (a.epsActual! - a.epsEstimate!) - (b.epsActual! - b.epsEstimate!));
+    
+    const revenueBeats = earningsWithActuals
+      .filter(e => e.revenueActual && e.revenueEstimate && e.revenueActual > e.revenueEstimate)
+      .sort((a, b) => Number(b.revenueActual! - b.revenueEstimate!) - Number(a.revenueActual! - a.revenueEstimate!));
+    
+    const revenueMisses = earningsWithActuals
+      .filter(e => e.revenueActual && e.revenueEstimate && e.revenueActual < e.revenueEstimate)
+      .sort((a, b) => Number(a.revenueActual! - a.revenueEstimate!) - Number(b.revenueActual! - b.revenueEstimate!));
+
     const stats = {
       totalEarnings,
       withEps,
@@ -150,8 +159,10 @@ export async function GET() {
       sizeDistribution: transformedSizeDistribution,
       topGainers: transformedTopGainers,
       topLosers: transformedTopLosers,
-      epsGuidance: epsBeats[0] || null,
-      revenueGuidance: revenueBeats[0] || null
+      epsBeat: epsBeats[0] || null,
+      revenueBeat: revenueBeats[0] || null,
+      epsMiss: epsMisses[0] || null,
+      revenueMiss: revenueMisses[0] || null
     };
 
     // Serialize BigInt values before sending

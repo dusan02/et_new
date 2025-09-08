@@ -25,15 +25,25 @@ interface EarningsStatsProps {
       priceChangePercent: number;
       marketCapDiffBillions: number;
     }>;
-    epsGuidance: {
+    epsBeat: {
       ticker: string;
-      estimatedEpsGuidance: number;
-      lastUpdated: string;
+      epsActual: number;
+      epsEstimate: number;
     } | null;
-    revenueGuidance: {
+    revenueBeat: {
       ticker: string;
-      estimatedRevenueGuidance: bigint;
-      lastUpdated: string;
+      revenueActual: bigint;
+      revenueEstimate: bigint;
+    } | null;
+    epsMiss: {
+      ticker: string;
+      epsActual: number;
+      epsEstimate: number;
+    } | null;
+    revenueMiss: {
+      ticker: string;
+      revenueActual: bigint;
+      revenueEstimate: bigint;
     } | null;
   };
 }
@@ -97,14 +107,14 @@ export function EarningsStats({ stats }: EarningsStatsProps) {
       {/* GREEN — Winners */}
       <StatCard title="PRICE" main={topPriceGainer?.ticker ?? "—"} sub={fmtPct(topPriceGainer?.priceChangePercent)} variant="green" />
       <StatCard title="CAP DIFF" main={topCapGainer?.ticker ?? "—"} sub={fmtBill(topCapGainer?.marketCapDiffBillions)} variant="green" />
-      <StatCard title="EPS BEAT" main={stats.epsGuidance?.ticker ?? "—"} sub={stats.epsGuidance?.estimatedEpsGuidance ? `$${stats.epsGuidance.estimatedEpsGuidance.toFixed(2)}` : "—"} variant="green" />
-      <StatCard title="REV BEAT" main={stats.revenueGuidance?.ticker ?? "—"} sub={stats.revenueGuidance?.estimatedRevenueGuidance ? `$${(Number(stats.revenueGuidance.estimatedRevenueGuidance) / 1e9).toFixed(1)}B` : "—"} variant="green" />
+      <StatCard title="EPS BEAT" main={stats.epsBeat?.ticker ?? "—"} sub={stats.epsBeat ? `+${((stats.epsBeat.epsActual - stats.epsBeat.epsEstimate) / Math.abs(stats.epsBeat.epsEstimate) * 100).toFixed(1)}%` : "—"} variant="green" />
+      <StatCard title="REV BEAT" main={stats.revenueBeat?.ticker ?? "—"} sub={stats.revenueBeat ? `+${((Number(stats.revenueBeat.revenueActual) - Number(stats.revenueBeat.revenueEstimate)) / Number(stats.revenueBeat.revenueEstimate) * 100).toFixed(1)}%` : "—"} variant="green" />
 
       {/* RED — Losers */}
       <StatCard title="PRICE" main={topPriceLoser?.ticker ?? "—"} sub={fmtPct(topPriceLoser?.priceChangePercent)} variant="red" />
       <StatCard title="CAP DIFF" main={topCapLoser?.ticker ?? "—"} sub={fmtBill(topCapLoser?.marketCapDiffBillions)} variant="red" />
-      <StatCard title="EPS MISS" main="—" sub="—" variant="red" />
-      <StatCard title="REV MISS" main="—" sub="—" variant="red" />
+      <StatCard title="EPS MISS" main={stats.epsMiss?.ticker ?? "—"} sub={stats.epsMiss ? `${((stats.epsMiss.epsActual - stats.epsMiss.epsEstimate) / Math.abs(stats.epsMiss.epsEstimate) * 100).toFixed(1)}%` : "—"} variant="red" />
+      <StatCard title="REV MISS" main={stats.revenueMiss?.ticker ?? "—"} sub={stats.revenueMiss ? `${((Number(stats.revenueMiss.revenueActual) - Number(stats.revenueMiss.revenueEstimate)) / Number(stats.revenueMiss.revenueEstimate) * 100).toFixed(1)}%` : "—"} variant="red" />
     </div>
   );
 }

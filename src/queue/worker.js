@@ -10,7 +10,7 @@ cron.schedule("* * * * *", () => {
   console.log("⏰ Running scheduled data fetch...");
 
   const fetchScript = path.join(__dirname, "../jobs/fetch-today.ts");
-  const child = spawn("npx", ["tsx", fetchScript], {
+  const child = spawn("node", ["-e", `require('tsx/cjs')('${fetchScript}')`], {
     cwd: path.join(__dirname, "../.."),
     env: {
       ...process.env,
@@ -18,6 +18,7 @@ cron.schedule("* * * * *", () => {
       POLYGON_API_KEY: process.env.POLYGON_API_KEY,
       DATABASE_URL: process.env.DATABASE_URL,
     },
+    shell: true,
   });
 
   child.stdout.on("data", (data) => {
@@ -36,8 +37,11 @@ cron.schedule("* * * * *", () => {
 // Also run immediately on startup
 console.log("🔄 Running initial data fetch...");
 const initialFetch = spawn(
-  "npx",
-  ["tsx", path.join(__dirname, "../jobs/fetch-today.ts")],
+  "node",
+  [
+    "-e",
+    `require('tsx/cjs')('${path.join(__dirname, "../jobs/fetch-today.ts")}')`,
+  ],
   {
     cwd: path.join(__dirname, "../.."),
     env: {
@@ -46,6 +50,7 @@ const initialFetch = spawn(
       POLYGON_API_KEY: process.env.POLYGON_API_KEY,
       DATABASE_URL: process.env.DATABASE_URL,
     },
+    shell: true,
   }
 );
 
