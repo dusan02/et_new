@@ -83,7 +83,7 @@ export async function GET() {
       const prevMaxRev = guidance?.previousMaxRevenueGuidance ? normalizeRevenueToUSD(guidance.previousMaxRevenueGuidance) : null;
       
       // EPS surprise calculation (only if we have data)
-      let epsS = { value: null, basis: null, extreme: false };
+      let epsS: { value: number | null; basis: string | null; extreme: boolean } = { value: null, basis: null, extreme: false };
       if (guidance?.estimatedEpsGuidance != null || r.epsEstimate != null) {
         epsS = pickEpsSurprise({
           guide: guidance?.estimatedEpsGuidance ?? null,
@@ -93,13 +93,13 @@ export async function GET() {
           prevMax: guidance?.previousMaxEpsGuidance ?? null,
           gFiscal: { fiscalPeriod: guidance?.fiscalPeriod, fiscalYear: guidance?.fiscalYear ?? null },
           eFiscal: { fiscalPeriod: r.fiscalPeriod, fiscalYear: r.fiscalYear ?? null },
-          gMethod: guidance?.epsMethod ?? null,
+          gMethod: null,
           eMethod: null
         });
       }
 
       // Revenue surprise calculation (only if we have data)
-      let revS = { value: null, basis: null, extreme: false };
+      let revS: { value: number | null; basis: string | null; extreme: boolean } = { value: null, basis: null, extreme: false };
       if (revGuide != null || revEst != null) {
         revS = pickRevSurprise({
           guide: revGuide,
@@ -126,7 +126,7 @@ export async function GET() {
         fiscalYear: r.fiscalYear,
         primaryExchange: r.primaryExchange,
         // Market data from Polygon
-        companyName: market?.companyName || r.ticker,
+        companyName: market?.companyName && market.companyName.trim() !== '' ? market.companyName : r.ticker,
         size: market?.size || null,
         marketCap: market?.marketCap || null,
         marketCapDiff: market?.marketCapDiff || null,

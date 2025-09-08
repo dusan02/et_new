@@ -144,7 +144,7 @@ export function pickEpsSurprise(params: {
     if (v != null) return { value: v, basis: 'previous_mid' as Basis, extreme: isExtreme(v) };
   }
 
-  return { value: null, basis: undefined, extreme: false };
+  return { value: null, basis: null, extreme: false };
 }
 
 export const pickRevSurprise = pickEpsSurprise; // rovnaká logika, iné vstupy

@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { ArrowUpDown, ArrowUp, ArrowDown, RefreshCw } from 'lucide-react';
 import { LoadingSpinner } from './ui/LoadingSpinner';
 import { formatGuidePercent, getGuidanceTitle } from '@/utils/format';
+import { trackTableSort, trackTableFilter, trackViewToggle, trackRefresh } from './Analytics';
 
 interface EarningsData {
   ticker: string;
@@ -358,6 +359,9 @@ export function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps
       setSortDirection('asc');
     }
     setSelectedColumn(field);
+    
+    // Track sorting event
+    trackTableSort(field, sortField === field ? (sortDirection === 'asc' ? 'desc' : 'asc') : 'asc');
   };
 
   const handleColumnHover = (field: string | null) => {
@@ -473,14 +477,22 @@ export function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps
             type="text"
             placeholder="Search tickers, companies..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              if (e.target.value.length > 0) {
+                trackTableFilter('search', e.target.value);
+              }
+            }}
             className="w-80 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           
           {/* View Toggle Buttons */}
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
-              onClick={() => setActiveView('eps-revenue')}
+              onClick={() => {
+                setActiveView('eps-revenue');
+                trackViewToggle('eps_revenue');
+              }}
               className={`px-4 py-2 rounded-md font-medium transition-all ${
                 activeView === 'eps-revenue' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
               }`}
@@ -488,7 +500,10 @@ export function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps
               EPS & Revenue
             </button>
             <button
-              onClick={() => setActiveView('guidance')}
+              onClick={() => {
+                setActiveView('guidance');
+                trackViewToggle('guidance');
+              }}
               className={`px-4 py-2 rounded-md font-medium transition-all ${
                 activeView === 'guidance' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
               }`}
@@ -610,7 +625,7 @@ export function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps
                   sortedData.map((item, index) => (
                     <tr key={item.ticker} className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
                       <td className="px-2 py-3 text-sm text-gray-900">{index + 1}</td>
-                      <td className="px-2 py-3 text-sm font-medium text-blue-600">
+                      <td className="px-2 py-3 text-sm font-medium text-gray-900">
                         {item.ticker}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900 truncate" title={item.companyName || item.ticker}>

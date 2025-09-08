@@ -10,6 +10,7 @@ interface StatCardProps {
   variant?: Variant;        // farebnosť
   align?: Align;            // zarovnanie (default center)
   className?: string;
+  onClick?: () => void;     // click handler for tracking
 }
 
 const variantBar: Record<Variant, string> = {
@@ -31,9 +32,11 @@ export default function StatCard({
   variant = "blue",
   align = "center",
   className,
+  onClick,
 }: StatCardProps) {
   return (
     <div
+      onClick={onClick}
       className={clsx(
         "relative bg-white rounded-xl border border-gray-200",
         "shadow-sm hover:shadow-md transition-shadow",
@@ -43,6 +46,7 @@ export default function StatCard({
         // top accent bar
         "before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-1.5 before:rounded-t-xl",
         variantBar[variant],
+        onClick ? "cursor-pointer" : "",
         className
       )}
     >

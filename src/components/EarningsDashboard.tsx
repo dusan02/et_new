@@ -1,14 +1,12 @@
 'use client';
 
-import { useState, useEffect, Suspense, lazy } from 'react';
+import { useState, useEffect } from 'react';
 import { LoadingSpinner } from './ui/LoadingSpinner';
 import { ErrorMessage } from './ui/ErrorMessage';
 import { Header } from './Header';
 import { Footer } from './Footer';
-
-// Lazy load heavy components
-const EarningsTable = lazy(() => import('./EarningsTable').then(module => ({ default: module.EarningsTable })));
-const EarningsStats = lazy(() => import('./EarningsStats').then(module => ({ default: module.EarningsStats })));
+import { EarningsTable } from './EarningsTable';
+import { EarningsStats } from './EarningsStats';
 
 interface EarningsData {
   ticker: string;
@@ -23,6 +21,16 @@ interface EarningsData {
   fiscalPeriod: string | null;
   fiscalYear: number | null;
   primaryExchange: string | null;
+  // Market data from Polygon
+  companyName: string;
+  size: string | null;
+  marketCap: string | null; // BigInt serialized as string
+  marketCapDiff: string | null; // BigInt serialized as string
+  marketCapDiffBillions: number | null;
+  currentPrice: number | null;
+  previousClose: number | null;
+  priceChangePercent: number | null;
+  sharesOutstanding: string | null; // BigInt serialized as string
   // Guidance calculations
   epsGuideSurprise: number | null;
   epsGuideBasis: string | null;
@@ -61,6 +69,26 @@ interface EarningsStats {
     priceChangePercent: number;
     marketCapDiffBillions: number;
   }>;
+  epsBeat: {
+    ticker: string;
+    epsActual: number;
+    epsEstimate: number;
+  } | null;
+  revenueBeat: {
+    ticker: string;
+    revenueActual: bigint;
+    revenueEstimate: bigint;
+  } | null;
+  epsMiss: {
+    ticker: string;
+    epsActual: number;
+    epsEstimate: number;
+  } | null;
+  revenueMiss: {
+    ticker: string;
+    revenueActual: bigint;
+    revenueEstimate: bigint;
+  } | null;
 }
 
 export function EarningsDashboard() {
@@ -169,16 +197,12 @@ export function EarningsDashboard() {
         
         {/* Main Content - 70% */}
         <section className="w-[70%] px-4" aria-label="Earnings data and statistics">
-          <Suspense fallback={<LoadingSpinner size="md" />}>
-            {stats && <EarningsStats stats={stats} />}
-          </Suspense>
-          <Suspense fallback={<LoadingSpinner size="lg" />}>
-            <EarningsTable 
-              data={earningsData} 
-              isLoading={isLoading}
-              onRefresh={fetchData}
-            />
-          </Suspense>
+          {stats && <EarningsStats stats={stats} />}
+          <EarningsTable 
+            data={earningsData} 
+            isLoading={isLoading}
+            onRefresh={fetchData}
+          />
         </section>
         
         {/* Right Ad Space - 15% */}

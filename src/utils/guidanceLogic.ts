@@ -258,7 +258,7 @@ export function calculateGuidanceSurprise(
     const guidanceNum = typeof epsDetection.adjustedGuidance === 'bigint' 
       ? Number(epsDetection.adjustedGuidance) 
       : epsDetection.adjustedGuidance;
-    const midpoint = (guidance.previousMinEpsGuidance + guidance.previousMaxEpsGuidance) / 2;
+    const midpoint = ((guidance.previousMinEpsGuidance || 0) + (guidance.previousMaxEpsGuidance || 0)) / 2;
     
     if (midpoint !== 0) {
       epsGuideSurprise = ((guidanceNum - midpoint) / midpoint) * 100;
