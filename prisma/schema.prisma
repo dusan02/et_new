@@ -35,6 +35,11 @@ model EarningsTickersToday {
   @@index([fiscalPeriod, fiscalYear])
   @@index([epsActual])
   @@index([revenueActual])
+  @@index([reportDate, ticker, fiscalPeriod, fiscalYear])
+  @@index([ticker, fiscalPeriod, fiscalYear])
+  @@index([reportTime])
+  @@index([sector])
+  @@index([dataSource])
 }
 
 /// Pohyb/market data v deň reportu
@@ -62,6 +67,10 @@ model TodayEarningsMovements {
   @@index([size])
   @@index([priceChangePercent])
   @@index([marketCap])
+  @@index([reportDate, size])
+  @@index([ticker, size])
+  @@index([marketCapDiff])
+  @@index([companyType])
 }
 
 /// Guidance od Benzinga/Polygon Benzinga

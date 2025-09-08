@@ -3,6 +3,7 @@ dotenv.config()
 import { prisma } from '@/lib/prisma'
 import { isoDate } from '@/lib/dates'
 import axios from 'axios'
+import { batchFetchPolygonData, batchFetchFinnhubData, batchFetchBenzingaData, extractSuccessfulResults, extractFailedResults } from '@/utils/fetchers'
 
 console.log('Environment variables:', {
   FINNHUB_API_KEY: process.env.FINNHUB_API_KEY,

@@ -198,11 +198,13 @@ export function EarningsDashboard() {
         {/* Main Content - 70% */}
         <section className="w-[70%] px-4" aria-label="Earnings data and statistics">
           {stats && <EarningsStats stats={stats} />}
-          <EarningsTable 
-            data={earningsData} 
-            isLoading={isLoading}
-            onRefresh={fetchData}
-          />
+          <div className="px-0">
+            <EarningsTable 
+              data={earningsData} 
+              isLoading={isLoading}
+              onRefresh={fetchData}
+            />
+          </div>
         </section>
         
         {/* Right Ad Space - 15% */}
