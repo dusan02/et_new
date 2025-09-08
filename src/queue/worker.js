@@ -10,7 +10,7 @@ cron.schedule("* * * * *", () => {
   console.log("⏰ Running scheduled data fetch...");
 
   const fetchScript = path.join(__dirname, "../jobs/fetch-today.ts");
-  const child = spawn("node", ["-e", `require('tsx/cjs')('${fetchScript}')`], {
+  const child = spawn("npx", ["tsx", fetchScript], {
     cwd: path.join(__dirname, "../.."),
     env: {
       ...process.env,
@@ -37,11 +37,8 @@ cron.schedule("* * * * *", () => {
 // Also run immediately on startup
 console.log("🔄 Running initial data fetch...");
 const initialFetch = spawn(
-  "node",
-  [
-    "-e",
-    `require('tsx/cjs')('${path.join(__dirname, "../jobs/fetch-today.ts")}')`,
-  ],
+  "npx",
+  ["tsx", path.join(__dirname, "../jobs/fetch-today.ts")],
   {
     cwd: path.join(__dirname, "../.."),
     env: {

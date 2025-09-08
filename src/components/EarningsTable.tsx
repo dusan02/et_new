@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback, memo } from 'react';
 import { ArrowUpDown, ArrowUp, ArrowDown, RefreshCw } from 'lucide-react';
 import { LoadingSpinner } from './ui/LoadingSpinner';
 import { formatGuidePercent, getGuidanceTitle } from '@/utils/format';
 import { trackTableSort, trackTableFilter, trackViewToggle, trackRefresh } from './Analytics';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 interface EarningsData {
   ticker: string;
@@ -52,7 +53,24 @@ interface EarningsTableProps {
   onRefresh: () => void;
 }
 
-export function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps) {
+// Debounce hook for search optimization
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+export const EarningsTable = memo(function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps) {
   const [sortField, setSortField] = useState<string>('market_cap');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [searchTerm, setSearchTerm] = useState('');
@@ -60,9 +78,28 @@ export function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps
   const [hoveredColumn, setHoveredColumn] = useState<string | null>(null);
   const [selectedColumn, setSelectedColumn] = useState<string | null>('market_cap');
   
+  // Debounced search term for performance
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  
   // Refs for header synchronization
   const leftHeaderRef = useRef<HTMLTableSectionElement>(null);
   const rightHeaderRef = useRef<HTMLTableSectionElement>(null);
+  
+  // Memoized callbacks for performance
+  const handleColumnClick = useCallback((field: string) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+    setSelectedColumn(field);
+    trackTableSort(field, sortField === field ? (sortDirection === 'asc' ? 'desc' : 'asc') : 'desc');
+  }, [sortField, sortDirection]);
+  
+  const handleColumnHover = useCallback((field: string | null) => {
+    setHoveredColumn(field);
+  }, []);
 
   // Helper functions
   const formatCurrency = (value: string | bigint | null) => {
@@ -234,11 +271,11 @@ export function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps
     return value === null || value === undefined || value === 0 || value === '';
   };
 
-  // Sort and filter data
+  // Sort and filter data - optimized with debounced search
   const sortedData = useMemo(() => {
     let filtered = data.filter(item => {
-      if (!searchTerm) return true;
-      const term = searchTerm.toLowerCase();
+      if (!debouncedSearchTerm) return true;
+      const term = debouncedSearchTerm.toLowerCase();
       return (
         item.ticker.toLowerCase().includes(term) ||
         item.companyName?.toLowerCase().includes(term) ||
@@ -364,14 +401,7 @@ export function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps
     trackTableSort(field, sortField === field ? (sortDirection === 'asc' ? 'desc' : 'asc') : 'asc');
   };
 
-  const handleColumnHover = (field: string | null) => {
-    setHoveredColumn(field);
-  };
 
-  const handleColumnClick = (field: string) => {
-    setSelectedColumn(field);
-    handleSort(field);
-  };
 
   const SortButton = ({ field, children, align = 'left', padding = 'px-2 py-3' }: { field: string; children: React.ReactNode; align?: 'left' | 'right' | 'center'; padding?: string }) => {
     const isHovered = hoveredColumn === field;
@@ -462,12 +492,12 @@ export function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps
   return (
     <div>
       {/* Header - Outside of table container */}
-      <div className="px-4 py-6 overflow-x-auto">
+      <div className="py-6 overflow-x-auto">
         <div className="flex items-center justify-between min-w-max">
           <div>
             <h2 className="text-xl font-bold text-gray-900">Today's Earnings</h2>
             <p className="text-sm text-gray-600 mt-1">
-              {data.length} companies reporting earnings today
+              {data.length} companies reporting earnings today - includes actual EPS, Revenue and Corporate Guidance
             </p>
           </div>
         </div>
@@ -842,4 +872,4 @@ export function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps
       </div>
     </div>
   );
-}
+});
