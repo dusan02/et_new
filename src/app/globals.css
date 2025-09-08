@@ -2,8 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
@@ -77,6 +75,13 @@ body {
   @apply bg-gray-50;
 }
 
+/* Sticky table headers */
+thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
 /* Status indicators */
 .status-success {
   @apply text-green-600 bg-green-50 px-2 py-1 rounded-full text-xs font-medium;
@@ -106,3 +111,4 @@ body {
 .card-subtitle {
   @apply text-sm text-gray-600 mt-1;
 }
+

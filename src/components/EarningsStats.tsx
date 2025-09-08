@@ -1,6 +1,7 @@
 'use client';
 
 import { TrendingUp, TrendingDown, DollarSign, Building2 } from 'lucide-react';
+import StatCard from './StatCard';
 
 interface EarningsStatsProps {
   stats: {
@@ -24,6 +25,16 @@ interface EarningsStatsProps {
       priceChangePercent: number;
       marketCapDiffBillions: number;
     }>;
+    epsGuidance: {
+      ticker: string;
+      estimatedEpsGuidance: number;
+      lastUpdated: string;
+    } | null;
+    revenueGuidance: {
+      ticker: string;
+      estimatedRevenueGuidance: bigint;
+      lastUpdated: string;
+    } | null;
   };
 }
 
@@ -46,101 +57,56 @@ export function EarningsStats({ stats }: EarningsStatsProps) {
     return `${billions.toFixed(0)}B`;
   };
 
-  const formatPercentage = (value: number) => {
+  const formatPercentage = (value: number | null) => {
+    if (value === null || value === undefined) return '-';
     return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
   };
 
-  const formatBillions = (value: number) => {
+  const formatBillions = (value: number | null) => {
+    if (value === null || value === undefined) return '-';
     return `${value > 0 ? '+' : ''}${value.toFixed(1)}B`;
   };
 
   // Get best performers
   const topPriceGainer = stats.topGainers[0];
-  const topCapGainer = stats.topGainers.reduce((prev, current) => 
-    (current.marketCapDiffBillions > prev.marketCapDiffBillions) ? current : prev, stats.topGainers[0]
-  );
+  const topCapGainer = stats.topGainers.reduce((prev, current) => {
+    const currentValue = current.marketCapDiffBillions || 0;
+    const prevValue = prev.marketCapDiffBillions || 0;
+    return currentValue > prevValue ? current : prev;
+  }, stats.topGainers[0]);
   
   const topPriceLoser = stats.topLosers[0];
-  const topCapLoser = stats.topLosers.reduce((prev, current) => 
-    (current.marketCapDiffBillions < prev.marketCapDiffBillions) ? current : prev, stats.topLosers[0]
-  );
+  const topCapLoser = stats.topLosers.reduce((prev, current) => {
+    const currentValue = current.marketCapDiffBillions || 0;
+    const prevValue = prev.marketCapDiffBillions || 0;
+    return currentValue < prevValue ? current : prev;
+  }, stats.topLosers[0]);
+
+  // Utility functions
+  const fmtPct = (v?: number) => (v == null ? "—" : `${v > 0 ? "+" : ""}${v.toFixed(2)}%`);
+  const fmtBill = (v?: number) => (v == null ? "—" : `${v > 0 ? "+" : ""}${v.toFixed(1)}B`);
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12 gap-3 mb-8">
-      {/* Market Cap Categories - Blue Cards */}
-      <div className="bg-white rounded-lg border-l-4 border-l-blue-500 border border-gray-200 p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
-        <div className="text-xs font-medium text-blue-600 mb-1">LARGE +</div>
-        <div className="text-lg font-bold text-gray-900">{largeCount}</div>
-        <div className="text-sm text-gray-600">{formatMarketCap(largeCap)}</div>
-      </div>
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12 gap-3 md:gap-4 mb-8">
+      {/* BLUE — Size buckets */}
+      <StatCard title="LARGE+" main={largeCount ?? "—"} sub={formatMarketCap(largeCap)} variant="blue" />
+      <StatCard title="MID" main={midCount ?? "—"} sub={formatMarketCap(midCap)} variant="blue" />
+      <StatCard title="SMALL" main={smallCount ?? "—"} sub={formatMarketCap(smallCap)} variant="blue" />
+      <StatCard title="TOTAL" main={stats.totalEarnings ?? "—"} sub={`${(totalMarketCap / 1e9).toFixed(0)}B`} variant="blue" />
 
-      <div className="bg-white rounded-lg border-l-4 border-l-blue-500 border border-gray-200 p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
-        <div className="text-xs font-medium text-blue-600 mb-1">MID</div>
-        <div className="text-lg font-bold text-gray-900">{midCount}</div>
-        <div className="text-sm text-gray-600">{formatMarketCap(midCap)}</div>
-      </div>
+      {/* GREEN — Winners */}
+      <StatCard title="PRICE" main={topPriceGainer?.ticker ?? "—"} sub={fmtPct(topPriceGainer?.priceChangePercent)} variant="green" />
+      <StatCard title="CAP DIFF" main={topCapGainer?.ticker ?? "—"} sub={fmtBill(topCapGainer?.marketCapDiffBillions)} variant="green" />
+      <StatCard title="EPS BEAT" main={stats.epsGuidance?.ticker ?? "—"} sub={stats.epsGuidance?.estimatedEpsGuidance ? `$${stats.epsGuidance.estimatedEpsGuidance.toFixed(2)}` : "—"} variant="green" />
+      <StatCard title="REV BEAT" main={stats.revenueGuidance?.ticker ?? "—"} sub={stats.revenueGuidance?.estimatedRevenueGuidance ? `$${(Number(stats.revenueGuidance.estimatedRevenueGuidance) / 1e9).toFixed(1)}B` : "—"} variant="green" />
 
-      <div className="bg-white rounded-lg border-l-4 border-l-blue-500 border border-gray-200 p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
-        <div className="text-xs font-medium text-blue-600 mb-1">SMALL</div>
-        <div className="text-lg font-bold text-gray-900">{smallCount}</div>
-        <div className="text-sm text-gray-600">{formatMarketCap(smallCap)}</div>
-      </div>
-
-      <div className="bg-white rounded-lg border-l-4 border-l-blue-500 border border-gray-200 p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
-        <div className="text-xs font-medium text-blue-600 mb-1">TOTAL CAP</div>
-        <div className="text-lg font-bold text-gray-900">{stats.totalEarnings}</div>
-        <div className="text-sm text-gray-600">{(totalMarketCap / 1e9).toFixed(0)}B</div>
-      </div>
-
-      {/* Winners - Green Cards */}
-      <div className="bg-white rounded-lg border-l-4 border-l-green-500 border border-gray-200 p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
-        <div className="text-xs font-medium text-green-600 mb-1">PRICE (%)</div>
-        <div className="text-lg font-bold text-gray-900">{topPriceGainer?.ticker || '-'}</div>
-        <div className="text-sm text-green-600">{topPriceGainer ? formatPercentage(topPriceGainer.priceChangePercent) : '-'}</div>
-      </div>
-
-      <div className="bg-white rounded-lg border-l-4 border-l-green-500 border border-gray-200 p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
-        <div className="text-xs font-medium text-green-600 mb-1">CAP DIFF</div>
-        <div className="text-lg font-bold text-gray-900">{topCapGainer?.ticker || '-'}</div>
-        <div className="text-sm text-green-600">{topCapGainer ? formatBillions(topCapGainer.marketCapDiffBillions) : '-'}</div>
-      </div>
-
-      <div className="bg-white rounded-lg border-l-4 border-l-green-500 border border-gray-200 p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
-        <div className="text-xs font-medium text-green-600 mb-1">EPS BEAT</div>
-        <div className="text-lg font-bold text-gray-900">AAPL</div>
-        <div className="text-sm text-green-600">+1.3%</div>
-      </div>
-
-      <div className="bg-white rounded-lg border-l-4 border-l-green-500 border border-gray-200 p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
-        <div className="text-xs font-medium text-green-600 mb-1">REV BEAT</div>
-        <div className="text-lg font-bold text-gray-900">MSFT</div>
-        <div className="text-sm text-green-600">+2.5%</div>
-      </div>
-
-      {/* Losers - Red Cards */}
-      <div className="bg-white rounded-lg border-l-4 border-l-red-500 border border-gray-200 p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
-        <div className="text-xs font-medium text-red-600 mb-1">PRICE (%)</div>
-        <div className="text-lg font-bold text-gray-900">{topPriceLoser?.ticker || '-'}</div>
-        <div className="text-sm text-red-600">{topPriceLoser ? formatPercentage(topPriceLoser.priceChangePercent) : '-'}</div>
-      </div>
-
-      <div className="bg-white rounded-lg border-l-4 border-l-red-500 border border-gray-200 p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
-        <div className="text-xs font-medium text-red-600 mb-1">CAP DIFF</div>
-        <div className="text-lg font-bold text-gray-900">{topCapLoser?.ticker || '-'}</div>
-        <div className="text-sm text-red-600">{topCapLoser ? formatBillions(topCapLoser.marketCapDiffBillions) : '-'}</div>
-      </div>
-
-      <div className="bg-white rounded-lg border-l-4 border-l-red-500 border border-gray-200 p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
-        <div className="text-xs font-medium text-red-600 mb-1">EPS MISS</div>
-        <div className="text-lg font-bold text-gray-900">GOOGL</div>
-        <div className="text-sm text-red-600">-0.8%</div>
-      </div>
-
-      <div className="bg-white rounded-lg border-l-4 border-l-red-500 border border-gray-200 p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
-        <div className="text-xs font-medium text-red-600 mb-1">REV MISS</div>
-        <div className="text-lg font-bold text-gray-900">TSLA</div>
-        <div className="text-sm text-red-600">-1.2%</div>
-      </div>
+      {/* RED — Losers */}
+      <StatCard title="PRICE" main={topPriceLoser?.ticker ?? "—"} sub={fmtPct(topPriceLoser?.priceChangePercent)} variant="red" />
+      <StatCard title="CAP DIFF" main={topCapLoser?.ticker ?? "—"} sub={fmtBill(topCapLoser?.marketCapDiffBillions)} variant="red" />
+      <StatCard title="EPS MISS" main="—" sub="—" variant="red" />
+      <StatCard title="REV MISS" main="—" sub="—" variant="red" />
     </div>
   );
 }
+
+

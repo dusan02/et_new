@@ -1,22 +1,17 @@
 {
-    "name": "earnings-table-queue",
+    "name": "earnings-queue",
     "version": "1.0.0",
-    "description": "Queue worker for Earnings Table application",
-    "main": "worker.ts",
+    "description": "Queue worker for earnings data fetching",
+    "main": "worker.js",
     "scripts": {
-        "start": "tsx worker.ts",
-        "dev": "tsx watch worker.ts"
+        "start": "node worker.js",
+        "dev": "nodemon worker.js"
     },
     "dependencies": {
-        "bull": "^4.12.2",
-        "redis": "^4.6.12",
-        "@prisma/client": "^5.22.0",
-        "socket.io-client": "^4.7.5",
-        "axios": "^1.6.7"
+        "node-cron": "^3.0.3",
+        "dotenv": "^17.2.2"
     },
     "devDependencies": {
-        "tsx": "^4.7.0",
-        "@types/node": "^20.11.17",
-        "typescript": "^5.3.3"
+        "nodemon": "^3.0.2"
     }
 }

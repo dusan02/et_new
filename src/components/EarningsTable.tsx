@@ -3,29 +3,45 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { ArrowUpDown, ArrowUp, ArrowDown, RefreshCw } from 'lucide-react';
 import { LoadingSpinner } from './ui/LoadingSpinner';
+import { formatGuidePercent, getGuidanceTitle } from '@/utils/format';
 
 interface EarningsData {
-  id: number;
-  reportDate: string;
   ticker: string;
-  reportTime: string;
-  epsActual: number | null;
+  reportTime: string | null;
   epsEstimate: number | null;
-  revenueActual: bigint | null;
-  revenueEstimate: bigint | null;
+  epsActual: number | null;
+  revenueEstimate: string | null; // BigInt serialized as string
+  revenueActual: string | null; // BigInt serialized as string
   sector: string | null;
-  movement: {
-    id: number;
-    ticker: string;
-    companyName: string;
-    currentPrice: number;
-    previousClose: number;
-    marketCap: bigint;
-    size: string;
-    marketCapDiff: bigint;
-    marketCapDiffBillions: number;
-    priceChangePercent: number;
-    sharesOutstanding: bigint;
+  companyType: string | null;
+  dataSource: string | null;
+  fiscalPeriod: string | null;
+  fiscalYear: number | null;
+  primaryExchange: string | null;
+  // Market data from Polygon
+  companyName: string;
+  size: string | null;
+  marketCap: string | null; // BigInt serialized as string
+  marketCapDiff: string | null; // BigInt serialized as string
+  marketCapDiffBillions: number | null;
+  currentPrice: number | null;
+  previousClose: number | null;
+  priceChangePercent: number | null;
+  sharesOutstanding: string | null; // BigInt serialized as string
+  // Guidance calculations
+  epsGuideSurprise: number | null;
+  epsGuideBasis: string | null;
+  epsGuideExtreme: boolean;
+  revenueGuideSurprise: number | null;
+  revenueGuideBasis: string | null;
+  revenueGuideExtreme: boolean;
+  // Raw guidance data for debugging
+  guidanceData: {
+    estimatedEpsGuidance: number | null;
+    estimatedRevenueGuidance: string | null;
+    epsGuideVsConsensusPct: number | null;
+    revenueGuideVsConsensusPct: number | null;
+    lastUpdated: string | null;
   } | null;
 }
 
@@ -48,9 +64,9 @@ export function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps
   const rightHeaderRef = useRef<HTMLTableSectionElement>(null);
 
   // Helper functions
-  const formatCurrency = (value: bigint | null) => {
+  const formatCurrency = (value: string | bigint | null) => {
     if (!value) return '-';
-    const num = Number(value);
+    const num = typeof value === 'string' ? Number(value) : Number(value);
     
     if (num >= 1e12) {
       return `${(num / 1e12).toFixed(1)}T`;
@@ -99,9 +115,9 @@ export function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps
     return `$${value.toFixed(2)}`;
   };
 
-  const formatRevenue = (value: bigint | null) => {
+  const formatRevenue = (value: string | bigint | null) => {
     if (!value) return '-';
-    const num = Number(value);
+    const num = typeof value === 'string' ? Number(value) : Number(value);
     
     if (num >= 1e12) {
       return `$${(num / 1e12).toFixed(1)}T`;
@@ -116,10 +132,37 @@ export function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps
     }
   };
 
-  const formatSurprise = (actual: number | bigint | null, estimate: number | bigint | null) => {
+  const formatMarketCap = (value: string | bigint | null) => {
+    if (!value) return '-';
+    const num = typeof value === 'string' ? Number(value) : Number(value);
+    
+    if (num >= 1e12) {
+      return `$${(num / 1e12).toFixed(1)}T`;
+    } else if (num >= 1e9) {
+      return `$${(num / 1e9).toFixed(1)}B`;
+    } else if (num >= 1e6) {
+      return `$${(num / 1e6).toFixed(1)}M`;
+    } else if (num >= 1e3) {
+      return `$${(num / 1e3).toFixed(1)}K`;
+    } else {
+      return `$${num.toFixed(0)}`;
+    }
+  };
+
+  const formatPercentage = (value: number | null) => {
+    if (value === null || value === undefined) return '-';
+    return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
+  };
+
+  const formatBillions = (value: number | null) => {
+    if (value === null || value === undefined) return '-';
+    return `${value > 0 ? '+' : ''}${value.toFixed(1)}B`;
+  };
+
+  const formatSurprise = (actual: number | string | bigint | null, estimate: number | string | bigint | null) => {
     if (!actual || !estimate) return '-';
-    const actualNum = typeof actual === 'bigint' ? Number(actual) : actual;
-    const estimateNum = typeof estimate === 'bigint' ? Number(estimate) : estimate;
+    const actualNum = typeof actual === 'string' ? Number(actual) : typeof actual === 'bigint' ? Number(actual) : actual;
+    const estimateNum = typeof estimate === 'string' ? Number(estimate) : typeof estimate === 'bigint' ? Number(estimate) : estimate;
     const surprise = ((actualNum - estimateNum) / estimateNum) * 100;
     return `${surprise >= 0 ? '+' : ''}${surprise.toFixed(1)}%`;
   };
@@ -132,17 +175,17 @@ export function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps
   ) => {
     if (surprise === null) return '-';
     
-    const display = `${surprise >= 0 ? '+' : ''}${surprise.toFixed(1)}%`;
+    const display = formatGuidePercent(surprise);
     let className = 'text-gray-900';
-    let tooltip = `Basis: ${basis || 'unknown'}`;
+    let tooltip = getGuidanceTitle(basis, surprise);
     
     if (extreme) {
-      className = 'text-red-600 font-bold';
+      className = 'text-orange-500 font-semibold';
       tooltip += ' (EXTREME VALUE >300%)';
     } else if (surprise > 0) {
-      className = 'text-green-600';
+      className = 'text-emerald-600';
     } else if (surprise < 0) {
-      className = 'text-red-600';
+      className = 'text-rose-600';
     }
     
     if (warnings.length > 0) {
@@ -152,9 +195,9 @@ export function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps
     return (
       <span className={className} title={tooltip}>
         {display}
-        {extreme && <span className="text-xs ml-1">⚠️</span>}
+        {extreme && <span className="text-xs ml-1">!</span>}
         {warnings.length > 0 && <span className="text-xs ml-1">⚠️</span>}
-          </span>
+      </span>
     );
   };
 
@@ -178,11 +221,16 @@ export function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps
     return value >= 0 ? 'text-green-600' : 'text-red-600';
   };
 
-  const getSurpriseClass = (actual: number | bigint | null, estimate: number | bigint | null) => {
+  const getSurpriseClass = (actual: number | bigint | string | null, estimate: number | bigint | string | null) => {
     if (!actual || !estimate) return '';
-    const actualNum = typeof actual === 'bigint' ? Number(actual) : actual;
-    const estimateNum = typeof estimate === 'bigint' ? Number(estimate) : estimate;
+    const actualNum = typeof actual === 'bigint' ? Number(actual) : typeof actual === 'string' ? Number(actual) : actual;
+    const estimateNum = typeof estimate === 'bigint' ? Number(estimate) : typeof estimate === 'string' ? Number(estimate) : estimate;
     return actualNum >= estimateNum ? 'text-green-600' : 'text-red-600';
+  };
+
+  // Helper function to check if value is null/empty (should be ignored in sorting)
+  const isNullValue = (value: any): boolean => {
+    return value === null || value === undefined || value === 0 || value === '';
   };
 
   // Sort and filter data
@@ -190,9 +238,11 @@ export function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps
     let filtered = data.filter(item => {
       if (!searchTerm) return true;
       const term = searchTerm.toLowerCase();
-          return (
+      return (
         item.ticker.toLowerCase().includes(term) ||
-        item.movement?.companyName?.toLowerCase().includes(term)
+        item.companyName?.toLowerCase().includes(term) ||
+        item.sector?.toLowerCase().includes(term) ||
+        item.companyType?.toLowerCase().includes(term)
       );
     });
 
@@ -205,58 +255,83 @@ export function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps
           bValue = b.ticker;
           break;
         case 'company':
-          aValue = a.movement?.companyName || a.ticker;
-          bValue = b.movement?.companyName || b.ticker;
+          aValue = a.companyName || a.ticker;
+          bValue = b.companyName || b.ticker;
           break;
         case 'size':
-          aValue = a.movement?.size || '';
-          bValue = b.movement?.size || '';
+          aValue = a.size || '';
+          bValue = b.size || '';
           break;
         case 'market_cap':
-          aValue = a.movement?.marketCap || BigInt(0);
-          bValue = b.movement?.marketCap || BigInt(0);
+          aValue = a.marketCap ? Number(a.marketCap) : null;
+          bValue = b.marketCap ? Number(b.marketCap) : null;
           break;
-        case 'market_cap_gain':
-          aValue = a.movement?.marketCapDiff || BigInt(0);
-          bValue = b.movement?.marketCapDiff || BigInt(0);
+        case 'cap_diff':
+          aValue = a.marketCapDiffBillions;
+          bValue = b.marketCapDiffBillions;
           break;
         case 'price':
-          aValue = a.movement?.currentPrice || 0;
-          bValue = b.movement?.currentPrice || 0;
+          aValue = a.currentPrice;
+          bValue = b.currentPrice;
           break;
-        case 'today':
-          aValue = a.movement?.priceChangePercent || 0;
-          bValue = b.movement?.priceChangePercent || 0;
+        case 'change':
+          aValue = a.priceChangePercent;
+          bValue = b.priceChangePercent;
           break;
         case 'eps_estimate':
-          aValue = a.epsEstimate || 0;
-          bValue = b.epsEstimate || 0;
+          aValue = a.epsEstimate;
+          bValue = b.epsEstimate;
           break;
         case 'eps_actual':
-          aValue = a.epsActual || 0;
-          bValue = b.epsActual || 0;
+          aValue = a.epsActual;
+          bValue = b.epsActual;
           break;
         case 'eps_surprise':
-          aValue = a.epsActual && a.epsEstimate ? ((a.epsActual - a.epsEstimate) / a.epsEstimate) * 100 : 0;
-          bValue = b.epsActual && b.epsEstimate ? ((b.epsActual - b.epsEstimate) / b.epsEstimate) * 100 : 0;
+          aValue = a.epsActual && a.epsEstimate ? ((a.epsActual - a.epsEstimate) / a.epsEstimate) * 100 : null;
+          bValue = b.epsActual && b.epsEstimate ? ((b.epsActual - b.epsEstimate) / b.epsEstimate) * 100 : null;
           break;
         case 'revenue_estimate':
-          aValue = a.revenueEstimate || BigInt(0);
-          bValue = b.revenueEstimate || BigInt(0);
+          aValue = a.revenueEstimate ? Number(a.revenueEstimate) : null;
+          bValue = b.revenueEstimate ? Number(b.revenueEstimate) : null;
           break;
         case 'revenue_actual':
-          aValue = a.revenueActual || BigInt(0);
-          bValue = b.revenueActual || BigInt(0);
+          aValue = a.revenueActual ? Number(a.revenueActual) : null;
+          bValue = b.revenueActual ? Number(b.revenueActual) : null;
           break;
         case 'revenue_surprise':
-          aValue = a.revenueActual && a.revenueEstimate ? ((Number(a.revenueActual) - Number(a.revenueEstimate)) / Number(a.revenueEstimate)) * 100 : 0;
-          bValue = b.revenueActual && b.revenueEstimate ? ((Number(b.revenueActual) - Number(b.revenueEstimate)) / Number(b.revenueEstimate)) * 100 : 0;
+          aValue = a.revenueActual && a.revenueEstimate ? ((Number(a.revenueActual) - Number(a.revenueEstimate)) / Number(a.revenueEstimate)) * 100 : null;
+          bValue = b.revenueActual && b.revenueEstimate ? ((Number(b.revenueActual) - Number(b.revenueEstimate)) / Number(b.revenueEstimate)) * 100 : null;
+          break;
+        case 'eps_guide':
+          aValue = a.guidanceData?.estimatedEpsGuidance;
+          bValue = b.guidanceData?.estimatedEpsGuidance;
+          break;
+        case 'eps_guide_surp':
+          aValue = a.epsGuideSurprise;
+          bValue = b.epsGuideSurprise;
+          break;
+        case 'rev_guide':
+          aValue = a.guidanceData?.estimatedRevenueGuidance ? Number(a.guidanceData.estimatedRevenueGuidance) : null;
+          bValue = b.guidanceData?.estimatedRevenueGuidance ? Number(b.guidanceData.estimatedRevenueGuidance) : null;
+          break;
+        case 'rev_guide_surp':
+          aValue = a.revenueGuideSurprise;
+          bValue = b.revenueGuideSurprise;
           break;
         default:
           aValue = a.ticker;
           bValue = b.ticker;
       }
 
+      // Handle null values - put them at the end regardless of sort direction
+      const aIsNull = isNullValue(aValue);
+      const bIsNull = isNullValue(bValue);
+      
+      if (aIsNull && bIsNull) return 0; // Both null, maintain order
+      if (aIsNull) return 1; // a is null, put it after b
+      if (bIsNull) return -1; // b is null, put it after a
+
+      // Both values are not null, proceed with normal sorting
       if (typeof aValue === 'string' && typeof bValue === 'string') {
         return sortDirection === 'asc' 
           ? aValue.localeCompare(bValue)
@@ -294,22 +369,23 @@ export function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps
     handleSort(field);
   };
 
-  const SortButton = ({ field, children }: { field: string; children: React.ReactNode }) => {
+  const SortButton = ({ field, children, align = 'left', padding = 'px-2 py-3' }: { field: string; children: React.ReactNode; align?: 'left' | 'right' | 'center'; padding?: string }) => {
     const isHovered = hoveredColumn === field;
     const isSelected = selectedColumn === field;
-          
-          return (
+    
+    const alignClass = align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left';
+    
+    return (
       <button
         onClick={() => handleColumnClick(field)}
-        onMouseEnter={() => handleColumnHover(field)}
-        onMouseLeave={() => handleColumnHover(null)}
-        className={`absolute inset-0 w-full h-full text-center font-semibold transition-colors duration-200 ${
+        className={`w-full h-full ${padding} ${alignClass} font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
           isSelected 
             ? 'bg-blue-200 text-blue-800' 
             : isHovered 
-              ? 'bg-blue-100 text-gray-700' 
+              ? 'bg-blue-50 text-gray-700' 
               : 'bg-transparent text-gray-700'
         }`}
+        aria-sort={isSelected ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
       >
         {children}
       </button>
@@ -380,33 +456,25 @@ export function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps
   }, []);
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-      {/* Header */}
-      <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center justify-between">
+    <div>
+      {/* Header - Outside of table container */}
+      <div className="px-4 py-6 overflow-x-auto">
+        <div className="flex items-center justify-between min-w-max">
           <div>
             <h2 className="text-xl font-bold text-gray-900">Today's Earnings</h2>
             <p className="text-sm text-gray-600 mt-1">
               {data.length} companies reporting earnings today
             </p>
           </div>
-          <button
-            onClick={onRefresh}
-            disabled={isLoading}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
         </div>
         
-        <div className="mt-4 flex items-center justify-between">
+        <div className="mt-4 flex items-center justify-between min-w-max">
           <input
             type="text"
             placeholder="Search tickers, companies..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-80 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           
           {/* View Toggle Buttons */}
@@ -431,199 +499,330 @@ export function EarningsTable({ data, isLoading, onRefresh }: EarningsTableProps
         </div>
       </div>
 
-      {/* Triple Table Structure */}
-      <div className="flex">
-        {/* Left Table - Fixed Columns */}
-        <div className="flex-1 border-r border-gray-200">
-        <table className="w-full">
-              <thead ref={leftHeaderRef} className="bg-blue-50">
-              <tr>
-                <th className="relative px-4 py-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <SortButton field="rank">#</SortButton>
-                </th>
-                <th className="relative px-4 py-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <SortButton field="ticker">Ticker</SortButton>
-                </th>
-                <th className="relative px-4 py-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <SortButton field="company">Company</SortButton>
-                </th>
-                <th className="relative px-4 py-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <SortButton field="size">Size</SortButton>
-                </th>
-                <th className="relative px-4 py-5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <SortButton field="market_cap">Market Cap</SortButton>
-                </th>
-                <th className="relative px-4 py-5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <SortButton field="market_cap_gain">Cap Diff</SortButton>
-                </th>
-                <th className="relative px-4 py-5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <SortButton field="price">Price</SortButton>
-                </th>
-                <th className="relative px-4 py-5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <SortButton field="today">Change</SortButton>
+      {/* Table Container - Now with rounded corners */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-300">
+        {/* Table Structure - CSS Grid Layout */}
+        <div 
+          className="overflow-x-hidden"
+          style={{
+            ['--fixed' as any]: '292px', // 48 + 64 + 180 (menšie, ale čitateľné)
+            ['--colW' as any]: 'clamp(80px, calc((100% - var(--fixed)) / 11), 112px)', // stabilný aj pri zoome
+            ['--sep' as any]: '1px', // 1px hranica medzi ľavou a pravou tabuľkou
+            display: 'grid',
+            gridTemplateColumns: 'calc(var(--fixed) + (5 * var(--colW))) minmax(0, 1fr)',
+            columnGap: '0px',
+          }}
+        >
+          {/* Left Table - 3 Fixed + 5 Dynamic Columns */}
+          <div 
+            className="border-r border-gray-200 box-border"
+          >
+            <table className="w-full border-collapse" aria-label="Earnings table — Left section">
+              <caption className="sr-only">Company information, market data, and price changes</caption>
+              <colgroup>
+                <col style={{ width: '48px' }} />
+                <col style={{ width: '64px' }} />
+                <col style={{ width: '180px' }} />
+                {[...Array(5)].map((_, i) => <col key={i} style={{ width: 'var(--colW)' }} />)}
+              </colgroup>
+              <thead ref={leftHeaderRef} className="bg-blue-100">
+                <tr>
+                  <th 
+                    className="text-xs font-medium text-gray-500 uppercase tracking-wider" 
+                    scope="col"
+                    onMouseEnter={() => handleColumnHover('rank')}
+                    onMouseLeave={() => handleColumnHover(null)}
+                  >
+                    <SortButton field="rank" align="left" padding="px-2 py-3">#</SortButton>
                   </th>
-              </tr>
-          </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-            {isLoading ? (
-              <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center">
-                  <LoadingSpinner size="md" />
-                </td>
-              </tr>
-              ) : sortedData.length === 0 ? (
-              <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
-                  No earnings data found
-                </td>
-              </tr>
-            ) : (
-                sortedData.map((item, index) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-4 text-sm text-gray-900">{index + 1}</td>
-                    <td className="px-4 py-4 text-sm font-medium text-blue-600">
-                      {item.ticker}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-900 max-w-[120px] truncate">
-                      {item.movement?.companyName || item.ticker}
-                    </td>
-                    <td className="px-4 py-4 text-sm">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSizeClass(item.movement?.size || null)}`}>
-                        {item.movement?.size || 'N/A'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-900 text-right">
-                      {formatCurrency(item.movement?.marketCap || null)}
-                    </td>
-                    <td className={`px-4 py-4 text-sm text-right font-medium ${getDiffClass(item.movement?.marketCapDiff || null)}`}>
-                      {formatMarketCapDiff(item.movement?.marketCapDiff || null)}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-900 text-right">
-                      {formatPrice(item.movement?.currentPrice || null)}
-                    </td>
-                    <td className={`px-4 py-4 text-sm text-right font-medium ${getPriceChangeClass(item.movement?.priceChangePercent || null)}`}>
-                      {formatPriceChange(item.movement?.priceChangePercent || null)}
-                    </td>
+                  <th 
+                    className="text-xs font-medium text-gray-500 uppercase tracking-wider" 
+                    scope="col"
+                    onMouseEnter={() => handleColumnHover('ticker')}
+                    onMouseLeave={() => handleColumnHover(null)}
+                  >
+                    <SortButton field="ticker" align="left" padding="px-2 py-3">Ticker</SortButton>
+                  </th>
+                  <th 
+                    className="text-xs font-medium text-gray-500 uppercase tracking-wider" 
+                    scope="col"
+                    onMouseEnter={() => handleColumnHover('company')}
+                    onMouseLeave={() => handleColumnHover(null)}
+                  >
+                    <SortButton field="company" align="left" padding="px-4 py-3">Company</SortButton>
+                  </th>
+                  <th 
+                    className="text-xs font-medium text-gray-500 uppercase tracking-wider" 
+                    scope="col"
+                    onMouseEnter={() => handleColumnHover('size')}
+                    onMouseLeave={() => handleColumnHover(null)}
+                  >
+                    <SortButton field="size" align="center" padding="px-2 py-3">Size</SortButton>
+                  </th>
+                  <th 
+                    className="text-xs font-medium text-gray-500 uppercase tracking-wider" 
+                    scope="col"
+                    onMouseEnter={() => handleColumnHover('market_cap')}
+                    onMouseLeave={() => handleColumnHover(null)}
+                  >
+                    <SortButton field="market_cap" align="center" padding="px-2 py-3">Market Cap</SortButton>
+                  </th>
+                  <th 
+                    className="text-xs font-medium text-gray-500 uppercase tracking-wider" 
+                    scope="col"
+                    onMouseEnter={() => handleColumnHover('cap_diff')}
+                    onMouseLeave={() => handleColumnHover(null)}
+                  >
+                    <SortButton field="cap_diff" align="center" padding="px-2 py-3">Cap Diff</SortButton>
+                  </th>
+                  <th 
+                    className="text-xs font-medium text-gray-500 uppercase tracking-wider" 
+                    scope="col"
+                    onMouseEnter={() => handleColumnHover('price')}
+                    onMouseLeave={() => handleColumnHover(null)}
+                  >
+                    <SortButton field="price" align="center" padding="px-2 py-3">Price</SortButton>
+                  </th>
+                  <th 
+                    className="text-xs font-medium text-gray-500 uppercase tracking-wider" 
+                    scope="col"
+                    onMouseEnter={() => handleColumnHover('change')}
+                    onMouseLeave={() => handleColumnHover(null)}
+                  >
+                    <SortButton field="change" align="center" padding="px-2 py-3">Change</SortButton>
+                  </th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-        </div>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-8 text-center">
+                      <LoadingSpinner size="md" />
+                    </td>
+                  </tr>
+                ) : sortedData.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                      No earnings data found
+                    </td>
+                  </tr>
+                ) : (
+                  sortedData.map((item, index) => (
+                    <tr key={item.ticker} className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                      <td className="px-2 py-3 text-sm text-gray-900">{index + 1}</td>
+                      <td className="px-2 py-3 text-sm font-medium text-blue-600">
+                        {item.ticker}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900 truncate" title={item.companyName || item.ticker}>
+                        {item.companyName || item.ticker}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {item.size || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900 text-right">
+                        {item.marketCap ? formatMarketCap(item.marketCap) : '-'}
+                      </td>
+                      <td className={`px-4 py-3 text-sm text-right ${getDiffClass(item.marketCapDiffBillions ? BigInt(Math.round(item.marketCapDiffBillions * 1e9)) : null)}`}>
+                        {item.marketCapDiffBillions ? formatBillions(item.marketCapDiffBillions) : '-'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900 text-right">
+                        {item.currentPrice ? `$${item.currentPrice.toFixed(2)}` : '-'}
+                      </td>
+                      <td className={`px-4 py-3 text-sm text-right ${getPriceChangeClass(item.priceChangePercent)}`}>
+                        {item.priceChangePercent ? formatPercentage(item.priceChangePercent) : '-'}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
-        {/* Right Table - Dynamic Columns */}
-        <div className="flex-1">
-          {activeView === 'eps-revenue' ? (
-            // EPS & Revenue Table
-            <table className="w-full">
-              <thead ref={rightHeaderRef} className="bg-blue-50">
-                <tr>
-                  <th className="relative px-4 py-5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <SortButton field="eps_estimate">EPS Est</SortButton>
-                  </th>
-                  <th className="relative px-4 py-5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <SortButton field="eps_actual">EPS Act</SortButton>
-                  </th>
-                  <th className="relative px-4 py-5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <SortButton field="eps_surprise">EPS Surp</SortButton>
-                  </th>
-                  <th className="relative px-4 py-5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <SortButton field="revenue_estimate">Rev Est</SortButton>
-                  </th>
-                  <th className="relative px-4 py-5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <SortButton field="revenue_actual">Rev Act</SortButton>
-                  </th>
-                  <th className="relative px-4 py-5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <SortButton field="revenue_surprise">Rev Surp</SortButton>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {sortedData.map((item, index) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-4 text-sm text-gray-600 text-right">
-                      {formatEPS(item.epsEstimate)}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-900 text-right">
-                      {formatEPS(item.epsActual)}
-                    </td>
-                    <td className={`px-4 py-4 text-sm text-right font-medium ${getSurpriseClass(item.epsActual, item.epsEstimate)}`}>
-                      {formatSurprise(item.epsActual, item.epsEstimate)}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-600 text-right">
-                      {formatRevenue(item.revenueEstimate)}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-900 text-right">
-                      {formatRevenue(item.revenueActual)}
-                    </td>
-                    <td className={`px-4 py-4 text-sm text-right font-medium ${getSurpriseClass(item.revenueActual, item.revenueEstimate)}`}>
-                      {formatSurprise(item.revenueActual, item.revenueEstimate)}
-                    </td>
+          {/* Right Table - 6 Dynamic Columns */}
+          <div className="box-border">
+            {activeView === 'eps-revenue' ? (
+              // EPS & Revenue Table
+              <table className="w-full border-collapse table-fixed" aria-label="Earnings table — EPS & Revenue view">
+                <caption className="sr-only">EPS estimates, actuals, surprises and revenue data</caption>
+                <colgroup>
+                  {[...Array(6)].map((_, i) => <col key={i} style={{ width: '1fr' }} />)}
+                </colgroup>
+                <thead ref={rightHeaderRef} className="bg-blue-100">
+                  <tr>
+                    <th 
+                      className="text-xs font-medium text-gray-500 uppercase tracking-wider" 
+                      scope="col"
+                      onMouseEnter={() => handleColumnHover('eps_estimate')}
+                      onMouseLeave={() => handleColumnHover(null)}
+                    >
+                      <SortButton field="eps_estimate" align="center" padding="px-2 py-3">EPS Est</SortButton>
+                    </th>
+                    <th 
+                      className="text-xs font-medium text-gray-500 uppercase tracking-wider" 
+                      scope="col"
+                      onMouseEnter={() => handleColumnHover('eps_actual')}
+                      onMouseLeave={() => handleColumnHover(null)}
+                    >
+                      <SortButton field="eps_actual" align="center" padding="px-2 py-3">EPS Act</SortButton>
+                    </th>
+                    <th 
+                      className="text-xs font-medium text-gray-500 uppercase tracking-wider" 
+                      scope="col"
+                      onMouseEnter={() => handleColumnHover('eps_surprise')}
+                      onMouseLeave={() => handleColumnHover(null)}
+                    >
+                      <SortButton field="eps_surprise" align="center" padding="px-2 py-3">EPS Surp</SortButton>
+                    </th>
+                    <th 
+                      className="text-xs font-medium text-gray-500 uppercase tracking-wider" 
+                      scope="col"
+                      onMouseEnter={() => handleColumnHover('revenue_estimate')}
+                      onMouseLeave={() => handleColumnHover(null)}
+                    >
+                      <SortButton field="revenue_estimate" align="center" padding="px-2 py-3">Rev Est</SortButton>
+                    </th>
+                    <th 
+                      className="text-xs font-medium text-gray-500 uppercase tracking-wider" 
+                      scope="col"
+                      onMouseEnter={() => handleColumnHover('revenue_actual')}
+                      onMouseLeave={() => handleColumnHover(null)}
+                    >
+                      <SortButton field="revenue_actual" align="center" padding="px-2 py-3">Rev Act</SortButton>
+                    </th>
+                    <th 
+                      className="text-xs font-medium text-gray-500 uppercase tracking-wider" 
+                      scope="col"
+                      onMouseEnter={() => handleColumnHover('revenue_surprise')}
+                      onMouseLeave={() => handleColumnHover(null)}
+                    >
+                      <SortButton field="revenue_surprise" align="center" padding="px-2 py-3">Rev Surp</SortButton>
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            // Guidance Table
-            <table className="w-full">
-              <thead ref={rightHeaderRef} className="bg-blue-50">
-                <tr>
-                  <th className="relative px-4 py-5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <SortButton field="eps_guide">EPS Guide</SortButton>
-                  </th>
-                  <th className="relative px-4 py-5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <SortButton field="eps_guide_surp">EPS G Surp</SortButton>
-                  </th>
-                  <th className="relative px-4 py-5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <SortButton field="rev_guide">Rev Guide</SortButton>
-                  </th>
-                  <th className="relative px-4 py-5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <SortButton field="rev_guide_surp">Rev G Surp</SortButton>
-                  </th>
-                  <th className="relative px-4 py-5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <SortButton field="guidance_period">Period</SortButton>
-                  </th>
-                  <th className="relative px-4 py-5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <SortButton field="guidance_confidence">Notes</SortButton>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {sortedData.map((item, index) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-4 text-sm text-gray-600 text-right">
-                      {item.epsGuidance ? item.epsGuidance.toFixed(2) : '-'}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-right">
-                      {formatGuidanceSurprise(
-                        item.epsGuideSurprise,
-                        item.epsGuideBasis,
-                        item.epsGuideExtreme,
-                        []
-                      )}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-600 text-right">
-                      {item.revenueGuidance ? formatCurrency(item.revenueGuidance) : '-'}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-right">
-                      {formatGuidanceSurprise(
-                        item.revenueGuideSurprise,
-                        item.revenueGuideBasis,
-                        item.revenueGuideExtreme,
-                        []
-                      )}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-600 text-center">
-                      {item.guidancePeriod || '-'}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-600 text-center">
-                      {item.guidanceConfidence ? `${item.guidanceConfidence}%` : '-'}
-                    </td>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {sortedData.map((item, index) => (
+                    <tr key={item.ticker} className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                      <td className="px-2 py-3 text-sm text-gray-600 text-right">
+                        {formatEPS(item.epsEstimate)}
+                      </td>
+                      <td className="px-2 py-3 text-sm text-gray-900 text-right">
+                        {formatEPS(item.epsActual)}
+                      </td>
+                      <td className={`px-2 py-3 text-sm text-right font-medium ${getSurpriseClass(item.epsActual, item.epsEstimate)}`}>
+                        {formatSurprise(item.epsActual, item.epsEstimate)}
+                      </td>
+                      <td className="px-2 py-3 text-sm text-gray-600 text-right">
+                        {formatRevenue(item.revenueEstimate)}
+                      </td>
+                      <td className="px-2 py-3 text-sm text-gray-900 text-right">
+                        {formatRevenue(item.revenueActual)}
+                      </td>
+                      <td className={`px-2 py-3 text-sm text-right font-medium ${getSurpriseClass(item.revenueActual, item.revenueEstimate)}`}>
+                        {formatSurprise(item.revenueActual, item.revenueEstimate)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              // Guidance Table
+              <table className="w-full border-collapse table-fixed" aria-label="Earnings table — Guidance view">
+                <caption className="sr-only">EPS and revenue guidance with surprises and period information</caption>
+                <colgroup>
+                  {[...Array(6)].map((_, i) => <col key={i} style={{ width: '1fr' }} />)}
+                </colgroup>
+                <thead ref={rightHeaderRef} className="bg-blue-100">
+                  <tr>
+                    <th 
+                      className="text-xs font-medium text-gray-500 uppercase tracking-wider" 
+                      scope="col"
+                      onMouseEnter={() => handleColumnHover('eps_guide')}
+                      onMouseLeave={() => handleColumnHover(null)}
+                    >
+                      <SortButton field="eps_guide" align="center" padding="px-2 py-3">EPS Guide</SortButton>
+                    </th>
+                    <th 
+                      className="text-xs font-medium text-gray-500 uppercase tracking-wider" 
+                      scope="col"
+                      onMouseEnter={() => handleColumnHover('eps_guide_surp')}
+                      onMouseLeave={() => handleColumnHover(null)}
+                    >
+                      <SortButton field="eps_guide_surp" align="center" padding="px-2 py-3">EPS G Surp</SortButton>
+                    </th>
+                    <th 
+                      className="text-xs font-medium text-gray-500 uppercase tracking-wider" 
+                      scope="col"
+                      onMouseEnter={() => handleColumnHover('rev_guide')}
+                      onMouseLeave={() => handleColumnHover(null)}
+                    >
+                      <SortButton field="rev_guide" align="center" padding="px-2 py-3">Rev Guide</SortButton>
+                    </th>
+                    <th 
+                      className="text-xs font-medium text-gray-500 uppercase tracking-wider" 
+                      scope="col"
+                      onMouseEnter={() => handleColumnHover('rev_guide_surp')}
+                      onMouseLeave={() => handleColumnHover(null)}
+                    >
+                      <SortButton field="rev_guide_surp" align="center" padding="px-2 py-3">Rev G Surp</SortButton>
+                    </th>
+                    <th 
+                      className="text-xs font-medium text-gray-500 uppercase tracking-wider" 
+                      scope="col"
+                      onMouseEnter={() => handleColumnHover('guidance_period')}
+                      onMouseLeave={() => handleColumnHover(null)}
+                    >
+                      <SortButton field="guidance_period" align="center" padding="px-2 py-3">Period</SortButton>
+                    </th>
+                    <th 
+                      className="text-xs font-medium text-gray-500 uppercase tracking-wider" 
+                      scope="col"
+                      onMouseEnter={() => handleColumnHover('guidance_confidence')}
+                      onMouseLeave={() => handleColumnHover(null)}
+                    >
+                      <SortButton field="guidance_confidence" align="center" padding="px-2 py-3">Notes</SortButton>
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {sortedData.map((item, index) => (
+                    <tr key={item.ticker} className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                      <td className="px-2 py-3 text-sm text-gray-600 text-right">
+                        {item.guidanceData?.estimatedEpsGuidance ? `$${item.guidanceData.estimatedEpsGuidance.toFixed(2)}` : '-'}
+                      </td>
+                      <td className="px-2 py-3 text-sm text-right">
+                        {formatGuidanceSurprise(
+                          item.epsGuideSurprise,
+                          item.epsGuideBasis,
+                          item.epsGuideExtreme,
+                          []
+                        )}
+                      </td>
+                      <td className="px-2 py-3 text-sm text-gray-600 text-right">
+                        {item.guidanceData?.estimatedRevenueGuidance ? formatCurrency(item.guidanceData.estimatedRevenueGuidance) : '-'}
+                      </td>
+                      <td className="px-2 py-3 text-sm text-right">
+                        {formatGuidanceSurprise(
+                          item.revenueGuideSurprise,
+                          item.revenueGuideBasis,
+                          item.revenueGuideExtreme,
+                          []
+                        )}
+                      </td>
+                      <td className="px-2 py-3 text-sm text-gray-600 text-center">
+                        {item.fiscalPeriod || '-'}
+                      </td>
+                      <td className="px-2 py-3 text-sm text-gray-600 text-center">
+                        {item.guidanceData?.lastUpdated ? (() => {
+                          const date = new Date(item.guidanceData.lastUpdated);
+                          return isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
+                        })() : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -1,118 +1,89 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
+  url      = env("DATABASE_URL")
 }
 
+/// ENUMY - SQLite nepodporuje enums, používame String
+
+/// Základná tabuľka s dnešnými earnings (kalendár)
 model EarningsTickersToday {
-  id           Int      @id @default(autoincrement())
-  reportDate   DateTime
-  ticker       String
-  reportTime   String   // BMO, AMC, TNS
-  epsActual    Float?
-  epsEstimate  Float?
-  revenueActual BigInt?
-  revenueEstimate BigInt?
-  sector       String?
-  
-  // NEW: Guidance fields (hybrid approach)
-  epsGuidance         Float?
-  revenueGuidance     BigInt?
-  guidancePeriod      String?  // 'quarterly', 'yearly', 'unknown'
-  guidanceConfidence  Int?     // 0-100%
-  guidanceSource      String?  // 'benzinga', 'finnhub', 'polygon'
-  guidanceMethod      String?  // 'gaap', 'non-gaap'
-  
-  // Previous guidance for fallback
-  previousMinEpsGuidance     Float?
-  previousMaxEpsGuidance     Float?
-  previousMinRevenueGuidance BigInt?
-  previousMaxRevenueGuidance BigInt?
-  
-  // Consensus comparison
-  epsGuideVsConsensusPct     Float?
-  revenueGuideVsConsensusPct Float?
-  
-  // Surprise calculations with basis tracking
-  epsGuideSurprise     Float?
-  epsGuideBasis        String?  // 'vendor_consensus', 'estimate', 'previous_mid'
-  epsGuideExtreme      Boolean? // true if >300%
-  revenueGuideSurprise Float?
-  revenueGuideBasis    String?  // 'vendor_consensus', 'estimate', 'previous_mid'
-  revenueGuideExtreme  Boolean? // true if >300%
-  
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  reportDate        DateTime
+  ticker            String
+  reportTime        String?    // BMO, AMC, TNS
+  epsActual         Float?
+  epsEstimate       Float?
+  revenueActual     BigInt?
+  revenueEstimate   BigInt?
+  sector            String?
+  companyType       String?
+  dataSource        String?
+  sourcePriority    Int?
+  fiscalPeriod      String?    // Q1, Q2, Q3, Q4, FY, H1, H2
+  fiscalYear        Int?
+  primaryExchange   String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
 
-  @@unique([reportDate, ticker])
-  @@index([reportDate, reportTime])
-  @@index([epsActual])
-  @@index([revenueActual])
-  @@index([epsGuidance])
-  @@index([revenueGuidance])
-  @@index([guidancePeriod])
-  @@index([guidanceConfidence])
-  @@map("earnings_tickers_today")
+  @@id([reportDate, ticker])
+  @@index([reportDate])
+  @@index([reportDate, ticker])
 }
 
+/// Pohyb/market data v deň reportu
 model TodayEarningsMovements {
-  id                    Int      @id @default(autoincrement())
-  ticker                String   @unique
-  companyName           String
-  currentPrice          Float
-  previousClose         Float
-  marketCap             BigInt
-  size                  String   // Large, Mid, Small
-  marketCapDiff         BigInt
-  marketCapDiffBillions Float
-  priceChangePercent    Float
-  sharesOutstanding     BigInt
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  ticker                   String
+  reportDate               DateTime
+  companyName              String
+  currentPrice             Float?
+  previousClose            Float?
+  marketCap                BigInt?
+  size                     String?    // Large, Mid, Small
+  marketCapDiff            Float?
+  marketCapDiffBillions    Float?
+  priceChangePercent       Float?
+  sharesOutstanding        BigInt?
+  updatedAt                DateTime? @default(now())
+  companyType              String?
+  primaryExchange          String?
+  reportTime               String?    // BMO, AMC, TNS
 
-  @@index([updatedAt])
-  @@index([marketCapDiff])
-  @@index([priceChangePercent])
-  @@index([size])
-  @@index([marketCapDiffBillions])
-  @@map("today_earnings_movements")
+  @@id([ticker, reportDate])
+  @@index([reportDate])
+  @@index([reportDate, ticker])
 }
 
-model SharesOutstanding {
-  id              Int      @id @default(autoincrement())
-  ticker          String   @unique
-  sharesOutstanding BigInt
-  updatedAt       DateTime @default(now()) @updatedAt
+/// Guidance od Benzinga/Polygon Benzinga
+model BenzingaGuidance {
+  id                           Int         @id @default(autoincrement())
+  ticker                       String
+  estimatedEpsGuidance         Float?
+  estimatedRevenueGuidance     BigInt?
+  epsGuideVsConsensusPct       Float?
+  revenueGuideVsConsensusPct   Float?
+  previousMinEpsGuidance       Float?
+  previousMaxEpsGuidance       Float?
+  previousMinRevenueGuidance   BigInt?
+  previousMaxRevenueGuidance   BigInt?
+  fiscalPeriod                 String?    // Q1, Q2, Q3, Q4, FY, H1, H2
+  fiscalYear                   Int?
+  releaseType                  String?
+  lastUpdated                  DateTime?   @default(now())
+  createdAt                    DateTime    @default(now())
 
-  @@map("shares_outstanding")
+  @@unique([ticker, fiscalPeriod, fiscalYear])
+  @@index([ticker])
+  @@index([ticker, fiscalPeriod, fiscalYear])
 }
 
-model CronHeartbeat {
-  id        Int      @id @default(autoincrement())
-  jobName   String   @unique
-  lastRun   DateTime
-  status    String   // success, error, running
-  message   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("cron_heartbeat")
-}
-
-model ApiRateLimit {
-  id        Int      @id @default(autoincrement())
-  apiName   String
-  requests  Int      @default(0)
-  resetTime DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([apiName])
-  @@map("api_rate_limit")
+/// Log odmietnutých záznamov guidance (na debug)
+model GuidanceImportFailures {
+  id          Int       @id @default(autoincrement())
+  ticker      String
+  reason      String
+  payload     String    // JSON string
+  createdAt   DateTime  @default(now())
 }

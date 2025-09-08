@@ -1,13 +1,13 @@
-# Earnings Table Ubuntu - Modern Tech Stack
+# Earnings Table - Simplified Architecture
 
-A modern, real-time earnings dashboard built with Next.js 15, Node.js, PostgreSQL, and Redis.
+A modern earnings dashboard built with Next.js 15, TypeScript, and simplified cron-based data ingestion.
 
 ## 🚀 Features
 
-- **Real-time Updates**: WebSocket-powered live data updates
 - **Modern UI**: Built with React, TypeScript, and TailwindCSS
-- **High Performance**: TanStack Table with virtualization for large datasets
-- **Background Jobs**: Bull Queue with Redis for reliable data processing
+- **High Performance**: TanStack Table with sorting and filtering
+- **Guidance Analytics**: Corporate guidance surprise calculations
+- **Cron-based Ingestion**: Simple, reliable data fetching
 - **Type Safety**: Full TypeScript support with Prisma ORM
 - **Responsive Design**: Works perfectly on desktop and mobile
 
@@ -24,16 +24,14 @@ A modern, real-time earnings dashboard built with Next.js 15, Node.js, PostgreSQ
 
 ### Backend
 
-- **Node.js** - JavaScript runtime
-- **Express** - Web framework
+- **Next.js API Routes** - Server-side API endpoints
 - **Prisma** - Type-safe database ORM
-- **Bull Queue** - Background job processing
-- **Socket.IO** - Real-time WebSocket communication
+- **Cron Jobs** - Simple data ingestion
 
-### Database & Cache
+### Database
 
-- **PostgreSQL** - Primary database
-- **Redis** - Caching and job queue
+- **SQLite** - Local development database
+- **PostgreSQL** - Production database (optional)
 
 ### APIs
 
@@ -45,25 +43,26 @@ A modern, real-time earnings dashboard built with Next.js 15, Node.js, PostgreSQ
 ```
 src/
 ├── app/                    # Next.js App Router
-│   ├── globals.css        # Global styles
-│   ├── layout.tsx         # Root layout
-│   └── page.tsx           # Home page
-├── components/            # React components
-│   ├── ui/               # Reusable UI components
+│   ├── api/              # API routes
+│   │   └── earnings/     # Earnings API endpoints
+│   ├── globals.css       # Global styles
+│   ├── layout.tsx        # Root layout
+│   └── page.tsx          # Home page
+├── components/           # React components
+│   ├── ui/              # Reusable UI components
 │   ├── EarningsDashboard.tsx
 │   ├── EarningsTable.tsx
 │   ├── EarningsStats.tsx
 │   ├── Header.tsx
 │   └── Footer.tsx
-├── server/               # Backend server
-│   ├── app.ts           # Express app setup
-│   ├── routes/          # API routes
-│   ├── middleware/      # Express middleware
-│   └── utils/           # Server utilities
-├── queue/               # Background jobs
-│   ├── worker.ts        # Queue worker
-│   └── jobs/            # Job implementations
-└── types/               # TypeScript type definitions
+├── jobs/                # Cron jobs
+│   └── fetch-today.ts   # Data ingestion script
+├── lib/                 # Utility libraries
+│   ├── prisma.ts        # Prisma client
+│   ├── guidance.ts      # Guidance calculations
+│   ├── dates.ts         # Date utilities
+│   └── bigint-utils.ts  # BigInt serialization
+└── utils/               # TypeScript utilities
 ```
 
 ## 🚀 Getting Started
@@ -71,9 +70,8 @@ src/
 ### Prerequisites
 
 - Node.js 20.x or higher
-- PostgreSQL 16.x or higher
-- Redis 7.x or higher
 - API keys for Polygon.io and Finnhub
+- SQLite (included with Node.js) or PostgreSQL for production
 
 ### Installation
 
@@ -93,14 +91,13 @@ src/
 3. **Set up environment variables**
 
    ```bash
-   cp env.example .env
+   cp env.example .env.local
    ```
 
-   Update `.env` with your configuration:
+   Update `.env.local` with your configuration:
 
    ```env
-   DATABASE_URL="postgresql://username:password@localhost:5432/earnings_table"
-   REDIS_URL="redis://localhost:6379"
+   DATABASE_URL="file:./dev.db"
    POLYGON_API_KEY="your_polygon_api_key"
    FINNHUB_API_KEY="your_finnhub_api_key"
    ```
@@ -108,20 +105,13 @@ src/
 4. **Set up the database**
 
    ```bash
-   npm run db:generate
-   npm run db:push
+   npx prisma generate
+   npx prisma db push
    ```
 
-5. **Start the development servers**
+5. **Start the development server**
 
    ```bash
-   # Terminal 1: Start the backend server
-   npm run dev:server
-
-   # Terminal 2: Start the queue worker
-   npm run queue:dev
-
-   # Terminal 3: Start the frontend
    npm run dev
    ```
 
@@ -133,30 +123,25 @@ src/
 - `npm run dev` - Start Next.js development server
 - `npm run build` - Build for production
 - `npm run start` - Start production server
-- `npm run dev:server` - Start backend server
-- `npm run queue:dev` - Start queue worker
-- `npm run db:generate` - Generate Prisma client
-- `npm run db:push` - Push schema to database
-- `npm run db:migrate` - Run database migrations
-- `npm run db:studio` - Open Prisma Studio
+- `npm run fetch:data` - Run data ingestion script manually
+- `npx prisma generate` - Generate Prisma client
+- `npx prisma db push` - Push schema to database
+- `npx prisma studio` - Open Prisma Studio
 - `npm run test` - Run tests
 - `npm run lint` - Run ESLint
 
-## 🔄 Background Jobs
+## 🔄 Data Ingestion
 
-The application uses Bull Queue for background job processing:
+The application uses a simple cron-based approach for data ingestion:
 
-- **Earnings Fetch** (every 2 minutes) - Fetches earnings data from APIs
-- **Market Data Update** (every 5 minutes) - Updates stock prices and market data
-- **Cleanup** (daily) - Removes old data to keep database clean
+- **Manual Fetch** - Run `npm run fetch:data` to fetch today's earnings data
+- **Cron Setup** - Set up system cron to run the script every 10 minutes
+- **API Integration** - Fetches data from Finnhub and Polygon APIs
 
 ## 🌐 API Endpoints
 
-- `GET /api/earnings/today` - Get today's earnings data
-- `GET /api/earnings/ticker/:ticker` - Get specific ticker data
+- `GET /api/earnings` - Get today's earnings data with guidance calculations
 - `GET /api/earnings/stats` - Get earnings statistics
-- `GET /api/cron/status` - Get cron job status
-- `POST /api/cron/heartbeat` - Update cron job heartbeat
 
 ## 🚀 Deployment
 
@@ -168,12 +153,6 @@ The application uses Bull Queue for background job processing:
    # Install Node.js 20.x
    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
    sudo apt-get install -y nodejs
-
-   # Install PostgreSQL
-   sudo apt-get install -y postgresql postgresql-contrib
-
-   # Install Redis
-   sudo apt-get install -y redis-server
    ```
 
 2. **Set up the application**
@@ -185,12 +164,11 @@ The application uses Bull Queue for background job processing:
    npm run build
    ```
 
-3. **Configure services**
+3. **Set up cron job for data ingestion**
 
    ```bash
-   # Set up systemd services for the application
-   sudo systemctl enable postgresql redis-server
-   sudo systemctl start postgresql redis-server
+   # Add to crontab (run every 10 minutes)
+   */10 * * * * cd /path/to/EarningsTableUbuntu && npm run fetch:data
    ```
 
 4. **Start the application**
@@ -200,25 +178,22 @@ The application uses Bull Queue for background job processing:
 
 ## 📈 Performance Features
 
-- **Virtual Scrolling** - Handle thousands of rows efficiently
-- **Real-time Updates** - WebSocket-powered live data
-- **Background Processing** - Non-blocking data fetching
-- **Redis Caching** - Fast data retrieval
-- **Database Indexing** - Optimized queries
-- **Rate Limiting** - API protection
+- **Efficient Sorting** - Fast client-side sorting and filtering
+- **Guidance Analytics** - Real-time guidance surprise calculations
+- **Simple Architecture** - Easy to deploy and maintain
+- **Database Indexing** - Optimized queries with Prisma
+- **Type Safety** - Full TypeScript support
 
 ## 🔧 Configuration
 
 ### Environment Variables
 
-| Variable          | Description                          | Required |
-| ----------------- | ------------------------------------ | -------- |
-| `DATABASE_URL`    | PostgreSQL connection string         | Yes      |
-| `REDIS_URL`       | Redis connection string              | Yes      |
-| `POLYGON_API_KEY` | Polygon.io API key                   | Yes      |
-| `FINNHUB_API_KEY` | Finnhub API key                      | Yes      |
-| `NODE_ENV`        | Environment (development/production) | No       |
-| `PORT`            | Server port (default: 3001)          | No       |
+| Variable          | Description                                    | Required |
+| ----------------- | ---------------------------------------------- | -------- |
+| `DATABASE_URL`    | Database connection string (SQLite/PostgreSQL) | Yes      |
+| `POLYGON_API_KEY` | Polygon.io API key                             | Yes      |
+| `FINNHUB_API_KEY` | Finnhub API key                                | Yes      |
+| `NODE_ENV`        | Environment (development/production)           | No       |
 
 ## 📝 License
 

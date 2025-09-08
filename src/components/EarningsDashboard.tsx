@@ -9,27 +9,32 @@ import { Header } from './Header';
 import { Footer } from './Footer';
 
 interface EarningsData {
-  id: number;
-  reportDate: string;
   ticker: string;
-  reportTime: string;
-  epsActual: number | null;
+  reportTime: string | null;
   epsEstimate: number | null;
-  revenueActual: bigint | null;
-  revenueEstimate: bigint | null;
+  epsActual: number | null;
+  revenueEstimate: string | null; // BigInt serialized as string
+  revenueActual: string | null; // BigInt serialized as string
   sector: string | null;
-  movement: {
-    id: number;
-    ticker: string;
-    companyName: string;
-    currentPrice: number;
-    previousClose: number;
-    marketCap: bigint;
-    size: string;
-    marketCapDiff: bigint;
-    marketCapDiffBillions: number;
-    priceChangePercent: number;
-    sharesOutstanding: bigint;
+  companyType: string | null;
+  dataSource: string | null;
+  fiscalPeriod: string | null;
+  fiscalYear: number | null;
+  primaryExchange: string | null;
+  // Guidance calculations
+  epsGuideSurprise: number | null;
+  epsGuideBasis: string | null;
+  epsGuideExtreme: boolean;
+  revenueGuideSurprise: number | null;
+  revenueGuideBasis: string | null;
+  revenueGuideExtreme: boolean;
+  // Raw guidance data for debugging
+  guidanceData: {
+    estimatedEpsGuidance: number | null;
+    estimatedRevenueGuidance: string | null;
+    epsGuideVsConsensusPct: number | null;
+    revenueGuideVsConsensusPct: number | null;
+    lastUpdated: string | null;
   } | null;
 }
 
@@ -69,7 +74,7 @@ export function EarningsDashboard() {
       setError(null);
 
       const [earningsResponse, statsResponse] = await Promise.all([
-        fetch('/api/earnings/today'),
+        fetch('/api/earnings'),
         fetch('/api/earnings/stats'),
       ]);
 
@@ -80,7 +85,7 @@ export function EarningsDashboard() {
       const earningsResult = await earningsResponse.json();
       const statsResult = await statsResponse.json();
 
-      if (earningsResult.success) {
+      if (earningsResult.data) {
         setEarningsData(earningsResult.data);
       }
 
@@ -155,19 +160,29 @@ export function EarningsDashboard() {
         lastUpdated={lastUpdated}
       />
       
-      <main className="flex-1 container mx-auto px-4 py-8">
-        {stats && <EarningsStats stats={stats} />}
+      <main className="flex-1 flex py-8" role="main" aria-label="Earnings dashboard main content">
+        {/* Left Ad Space - 15% */}
+        <aside className="w-[15%] bg-gray-50" aria-hidden="true" aria-label="Advertisement space">
+        </aside>
         
-        <div className="mt-8">
+        {/* Main Content - 70% */}
+        <section className="w-[70%] px-4" aria-label="Earnings data and statistics">
+          {stats && <EarningsStats stats={stats} />}
           <EarningsTable 
             data={earningsData} 
             isLoading={isLoading}
             onRefresh={fetchData}
           />
-        </div>
+        </section>
+        
+        {/* Right Ad Space - 15% */}
+        <aside className="w-[15%] bg-gray-50" aria-hidden="true" aria-label="Advertisement space">
+        </aside>
       </main>
       
       <Footer />
     </div>
   );
 }
+
+
