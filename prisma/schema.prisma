@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -88,6 +88,7 @@ model BenzingaGuidance {
   fiscalPeriod                 String?    // Q1, Q2, Q3, Q4, FY, H1, H2
   fiscalYear                   Int?
   releaseType                  String?
+  notes                        String?     // Notes/comments from Benzinga
   lastUpdated                  DateTime?   @default(now())
   createdAt                    DateTime    @default(now())
 

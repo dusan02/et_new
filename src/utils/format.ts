@@ -6,6 +6,9 @@ export function formatGuidePercent(value?: number | null) {
   return `${sign}${clamped.toFixed(2)}%${warn}`;
 }
 
+// 🚫 GUIDANCE DISABLED FOR PRODUCTION - getGuidanceTitle function commented out
+// TODO: Re-enable when guidance issues are resolved
+/*
 export function getGuidanceTitle(basis?: string | null, rawValue?: number | null): string {
   if (!basis) return 'No data';
   
@@ -18,3 +21,4 @@ export function getGuidanceTitle(basis?: string | null, rawValue?: number | null
   const raw = (rawValue != null && isFinite(rawValue)) ? rawValue.toFixed(2) : null;
   return basisText + (raw ? ` (Raw: ${raw}%)` : '');
 }
+*/

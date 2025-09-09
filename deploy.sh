@@ -1,101 +1,251 @@
 #!/bin/bash
 
-# Production Deployment Script for VPS (mydreams.cz)
-# Run this script on your Debian VPS
+# Production Deployment Script for EarningsTable
+# Run this script to deploy to production
 
-set -e
+echo "🚀 Starting EarningsTable Production Deployment..."
 
-echo "🚀 Starting Production Deployment..."
-echo "=================================="
-
-# Check if running as root
-if [ "$EUID" -eq 0 ]; then
-  echo "❌ Please don't run as root. Use a regular user with sudo access."
-  exit 1
+# Check if we're in the right directory
+if [ ! -f "package.json" ]; then
+    echo "❌ Error: package.json not found. Please run this script from the project root."
+    exit 1
 fi
 
-# Update system
-echo "📦 Updating system packages..."
-sudo apt update && sudo apt upgrade -y
+# 1. Install dependencies
+echo "📦 Installing dependencies..."
+npm ci --production
 
-# Install Docker if not installed
-if ! command -v docker &> /dev/null; then
-  echo "🐳 Installing Docker..."
-  curl -fsSL https://get.docker.com -o get-docker.sh
-  sudo sh get-docker.sh
-  sudo usermod -aG docker $USER
-  rm get-docker.sh
-fi
+# 2. Generate Prisma client
+echo "🗄️ Generating Prisma client..."
+npx prisma generate
 
-# Install Docker Compose if not installed
-if ! command -v docker-compose &> /dev/null; then
-  echo "🐳 Installing Docker Compose..."
-  sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-  sudo chmod +x /usr/local/bin/docker-compose
-fi
+# 3. Run database migrations
+echo "🔄 Running database migrations..."
+npx prisma db push
 
-# Create project directory
-PROJECT_DIR="/opt/earnings-table"
-echo "📁 Creating project directory: $PROJECT_DIR"
-sudo mkdir -p $PROJECT_DIR
-sudo chown $USER:$USER $PROJECT_DIR
+# 4. Build the application
+echo "🏗️ Building application..."
+npm run build
 
-# Copy project files
-echo "📋 Copying project files..."
-cp -r . $PROJECT_DIR/
-cd $PROJECT_DIR
+# 5. Create production directory structure
+echo "📁 Creating production structure..."
+mkdir -p production/{logs,data,backups}
 
-# Create production environment file
-echo "⚙️ Creating production environment file..."
-cat > .env << EOF
-# Production Environment Variables
-DATABASE_URL="postgresql://earnings_user:earnings_password@postgres:5432/earnings_table"
-REDIS_URL="redis://redis:6379"
-NODE_ENV="production"
+# 6. Copy production files
+echo "📋 Copying production files..."
+cp -r .next production/
+cp -r public production/
+cp -r prisma production/
+cp package.json production/
+cp package-lock.json production/
+cp next.config.js production/
+cp production.env production/.env.local
 
-# API Keys - REPLACE WITH YOUR ACTUAL KEYS
-FINNHUB_API_KEY="your_finnhub_api_key_here"
-POLYGON_API_KEY="your_polygon_api_key_here"
-
-# Next.js
-NEXTAUTH_URL="https://yourdomain.com"
-NEXTAUTH_SECRET="$(openssl rand -base64 32)"
+# 7. Create production package.json
+echo "📝 Creating production package.json..."
+cat > production/package.json << EOF
+{
+  "name": "earnings-table-production",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "next start -p 3000",
+    "cron": "node src/queue/worker-new.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.7.0",
+    "@tanstack/react-table": "^8.10.0",
+    "@tanstack/react-virtual": "^3.13.12",
+    "autoprefixer": "^10.4.0",
+    "axios": "^1.6.0",
+    "clsx": "^2.1.1",
+    "dotenv": "^17.2.2",
+    "lru-cache": "^11.2.1",
+    "lucide-react": "^0.294.0",
+    "next": "^15.0.0",
+    "node-cron": "^4.2.1",
+    "node-fetch": "^3.3.2",
+    "postcss": "^8.4.0",
+    "prisma": "^5.7.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "recharts": "^2.8.0",
+    "swr": "^2.2.0",
+    "tailwind-merge": "^2.0.0",
+    "tailwindcss": "^3.3.0"
+  }
+}
 EOF
 
-echo "⚠️  IMPORTANT: Edit .env file and add your actual API keys!"
-echo "   nano .env"
+# 8. Create systemd service file
+echo "⚙️ Creating systemd service..."
+cat > production/earnings-table.service << EOF
+[Unit]
+Description=EarningsTable Application
+After=network.target
 
-# Build and start services
-echo "🔨 Building and starting services..."
-docker-compose down --remove-orphans
-docker-compose build --no-cache
-docker-compose up -d
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/earnings-table/production
+ExecStart=/usr/bin/node_modules/.bin/next start -p 3000
+Restart=always
+RestartSec=10
+Environment=NODE_ENV=production
+EnvironmentFile=/var/www/earnings-table/production/.env.local
 
-# Wait for services to be ready
-echo "⏳ Waiting for services to be ready..."
-sleep 30
+[Install]
+WantedBy=multi-user.target
+EOF
 
-# Check service status
-echo "📊 Checking service status..."
-docker-compose ps
+# 9. Create cron service file
+echo "⏰ Creating cron service..."
+cat > production/earnings-cron.service << EOF
+[Unit]
+Description=EarningsTable Cron Worker
+After=network.target
 
-# Show logs
-echo "📋 Recent logs:"
-docker-compose logs --tail=50
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/earnings-table/production
+ExecStart=/usr/bin/node src/queue/worker-new.js
+Restart=always
+RestartSec=30
+Environment=NODE_ENV=production
+EnvironmentFile=/var/www/earnings-table/production/.env.local
 
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# 10. Create nginx configuration
+echo "🌐 Creating nginx configuration..."
+cat > production/nginx.conf << EOF
+server {
+    listen 80;
+    server_name yourdomain.com www.yourdomain.com;
+    
+    # Redirect HTTP to HTTPS
+    return 301 https://\$server_name\$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name yourdomain.com www.yourdomain.com;
+    
+    # SSL Configuration (replace with your certificates)
+    ssl_certificate /path/to/your/certificate.crt;
+    ssl_certificate_key /path/to/your/private.key;
+    
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;
+    
+    # Proxy to Next.js
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
+    }
+    
+    # Static files caching
+    location /_next/static/ {
+        proxy_pass http://localhost:3000;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+}
+EOF
+
+# 11. Create deployment instructions
+echo "📖 Creating deployment instructions..."
+cat > production/DEPLOYMENT.md << EOF
+# EarningsTable Production Deployment
+
+## Prerequisites
+- Node.js 18+ installed
+- PostgreSQL database
+- Nginx web server
+- SSL certificates
+
+## Deployment Steps
+
+### 1. Database Setup
+\`\`\`bash
+# Create PostgreSQL database
+createdb earnings_table_prod
+
+# Update DATABASE_URL in .env.local
+DATABASE_URL="postgresql://username:password@localhost:5432/earnings_table_prod"
+\`\`\`
+
+### 2. Install Dependencies
+\`\`\`bash
+cd production
+npm install --production
+\`\`\`
+
+### 3. Database Migration
+\`\`\`bash
+npx prisma db push
+\`\`\`
+
+### 4. Start Services
+\`\`\`bash
+# Start main application
+sudo systemctl start earnings-table
+sudo systemctl enable earnings-table
+
+# Start cron worker
+sudo systemctl start earnings-cron
+sudo systemctl enable earnings-cron
+\`\`\`
+
+### 5. Configure Nginx
+\`\`\`bash
+# Copy nginx config
+sudo cp nginx.conf /etc/nginx/sites-available/earnings-table
+sudo ln -s /etc/nginx/sites-available/earnings-table /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+\`\`\`
+
+### 6. SSL Setup (Let's Encrypt)
+\`\`\`bash
+sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
+\`\`\`
+
+## Monitoring
+- Check logs: \`journalctl -u earnings-table -f\`
+- Check cron logs: \`journalctl -u earnings-cron -f\`
+- Monitor database: \`npx prisma studio\`
+
+## Backup
+\`\`\`bash
+# Database backup
+pg_dump earnings_table_prod > backup_\$(date +%Y%m%d_%H%M%S).sql
+\`\`\`
+EOF
+
+echo "✅ Production deployment package created in 'production/' directory"
+echo "📋 Next steps:"
+echo "1. Copy 'production/' directory to your server"
+echo "2. Follow instructions in production/DEPLOYMENT.md"
+echo "3. Update environment variables in production/.env.local"
+echo "4. Configure your domain and SSL certificates"
 echo ""
-echo "✅ Deployment completed!"
-echo "🌐 Your application should be available at: http://your-vps-ip:3000"
-echo ""
-echo "📋 Useful commands:"
-echo "   docker-compose logs -f app          # View app logs"
-echo "   docker-compose logs -f cron-worker  # View cron logs"
-echo "   docker-compose restart app          # Restart app"
-echo "   docker-compose restart cron-worker  # Restart cron"
-echo "   docker-compose down                 # Stop all services"
-echo "   docker-compose up -d                # Start all services"
-echo ""
-echo "🔧 To update the application:"
-echo "   1. Copy new files to $PROJECT_DIR"
-echo "   2. Run: docker-compose build --no-cache"
-echo "   3. Run: docker-compose up -d"
+echo "🎉 Deployment package ready!"

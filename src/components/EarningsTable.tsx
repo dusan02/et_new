@@ -3,7 +3,8 @@
 import { useState, useMemo, useEffect, useRef, useCallback, memo } from 'react';
 import { ArrowUpDown, ArrowUp, ArrowDown, RefreshCw } from 'lucide-react';
 import { LoadingSpinner } from './ui/LoadingSpinner';
-import { formatGuidePercent, getGuidanceTitle } from '@/utils/format';
+// 🚫 GUIDANCE DISABLED FOR PRODUCTION - Import commented out
+// import { formatGuidePercent, getGuidanceTitle } from '@/utils/format';
 import { trackTableSort, trackTableFilter, trackViewToggle, trackRefresh } from './Analytics';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
@@ -43,7 +44,10 @@ interface EarningsData {
     estimatedRevenueGuidance: string | null;
     epsGuideVsConsensusPct: number | null;
     revenueGuideVsConsensusPct: number | null;
+    notes: string | null;
     lastUpdated: string | null;
+    fiscalPeriod: string | null;
+    fiscalYear: number | null;
   } | null;
 }
 
@@ -74,6 +78,7 @@ export const EarningsTable = memo(function EarningsTable({ data, isLoading, onRe
   const [sortField, setSortField] = useState<string>('market_cap');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [searchTerm, setSearchTerm] = useState('');
+  // 🚫 GUIDANCE DISABLED FOR PRODUCTION - Only EPS & Revenue view
   const [activeView, setActiveView] = useState<'eps-revenue' | 'guidance'>('eps-revenue');
   const [hoveredColumn, setHoveredColumn] = useState<string | null>(null);
   const [selectedColumn, setSelectedColumn] = useState<string | null>('market_cap');
@@ -205,6 +210,8 @@ export const EarningsTable = memo(function EarningsTable({ data, isLoading, onRe
     return `${surprise >= 0 ? '+' : ''}${surprise.toFixed(1)}%`;
   };
 
+  // 🚫 GUIDANCE DISABLED FOR PRODUCTION - formatGuidanceSurprise function commented out
+  /*
   const formatGuidanceSurprise = (
     surprise: number | null,
     basis: string | null,
@@ -238,6 +245,7 @@ export const EarningsTable = memo(function EarningsTable({ data, isLoading, onRe
       </span>
     );
   };
+  */
 
   const getSizeClass = (size: string | null) => {
     switch (size) {
@@ -496,9 +504,15 @@ export const EarningsTable = memo(function EarningsTable({ data, isLoading, onRe
         <div className="flex items-center justify-between min-w-max">
           <div>
             <h2 className="text-xl font-bold text-gray-900">Today's Earnings</h2>
-            <p className="text-sm text-gray-600 mt-1">
-              {data.length} companies reporting earnings today - includes actual EPS, Revenue and Corporate Guidance
-            </p>
+            {data.length === 0 ? (
+              <p className="text-sm text-gray-600 mt-1">
+                No companies reporting earnings today
+              </p>
+            ) : (
+              <p className="text-sm text-gray-600 mt-1">
+                {data.length} companies reporting earnings today - includes actual EPS and Revenues reporting
+              </p>
+            )}
           </div>
         </div>
         
@@ -516,7 +530,8 @@ export const EarningsTable = memo(function EarningsTable({ data, isLoading, onRe
             className="w-80 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           
-          {/* View Toggle Buttons */}
+          {/* 🚫 GUIDANCE DISABLED FOR PRODUCTION - View Toggle Buttons commented out */}
+          {/* 
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => {
@@ -541,6 +556,7 @@ export const EarningsTable = memo(function EarningsTable({ data, isLoading, onRe
               Guidance
             </button>
           </div>
+          */}
         </div>
       </div>
 
@@ -548,13 +564,10 @@ export const EarningsTable = memo(function EarningsTable({ data, isLoading, onRe
       <div className="bg-white rounded-lg shadow-sm border border-gray-300">
         {/* Table Structure - CSS Grid Layout */}
         <div 
-          className="overflow-x-hidden"
+          className="overflow-x-auto"
           style={{
-            ['--fixed' as any]: '292px', // 48 + 64 + 180 (menšie, ale čitateľné)
-            ['--colW' as any]: 'clamp(80px, calc((100% - var(--fixed)) / 11), 112px)', // stabilný aj pri zoome
-            ['--sep' as any]: '1px', // 1px hranica medzi ľavou a pravou tabuľkou
             display: 'grid',
-            gridTemplateColumns: 'calc(var(--fixed) + (5 * var(--colW))) minmax(0, 1fr)',
+            gridTemplateColumns: '1fr 1fr',
             columnGap: '0px',
           }}
         >
@@ -565,10 +578,14 @@ export const EarningsTable = memo(function EarningsTable({ data, isLoading, onRe
             <table className="w-full border-collapse" aria-label="Earnings table — Left section">
               <caption className="sr-only">Company information, market data, and price changes</caption>
               <colgroup>
-                <col style={{ width: '48px' }} />
-                <col style={{ width: '64px' }} />
-                <col style={{ width: '180px' }} />
-                {[...Array(5)].map((_, i) => <col key={i} style={{ width: 'var(--colW)' }} />)}
+                <col style={{ width: '40px' }} />
+                <col style={{ width: '60px' }} />
+                <col style={{ width: '120px' }} />
+                <col style={{ width: '60px' }} />
+                <col style={{ width: '80px' }} />
+                <col style={{ width: '70px' }} />
+                <col style={{ width: '70px' }} />
+                <col style={{ width: '70px' }} />
               </colgroup>
               <thead ref={leftHeaderRef} className="bg-blue-100 border-b border-gray-300">
                 <tr>
@@ -594,7 +611,7 @@ export const EarningsTable = memo(function EarningsTable({ data, isLoading, onRe
                     onMouseEnter={() => handleColumnHover('company')}
                     onMouseLeave={() => handleColumnHover(null)}
                   >
-                    <SortButton field="company" align="left" padding="px-4 py-3">Company</SortButton>
+                    <SortButton field="company" align="left" padding="px-1 py-3">Company</SortButton>
                   </th>
                   <th 
                     className="text-xs font-medium text-gray-500 uppercase tracking-wider" 
@@ -648,7 +665,27 @@ export const EarningsTable = memo(function EarningsTable({ data, isLoading, onRe
                 ) : sortedData.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
-                      No earnings data found
+                      {data.length === 0 ? (
+                        <div className="flex flex-col items-center space-y-4">
+                          <div className="relative">
+                            <svg className="w-16 h-16 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                            </svg>
+                            <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          </div>
+                          <div className="text-xl font-semibold text-gray-700">No Earnings Scheduled</div>
+                          <div className="text-sm text-gray-500 text-center max-w-md">
+                            There are no earnings reports scheduled for today.<br />
+                            Check back tomorrow for new earnings data.
+                          </div>
+                        </div>
+                      ) : (
+                        "No results found for your search"
+                      )}
                     </td>
                   </tr>
                 ) : (
@@ -658,7 +695,7 @@ export const EarningsTable = memo(function EarningsTable({ data, isLoading, onRe
                       <td className="px-2 py-3 text-sm font-medium text-gray-900">
                         {item.ticker}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-900 truncate" title={item.companyName || item.ticker}>
+                      <td className="px-1 py-3 text-sm text-gray-900 truncate" title={item.companyName || item.ticker}>
                         {item.companyName || item.ticker}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
@@ -770,8 +807,34 @@ export const EarningsTable = memo(function EarningsTable({ data, isLoading, onRe
                 </tbody>
               </table>
             ) : (
-              // Guidance Table
-              <table className="w-full border-collapse table-fixed" aria-label="Earnings table — Guidance view">
+              // 🚫 GUIDANCE DISABLED FOR PRODUCTION - Fallback message
+              <div className="p-8 text-center text-gray-500">
+                <p>Guidance view is temporarily disabled for production.</p>
+                <p>Please use EPS & Revenue view.</p>
+              </div>
+              /*
+              <div>
+                // Guidance Data Info
+                {sortedData.every(item => !item.guidanceData?.estimatedEpsGuidance && !item.guidanceData?.estimatedRevenueGuidance) && (
+                  <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-yellow-800">
+                          No Guidance Data Available
+                        </h3>
+                        <div className="mt-1 text-sm text-yellow-700">
+                          <p>Guidance data is not currently being fetched for today's earnings. This feature requires Benzinga API integration.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <table className="w-full border-collapse table-fixed" aria-label="Earnings table — Guidance view">
                 <caption className="sr-only">EPS and revenue guidance with surprises and period information</caption>
                 <colgroup>
                   {[...Array(6)].map((_, i) => <col key={i} style={{ width: '1fr' }} />)}
@@ -832,7 +895,7 @@ export const EarningsTable = memo(function EarningsTable({ data, isLoading, onRe
                   {sortedData.map((item, index) => (
                     <tr key={item.ticker} className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
                       <td className="px-2 py-3 text-sm text-gray-600 text-right">
-                        {item.guidanceData?.estimatedEpsGuidance ? `$${item.guidanceData.estimatedEpsGuidance.toFixed(2)}` : '-'}
+                        {item.guidanceData?.estimatedEpsGuidance ? `$${item.guidanceData.estimatedEpsGuidance.toFixed(2)}` : <span className="text-gray-400 text-xs">No data</span>}
                       </td>
                       <td className="px-2 py-3 text-sm text-right">
                         {formatGuidanceSurprise(
@@ -843,7 +906,7 @@ export const EarningsTable = memo(function EarningsTable({ data, isLoading, onRe
                         )}
                       </td>
                       <td className="px-2 py-3 text-sm text-gray-600 text-right">
-                        {item.guidanceData?.estimatedRevenueGuidance ? formatCurrency(item.guidanceData.estimatedRevenueGuidance) : '-'}
+                        {item.guidanceData?.estimatedRevenueGuidance ? formatCurrency(item.guidanceData.estimatedRevenueGuidance) : <span className="text-gray-400 text-xs">No data</span>}
                       </td>
                       <td className="px-2 py-3 text-sm text-right">
                         {formatGuidanceSurprise(
@@ -857,15 +920,20 @@ export const EarningsTable = memo(function EarningsTable({ data, isLoading, onRe
                         {item.fiscalPeriod || '-'}
                       </td>
                       <td className="px-2 py-3 text-sm text-gray-600 text-center">
-                        {item.guidanceData?.lastUpdated ? (() => {
-                          const date = new Date(item.guidanceData.lastUpdated);
-                          return isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
-                        })() : '-'}
+                        {item.guidanceData?.notes ? (
+                          <span title={item.guidanceData.notes} className="truncate max-w-xs block">
+                            {item.guidanceData.notes.length > 50 
+                              ? `${item.guidanceData.notes.substring(0, 50)}...` 
+                              : item.guidanceData.notes}
+                          </span>
+                        ) : '-'}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              </div>
+              */
             )}
           </div>
         </div>

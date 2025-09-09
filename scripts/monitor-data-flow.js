@@ -58,8 +58,9 @@ async function testDatabase() {
     const marketCount = await prisma.todayEarningsMovements.count();
     console.log(`  Market records: ${marketCount}`);
 
-    const guidanceCount = await prisma.benzingaGuidance.count();
-    console.log(`  Guidance records: ${guidanceCount}`);
+    // 🚫 GUIDANCE DISABLED FOR PRODUCTION - Guidance count commented out
+    // const guidanceCount = await prisma.benzingaGuidance.count();
+    // console.log(`  Guidance records: ${guidanceCount}`);
 
     await prisma.$disconnect();
   } catch (error) {

@@ -1,11 +1,7 @@
 /**
- * 🚫 GUIDANCE LOGIC - DISABLED FOR PRODUCTION
+ * 🚫 GUIDANCE UTILITIES - DISABLED FOR PRODUCTION
  * 
- * 🎯 HYBRID GUIDANCE LOGIC
- * 
- * Kombinuje pôvodnú logiku z PHP aplikácie s mojou smart period detection:
- * - Pôvodná logika: fallback hierarchy, method validation, extreme detection
- * - Moja logika: smart period detection, confidence scoring, automatic adjustment
+ * Guidance calculation utilities with period matching and safe conversions
  * 
  * TODO: Re-enable when guidance issues are resolved
  */

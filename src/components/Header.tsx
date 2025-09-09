@@ -66,7 +66,7 @@ export function Header({ lastUpdated }: HeaderProps) {
             </time>
             <div className="flex items-center gap-2 text-sm text-gray-500 mt-1" aria-live="polite" aria-label="Auto refresh status">
               <RefreshCw className="h-4 w-4" aria-hidden="true" />
-              <span>Autorefresh update every minute</span>
+              <span>Autorefresh</span>
             </div>
           </div>
         </div>

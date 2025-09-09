@@ -191,8 +191,10 @@ export async function batchFetchFinnhubData(
 }
 
 /**
- * Benzinga API batch fetcher for guidance data
+ * 🚫 GUIDANCE DISABLED FOR PRODUCTION - Benzinga API batch fetcher commented out
+ * TODO: Re-enable when guidance issues are resolved
  */
+/*
 export async function batchFetchBenzingaData(
   tickers: string[],
   apiKey: string
@@ -218,6 +220,7 @@ export async function batchFetchBenzingaData(
     }
   });
 }
+*/
 
 /**
  * Utility to extract successful results from batch fetch

@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: earnings-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: earnings_table_prod
+      POSTGRES_USER: earnings_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    ports:
+      - "5432:5432"
+    networks:
+      - earnings-network
+
+  # Redis Cache (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: earnings-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - earnings-network
+
+  # Next.js Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: earnings-app
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://earnings_user:${POSTGRES_PASSWORD}@postgres:5432/earnings_table_prod
+      - REDIS_URL=redis://redis:6379
+      - POLYGON_API_KEY=${POLYGON_API_KEY}
+      - FINNHUB_API_KEY=${FINNHUB_API_KEY}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - earnings-network
+
+  # Cron Worker
+  cron:
+    build:
+      context: .
+      dockerfile: Dockerfile.cron
+    container_name: earnings-cron
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://earnings_user:${POSTGRES_PASSWORD}@postgres:5432/earnings_table_prod
+      - REDIS_URL=redis://redis:6379
+      - POLYGON_API_KEY=${POLYGON_API_KEY}
+      - FINNHUB_API_KEY=${FINNHUB_API_KEY}
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - earnings-network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: earnings-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - app
+    networks:
+      - earnings-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  earnings-network:
+    driver: bridge

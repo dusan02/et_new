@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Earnings Table - Live Stock Earnings Dashboard',
     short_name: 'Earnings Table',
-    description: 'Real-time earnings table with live stock data, EPS beats/misses, revenue surprises, and corporate guidance.',
+    description: 'Real-time earnings table with live stock data, EPS beats/misses, and revenue surprises.',
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',

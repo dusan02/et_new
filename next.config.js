@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Enable standalone output for Docker
+  output: "standalone",
+
   env: {
     DATABASE_URL: process.env.DATABASE_URL || "file:./dev.db",
     REDIS_URL: process.env.REDIS_URL,

@@ -1,7 +1,7 @@
 // 🚫 DISABLED - This worker is replaced by worker-new.js
 // worker-new.js has intelligent scheduling based on market hours
 
-console.log("🚫 Old worker.js is DISABLED");
+console.log("🚫 simple-cron.js is DISABLED");
 console.log(
   "✅ Use worker-new.js instead - it has intelligent market hours scheduling"
 );

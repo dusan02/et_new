@@ -3,7 +3,6 @@ dotenv.config()
 import { prisma } from '@/lib/prisma'
 import { isoDate, getNYDate, getNYTimeString } from '@/lib/dates'
 import axios from 'axios'
-import { batchFetchPolygonData, batchFetchFinnhubData, batchFetchBenzingaData, extractSuccessfulResults, extractFailedResults } from '@/utils/fetchers'
 
 console.log('Environment variables:', {
   FINNHUB_API_KEY: process.env.FINNHUB_API_KEY,
@@ -15,7 +14,6 @@ console.log('Current NY time:', getNYTimeString())
 
 const FINN = process.env.FINNHUB_API_KEY!
 const POLY = process.env.POLYGON_API_KEY!
-const BENZINGA = process.env.POLYGON_API_KEY // Same as Polygon API key
 
 async function fetchFinnhubEarnings(date: string) {
   const url = 'https://finnhub.io/api/v1/calendar/earnings'
@@ -24,28 +22,27 @@ async function fetchFinnhubEarnings(date: string) {
     timeout: 30000
   })
   
-  // Handle different response formats
-  const earningsList = data?.earningsCalendar || data || []
+  if (!data || !Array.isArray(data)) {
+    console.warn('No earnings data received from Finnhub')
+    return []
+  }
   
-  const processedEarnings = earningsList.map((r: any) => ({
-    reportDate: new Date(r.date),
-    ticker: r.symbol,
-    reportTime: (r.hour || '').toUpperCase() === 'BMO' ? 'BMO' :
-                (r.hour || '').toUpperCase() === 'AMC' ? 'AMC' : 'TNS',
-    epsActual: r.epsActual ? parseFloat(r.epsActual.toString()) : null,
-    epsEstimate: r.epsEstimate ? parseFloat(r.epsEstimate.toString()) : null,
-    revenueActual: r.revenueActual ? BigInt(r.revenueActual) : null,
-    revenueEstimate: r.revenueEstimate ? BigInt(r.revenueEstimate) : null,
-    sector: r.sector || null,
-    companyType: r.companyType || null,
+  return data.map((earning: any) => ({
+    ticker: earning.symbol,
+    reportDate: new Date(earning.date),
+    reportTime: earning.hour || 'AMC',
+    epsActual: earning.epsActual || null,
+    epsEstimate: earning.epsEstimate || null,
+    revenueActual: earning.revenueActual ? BigInt(Math.round(earning.revenueActual)) : null,
+    revenueEstimate: earning.revenueEstimate ? BigInt(Math.round(earning.revenueEstimate)) : null,
+    sector: earning.sector || null,
+    companyType: earning.companyType || null,
     dataSource: 'finnhub',
     sourcePriority: 1,
-    fiscalPeriod: r.quarter ? `Q${r.quarter}` : null,
-    fiscalYear: r.year || null,
-    primaryExchange: r.exchange || null,
+    fiscalPeriod: earning.fiscalPeriod || null,
+    fiscalYear: earning.fiscalYear || null,
+    primaryExchange: earning.primaryExchange || null
   }))
-  
-  return processedEarnings
 }
 
 async function fetchPolygonMarketData(tickers: string[]) {
@@ -62,311 +59,126 @@ async function fetchPolygonMarketData(tickers: string[]) {
   console.log(`📦 Processing ${tickers.length} tickers in ${batches.length} batches of ${BATCH_SIZE}`)
   
   for (const batch of batches) {
-    // Process each batch in parallel
-    const tickerPromises = batch.map(async (ticker) => {
-    try {
-      // Fetch previous close
-      const { data: prevData } = await axios.get(
-        `https://api.polygon.io/v2/aggs/ticker/${ticker}/prev`,
-        {
-          params: { apiKey: POLY },
-          timeout: 10000
-        }
-      )
-
-      // Fetch current price from last trade (paid tier)
-      let currentPrice = null
-      let prevClose = prevData?.results?.[0]?.c
-      
+    const batchPromises = batch.map(async (ticker) => {
       try {
-        const { data: lastTradeData } = await axios.get(
-          `https://api.polygon.io/v2/last/trade/${ticker}`,
-          {
-            params: { apiKey: POLY },
-            timeout: 5000
-          }
-        )
-        currentPrice = lastTradeData?.results?.p
-      } catch (error) {
-        console.warn(`Failed to fetch last trade for ${ticker}, using prev close:`, (error as Error).message)
-        currentPrice = prevClose // Fallback to previous close
-      }
-      
-      // Fetch company name from Finnhub
-      let companyName = ticker // Default fallback
-      try {
-        const { data: profileData } = await axios.get(
-          `https://finnhub.io/api/v1/stock/profile2?symbol=${ticker}&token=${FINN}`,
-          { timeout: 5000 }
-        )
-        if (profileData?.name) {
-          companyName = profileData.name
-        }
-      } catch (error) {
-        console.warn(`Failed to fetch company name for ${ticker}:`, error)
-      }
-      
-      // Fetch market cap and shares outstanding from Polygon
-      let marketCap = null
-      let sharesOutstanding = null
-      let size = 'Large' // Default
-      try {
-        const { data: tickerData } = await axios.get(
-          `https://api.polygon.io/v3/reference/tickers/${ticker}`,
-          { 
-            params: { apiKey: POLY },
-            timeout: 5000
-          }
+        // Get previous close price
+        const { data: prevData } = await axios.get(
+          `https://api.polygon.io/v2/aggs/ticker/${ticker}/prev`,
+          { params: { apikey: POLY }, timeout: 10000 }
         )
         
-        if (tickerData?.results) {
-          // Get shares outstanding from Polygon
-          sharesOutstanding = tickerData.results.share_class_shares_outstanding ? BigInt(tickerData.results.share_class_shares_outstanding) : null
-        }
-      } catch (error) {
-        console.warn(`Failed to fetch ticker details for ${ticker}:`, (error as Error).message)
-        // Continue processing even if ticker details fail
-      }
-      
-      if (prevClose && currentPrice) {
-        // Calculate actual price change percentage with sanity check
-        let priceChangePercent = ((currentPrice - prevClose) / prevClose) * 100
-        
-        // Clamp extreme percentage changes (e.g., +9900% from 0.0001 to 0.01)
-        if (Math.abs(priceChangePercent) > 1000) {
-          console.warn(`Extreme price change detected for ${ticker}: ${priceChangePercent.toFixed(2)}% (${prevClose} -> ${currentPrice}). Setting to null.`)
-          priceChangePercent = null as any
+        // Get last trade price
+        let currentPrice = null
+        try {
+          const { data: lastTradeData } = await axios.get(
+            `https://api.polygon.io/v2/last/trade/${ticker}`,
+            { params: { apikey: POLY }, timeout: 10000 }
+          )
+          currentPrice = lastTradeData?.results?.p || null
+        } catch (error) {
+          console.warn(`Failed to fetch last trade for ${ticker}, using prev close:`, (error as Error).message)
         }
         
-        // Calculate current market cap: currentPrice × sharesOutstanding
-        let currentMarketCap = null
-        let previousMarketCap = null
+        // Get company name
+        let companyName = null
+        try {
+          const { data: profileData } = await axios.get(
+            `https://api.polygon.io/v3/reference/tickers/${ticker}`,
+            { params: { apikey: POLY }, timeout: 10000 }
+          )
+          companyName = profileData?.results?.name || null
+        } catch (error) {
+          console.warn(`Failed to fetch company name for ${ticker}:`, error)
+        }
+        
+        const prevClose = prevData?.results?.[0]?.c || null
+        const current = currentPrice || prevClose
+        
+        if (!prevClose || !current) {
+          console.warn(`Failed to fetch ticker details for ${ticker}: No data available`)
+          return null
+        }
+        
+        // Calculate price change percentage
+        const priceChangePercent = ((current - prevClose) / prevClose) * 100
+        
+        // Check for extreme price changes (more than 50% in either direction)
+        if (Math.abs(priceChangePercent) > 50) {
+          console.warn(`Extreme price change detected for ${ticker}: ${priceChangePercent.toFixed(2)}% (${prevClose} -> ${current}). Setting to null.`)
+          return null
+        }
+        
+        // Get market cap and shares outstanding
+        const marketCap = prevData?.results?.[0]?.vw * prevData?.results?.[0]?.n || null
+        const sharesOutstanding = prevData?.results?.[0]?.n || null
+        
+        // Calculate market cap difference
         let marketCapDiff = null
         let marketCapDiffBillions = null
-        
-        if (sharesOutstanding) {
-          currentMarketCap = BigInt(Math.round(currentPrice * Number(sharesOutstanding)))
-          previousMarketCap = BigInt(Math.round(prevClose * Number(sharesOutstanding)))
+        if (marketCap && sharesOutstanding) {
+          const prevMarketCap = prevClose * sharesOutstanding
+          marketCapDiff = ((marketCap - prevMarketCap) / prevMarketCap) * 100
           
-          // Calculate market cap difference
-          const currentCapFloat = Number(currentMarketCap)
-          const previousCapFloat = Number(previousMarketCap)
-          marketCapDiff = ((currentCapFloat - previousCapFloat) / previousCapFloat) * 100
-          marketCapDiffBillions = (currentCapFloat - previousCapFloat) / 1_000_000_000
-          
-          // Clamp extreme market cap changes (same logic as price change)
-          if (Math.abs(marketCapDiff) > 1000) {
+          // Check for extreme market cap changes
+          if (Math.abs(marketCapDiff) > 100) {
             console.warn(`Extreme market cap change detected for ${ticker}: ${marketCapDiff.toFixed(2)}%. Setting to null.`)
             marketCapDiff = null
-            marketCapDiffBillions = null
+          } else {
+            marketCapDiffBillions = (marketCap - prevMarketCap) / 1e9
           }
         }
         
-        // Determine size based on current market cap
-        let size = null // Default - no size if no market cap
-        if (currentMarketCap) {
-          const marketCapFloat = Number(currentMarketCap)
-          if (marketCapFloat >= 10_000_000_000) { // 10B+
-            size = 'Large'
-          } else if (marketCapFloat >= 2_000_000_000) { // 2B-10B
-            size = 'Mid'
-          } else {
-            size = 'Small'
-          }
+        // Determine company size
+        let size = 'Unknown'
+        if (marketCap) {
+          if (marketCap >= 200e9) size = 'Large Cap'
+          else if (marketCap >= 10e9) size = 'Mid Cap'
+          else if (marketCap >= 2e9) size = 'Small Cap'
+          else size = 'Micro Cap'
         }
         
         return {
           ticker,
-          data: {
-            currentPrice,
-            previousClose: prevClose,
-            priceChangePercent,
-            companyName, // Now using real company name from Finnhub
-            size, // Determined by current market cap
-            marketCap: currentMarketCap, // Current market cap: currentPrice × sharesOutstanding
-            marketCapDiff, // Market cap change percentage
-            marketCapDiffBillions, // Market cap change in billions
-            sharesOutstanding, // From Polygon ticker details
-            companyType: null,
-            primaryExchange: null,
-          }
+          currentPrice: current,
+          previousClose: prevClose,
+          priceChangePercent,
+          companyName,
+          size,
+          marketCap,
+          marketCapDiff,
+          marketCapDiffBillions,
+          sharesOutstanding,
+          companyType: 'Public',
+          primaryExchange: 'NYSE' // Default, could be enhanced
         }
-      }
-    } catch (error) {
-      console.warn(`Failed to fetch market data for ${ticker}:`, error)
-      return null
-    }
-  })
-  
-    // Wait for all ticker promises in this batch to complete with Promise.allSettled
-    const results = await Promise.allSettled(tickerPromises)
-    
-    // Process results and build marketData object
-    let successfulCount = 0
-    let failedCount = 0
-    
-    results.forEach((result, index) => {
-      if (result.status === 'fulfilled' && result.value) {
-        marketData[result.value.ticker] = result.value.data
-        successfulCount++
-      } else if (result.status === 'rejected') {
-        console.warn(`Failed to process ticker ${batch[index]}:`, result.reason)
-        failedCount++
+        
+      } catch (error) {
+        console.warn(`Failed to fetch market data for ${ticker}:`, error)
+        return null
       }
     })
     
+    const results = await Promise.all(batchPromises)
+    
+    // Filter out null results and add to marketData
+    results.forEach((result, index) => {
+      if (result) {
+        marketData[batch[index]] = result
+      }
+    })
+    
+    // Log progress
+    const successfulCount = results.filter(r => r !== null).length
+    const failedCount = results.length - successfulCount
     console.log(`📊 Batch ${batches.indexOf(batch) + 1}/${batches.length} completed: ${successfulCount} successful, ${failedCount} failed`)
     
-    // Small delay between batches to be respectful to the API
+    // Small delay between batches
     if (batches.indexOf(batch) < batches.length - 1) {
       await new Promise(resolve => setTimeout(resolve, 100))
     }
   }
   
   return marketData
-}
-
-async function fetchBenzingaGuidance(tickers: string[]) {
-  if (!BENZINGA) {
-    console.log('Benzinga API key not provided, skipping guidance data')
-    return []
-  }
-  
-  const guidanceData: any[] = []
-  
-  // Process tickers in batches to avoid overwhelming the API
-  const BATCH_SIZE = 15 // Benzinga can handle more concurrent requests
-  const batches = []
-  
-  for (let i = 0; i < tickers.length; i += BATCH_SIZE) {
-    batches.push(tickers.slice(i, i + BATCH_SIZE))
-  }
-  
-  console.log(`📦 Processing ${tickers.length} tickers for guidance in ${batches.length} batches of ${BATCH_SIZE}`)
-  
-  for (const batch of batches) {
-    // Process each batch in parallel
-    const tickerPromises = batch.map(async (ticker) => {
-    try {
-      console.log(`Fetching guidance data for ${ticker}...`)
-      
-      // Fetch guidance data from Benzinga via Polygon API
-      const { data } = await axios.get(
-        `https://api.polygon.io/benzinga/v1/guidance`,
-        {
-          params: {
-            ticker: ticker,
-            limit: 10, // Get latest 10 guidance records
-            sort: 'date.desc', // Most recent first
-            apikey: BENZINGA
-          },
-          timeout: 10000
-        }
-      )
-      
-      if (data?.results && data.results.length > 0) {
-        console.log(`Found ${data.results.length} guidance records for ${ticker}`)
-        
-        // Process each guidance record
-        const tickerGuidance = []
-        for (const record of data.results) {
-          const guidance = {
-            ticker: record.ticker,
-            estimatedEpsGuidance: record.estimated_eps_guidance || null,
-            estimatedRevenueGuidance: record.estimated_revenue_guidance ? BigInt(Math.round(record.estimated_revenue_guidance)) : null,
-            epsGuideVsConsensusPct: null, // Not available in API
-            revenueGuideVsConsensusPct: null, // Not available in API
-            previousMinEpsGuidance: record.previous_min_eps_guidance || null,
-            previousMaxEpsGuidance: record.previous_max_eps_guidance || null,
-            previousMinRevenueGuidance: record.previous_min_revenue_guidance ? BigInt(Math.round(record.previous_min_revenue_guidance)) : null,
-            previousMaxRevenueGuidance: record.previous_max_revenue_guidance ? BigInt(Math.round(record.previous_max_revenue_guidance)) : null,
-            fiscalPeriod: record.fiscal_period || null,
-            fiscalYear: record.fiscal_year || null,
-            releaseType: record.release_type || null,
-            lastUpdated: record.last_updated ? new Date(record.last_updated) : new Date()
-          }
-          
-          tickerGuidance.push(guidance)
-        }
-        return tickerGuidance
-      } else {
-        console.log(`No guidance data found for ${ticker}`)
-        return []
-      }
-      
-    } catch (error: any) {
-      console.warn(`Failed to fetch Benzinga guidance for ${ticker}:`, (error as Error).message)
-      return []
-    }
-  })
-  
-    // Wait for all ticker promises in this batch to complete
-    const results = await Promise.all(tickerPromises)
-    
-    // Flatten results into guidanceData array
-    results.forEach(tickerGuidance => {
-      guidanceData.push(...tickerGuidance)
-    })
-    
-    // Small delay between batches to be respectful to the API
-    if (batches.indexOf(batch) < batches.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 50))
-    }
-  }
-  
-  return guidanceData
-}
-
-function parseGuidanceFromArticle(article: any, ticker: string) {
-  try {
-    const content = article.content || article.summary || ''
-    
-    // Look for guidance patterns in the content
-    const epsPattern = /(?:EPS|earnings per share).*?(?:guidance|forecast|outlook).*?(\d+\.?\d*)/i
-    const revenuePattern = /(?:revenue|sales).*?(?:guidance|forecast|outlook).*?(\d+(?:\.\d+)?[BMK]?)/i
-    
-    const epsMatch = content.match(epsPattern)
-    const revenueMatch = content.match(revenuePattern)
-    
-    if (epsMatch || revenueMatch) {
-      return {
-        ticker,
-        estimatedEpsGuidance: epsMatch ? parseFloat(epsMatch[1]) : null,
-        estimatedRevenueGuidance: revenueMatch ? parseRevenueString(revenueMatch[1]) : null,
-        epsGuideVsConsensusPct: null, // Will be calculated later
-        revenueGuideVsConsensusPct: null, // Will be calculated later
-        previousMinEpsGuidance: null,
-        previousMaxEpsGuidance: null,
-        previousMinRevenueGuidance: null,
-        previousMaxRevenueGuidance: null,
-        fiscalPeriod: null,
-        fiscalYear: null,
-        releaseType: 'news',
-        lastUpdated: new Date()
-      }
-    }
-    
-    return null
-  } catch (error) {
-    console.warn(`Failed to parse guidance from article for ${ticker}:`, error)
-    return null
-  }
-}
-
-function parseRevenueString(revenueStr: string): bigint | null {
-  try {
-    const num = parseFloat(revenueStr.replace(/[BMK]/gi, ''))
-    const suffix = revenueStr.slice(-1).toUpperCase()
-    
-    switch (suffix) {
-      case 'B': return BigInt(Math.round(num * 1e9))
-      case 'M': return BigInt(Math.round(num * 1e6))
-      case 'K': return BigInt(Math.round(num * 1e3))
-      default: return BigInt(Math.round(num))
-    }
-  } catch {
-    return null
-  }
 }
 
 async function upsertEarningsData(earningsData: any[]) {
@@ -458,56 +270,6 @@ async function upsertMarketData(marketData: Record<string, any>, reportDate: Dat
   return upsertCount
 }
 
-async function upsertGuidanceData(guidanceData: any[]) {
-  let upsertCount = 0
-  
-  for (const guidance of guidanceData) {
-    try {
-      await prisma.benzingaGuidance.upsert({
-        where: {
-          ticker_fiscalPeriod_fiscalYear: {
-            ticker: guidance.ticker,
-            fiscalPeriod: guidance.fiscalPeriod || 'Q1',
-            fiscalYear: guidance.fiscalYear || new Date().getFullYear()
-          }
-        },
-        update: {
-          estimatedEpsGuidance: guidance.estimatedEpsGuidance,
-          estimatedRevenueGuidance: guidance.estimatedRevenueGuidance,
-          epsGuideVsConsensusPct: guidance.epsGuideVsConsensusPct,
-          revenueGuideVsConsensusPct: guidance.revenueGuideVsConsensusPct,
-          previousMinEpsGuidance: guidance.previousMinEpsGuidance,
-          previousMaxEpsGuidance: guidance.previousMaxEpsGuidance,
-          previousMinRevenueGuidance: guidance.previousMinRevenueGuidance,
-          previousMaxRevenueGuidance: guidance.previousMaxRevenueGuidance,
-          releaseType: guidance.releaseType,
-          lastUpdated: guidance.lastUpdated
-        },
-        create: {
-          ticker: guidance.ticker,
-          estimatedEpsGuidance: guidance.estimatedEpsGuidance,
-          estimatedRevenueGuidance: guidance.estimatedRevenueGuidance,
-          epsGuideVsConsensusPct: guidance.epsGuideVsConsensusPct,
-          revenueGuideVsConsensusPct: guidance.revenueGuideVsConsensusPct,
-          previousMinEpsGuidance: guidance.previousMinEpsGuidance,
-          previousMaxEpsGuidance: guidance.previousMaxEpsGuidance,
-          previousMinRevenueGuidance: guidance.previousMinRevenueGuidance,
-          previousMaxRevenueGuidance: guidance.previousMaxRevenueGuidance,
-          fiscalPeriod: guidance.fiscalPeriod || 'Q1',
-          fiscalYear: guidance.fiscalYear || new Date().getFullYear(),
-          releaseType: guidance.releaseType,
-          lastUpdated: guidance.lastUpdated
-        }
-      })
-      upsertCount++
-    } catch (error) {
-      console.warn(`Failed to upsert guidance for ${guidance.ticker}:`, error)
-    }
-  }
-  
-  return upsertCount
-}
-
 async function main() {
   try {
     const date = process.env.DATE || isoDate()
@@ -524,33 +286,34 @@ async function main() {
     
     // Get unique tickers for market data
     const tickers = Array.from(new Set(earningsData.map((e: any) => e.ticker).filter(Boolean))) as string[]
-    console.log(`Fetching market data for ${tickers.length} tickers...`)
     
-    // Fetch market data from Polygon
-    const marketData = await fetchPolygonMarketData(tickers)
-    console.log(`Fetched market data for ${Object.keys(marketData).length} tickers`)
-    
-    // Upsert market data
-    const marketCount = await upsertMarketData(marketData, new Date(date))
-    console.log(`Upserted ${marketCount} market data records`)
-    
-    // Fetch guidance data from Benzinga
     if (tickers.length > 0) {
-      console.log(`Fetching guidance data for ${tickers.length} tickers...`)
-      const guidanceData = await fetchBenzingaGuidance(tickers)
-      console.log(`Found ${guidanceData.length} guidance records`)
+      console.log(`Fetching market data for ${tickers.length} tickers...`)
+      const marketData = await fetchPolygonMarketData(tickers)
+      console.log(`Found market data for ${Object.keys(marketData).length} tickers`)
       
-      // Upsert guidance data
-      const guidanceCount = await upsertGuidanceData(guidanceData)
-      console.log(`Upserted ${guidanceCount} guidance records`)
+      // Upsert market data
+      const marketCount = await upsertMarketData(marketData, new Date(date))
+      console.log(`Upserted ${marketCount} market records`)
     }
+    
+    // 🚫 GUIDANCE DISABLED FOR PRODUCTION - Fetch guidance data commented out
+    // if (tickers.length > 0) {
+    //   console.log(`Fetching guidance data for ${tickers.length} tickers...`)
+    //   const guidanceData = await fetchBenzingaGuidance(tickers)
+    //   console.log(`Found ${guidanceData.length} guidance records`)
+    //   
+    //   // Upsert guidance data
+    //   const guidanceCount = await upsertGuidanceData(guidanceData)
+    //   console.log(`Upserted ${guidanceCount} guidance records`)
+    // }
     
     console.log('Data fetch completed successfully!')
     
     return {
       date,
       earningsCount,
-      marketCount,
+      marketCount: tickers.length > 0 ? await upsertMarketData(await fetchPolygonMarketData(tickers), new Date(date)) : 0,
       totalTickers: tickers.length,
     }
   } catch (error) {
@@ -575,4 +338,4 @@ if (require.main === module) {
     })
 }
 
-export { main as fetchTodayData }
+export { main }

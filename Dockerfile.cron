@@ -1,0 +1,23 @@
+# Cron Worker Dockerfile for EarningsTable
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install dependencies
+COPY package.json package-lock.json* ./
+RUN npm ci --only=production
+
+# Copy source code
+COPY . .
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Create logs directory
+RUN mkdir -p logs
+
+# Set environment
+ENV NODE_ENV=production
+
+# Run cron worker
+CMD ["node", "src/queue/worker-new.js"]

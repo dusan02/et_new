@@ -44,7 +44,10 @@ interface EarningsData {
     estimatedRevenueGuidance: string | null;
     epsGuideVsConsensusPct: number | null;
     revenueGuideVsConsensusPct: number | null;
+    notes: string | null;
     lastUpdated: string | null;
+    fiscalPeriod: string | null;
+    fiscalYear: number | null;
   } | null;
 }
 
@@ -133,39 +136,11 @@ export function EarningsDashboard() {
 
   useEffect(() => {
     fetchData();
+  }, []);
 
-    // TODO: Set up Socket.IO connection for real-time updates when backend is running
-    // const { io } = require('socket.io-client');
-    // const socket = io('http://localhost:3001', {
-    //   transports: ['websocket'],
-    //   timeout: 5000,
-    // });
-    
-    // socket.on('connect', () => {
-    //   socket.emit('join-earnings');
-    // });
-
-    // socket.on('earnings-updated', (data) => {
-    //   console.log('Earnings updated:', data);
-    //   fetchData();
-    // });
-
-    // socket.on('market-data-updated', (data) => {
-    //   console.log('Market data updated:', data);
-    //   fetchData();
-    // });
-
-    // socket.on('disconnect', () => {
-    //   console.log('Socket.IO disconnected');
-    // });
-
-    // socket.on('connect_error', (error) => {
-    //   console.error('Socket.IO error:', error);
-    // });
-
-    // return () => {
-    //   socket.disconnect();
-    // };
+  // Force refresh when component key changes (from parent)
+  useEffect(() => {
+    fetchData();
   }, []);
 
   if (isLoading && !earningsData.length) {

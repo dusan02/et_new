@@ -6,9 +6,9 @@ import { Analytics } from '@/components/Analytics';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Live Earnings Table | Today\'s Stock Earnings & Corporate Guidance Dashboard',
-  description: 'Real-time earnings table with live stock data, EPS beats/misses, revenue surprises, and corporate guidance. Track today\'s earnings reports with market cap, price changes, and future guidance from public companies.',
-  keywords: 'earnings table, stock earnings, corporate guidance, earnings guidance, EPS guidance, revenue guidance, earnings forecast, stock market guidance, financial dashboard, earnings outlook, corporate earnings, future earnings, live earnings, real-time earnings, earnings calendar, earnings surprise, EPS beat, revenue beat, market cap, stock price, earnings data',
+  title: 'Live Earnings Table | Today\'s Stock Earnings Dashboard',
+  description: 'Real-time earnings table with live stock data, EPS beats/misses, and revenue surprises. Track today\'s earnings reports with market cap and price changes from public companies.',
+  keywords: 'earnings table, stock earnings, financial dashboard, earnings outlook, corporate earnings, live earnings, real-time earnings, earnings calendar, earnings surprise, EPS beat, revenue beat, market cap, stock price, earnings data',
   authors: [{ name: 'Earnings Table Team' }],
   creator: 'Earnings Table Team',
   publisher: 'Earnings Table',
@@ -19,8 +19,8 @@ export const metadata: Metadata = {
   category: 'Finance',
   classification: 'Financial Dashboard',
   openGraph: {
-    title: 'Live Earnings Table | Today\'s Stock Earnings & Corporate Guidance Dashboard',
-    description: 'Real-time earnings table with live stock data, EPS beats/misses, revenue surprises, and corporate guidance. Track today\'s earnings reports with market cap, price changes, and future guidance from public companies.',
+    title: 'Live Earnings Table | Today\'s Stock Earnings Dashboard',
+    description: 'Real-time earnings table with live stock data, EPS beats/misses, and revenue surprises. Track today\'s earnings reports with market cap and price changes from public companies.',
     type: 'website',
     url: 'https://earningstable.com',
     siteName: 'Earnings Table',
@@ -38,8 +38,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Live Earnings Table | Today\'s Stock Earnings & Corporate Guidance Dashboard',
-    description: 'Real-time earnings table with live stock data, EPS beats/misses, revenue surprises, and corporate guidance. Track today\'s earnings reports with market cap, price changes, and future guidance from public companies.',
+    title: 'Live Earnings Table | Today\'s Stock Earnings Dashboard',
+    description: 'Real-time earnings table with live stock data, EPS beats/misses, and revenue surprises. Track today\'s earnings reports with market cap and price changes from public companies.',
     site: '@earnings_table',
     creator: '@earnings_table',
     images: ['https://earningstable.com/og-image.png'],
@@ -88,7 +88,7 @@ export default function RootLayout({
               "@context": "https://schema.org",
               "@type": "WebApplication",
               "name": "Earnings Table",
-              "description": "Real-time earnings table with live stock data, EPS beats/misses, revenue surprises, and corporate guidance. Track today's earnings reports with market cap, price changes, and future guidance from public companies.",
+              "description": "Real-time earnings table with live stock data, EPS beats/misses, and revenue surprises. Track today's earnings reports with market cap and price changes from public companies.",
               "url": "https://earningstable.com",
               "applicationCategory": "FinanceApplication",
               "operatingSystem": "Web Browser",
@@ -114,7 +114,6 @@ export default function RootLayout({
               "softwareVersion": "1.0.0",
               "featureList": [
                 "Real-time earnings data",
-                "Corporate guidance tracking",
                 "EPS and revenue surprises",
                 "Market cap and price changes",
                 "Live stock data",
@@ -131,7 +130,7 @@ export default function RootLayout({
               "@context": "https://schema.org",
               "@type": "WebSite",
               "name": "Earnings Table",
-              "description": "Live earnings table with corporate guidance data and real-time stock information",
+              "description": "Live earnings table with real-time stock information and earnings data",
               "url": "https://earningstable.com",
               "potentialAction": {
                 "@type": "SearchAction",
@@ -156,9 +155,9 @@ export default function RootLayout({
               "@context": "https://schema.org",
               "@type": "DataCatalog",
               "name": "Earnings Data Catalog",
-              "description": "Comprehensive database of corporate earnings, guidance, and financial data",
+              "description": "Comprehensive database of corporate earnings and financial data",
               "url": "https://earningstable.com",
-              "keywords": "earnings, corporate guidance, financial data, stock market, EPS, revenue",
+              "keywords": "earnings, financial data, stock market, EPS, revenue",
               "provider": {
                 "@type": "Organization",
                 "name": "Earnings Table",
@@ -167,8 +166,8 @@ export default function RootLayout({
               "dataset": {
                 "@type": "Dataset",
                 "name": "Corporate Earnings Data",
-                "description": "Real-time corporate earnings, guidance, and financial metrics",
-                "keywords": "earnings, guidance, EPS, revenue, market cap, stock price",
+                "description": "Real-time corporate earnings and financial metrics",
+                "keywords": "earnings, EPS, revenue, market cap, stock price",
                 "temporalCoverage": "2024-01-01/..",
                 "spatialCoverage": "United States",
                 "distribution": {

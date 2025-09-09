@@ -307,6 +307,134 @@ async function fetchMarketData(tickers) {
   }
 }
 
+// 🚫 GUIDANCE DISABLED FOR PRODUCTION - COMMENTED OUT
+// TODO: Re-enable when guidance issues are resolved
+/*
+async function fetchGuidanceData(tickers) {
+  if (tickers.length === 0) {
+    console.log("⚠️ No tickers to fetch guidance data for");
+    return;
+  }
+
+  console.log(`📋 Fetching guidance data for ${tickers.length} tickers...`);
+
+  for (let i = 0; i < tickers.length; i++) {
+    const ticker = tickers[i];
+
+    // Add delay to avoid rate limiting
+    if (i > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 200)); // 200ms delay for Benzinga
+    }
+
+    try {
+      // Fetch guidance data from Benzinga via Polygon
+      const { data: guidanceData } = await axios.get(
+        `https://api.polygon.io/benzinga/v1/guidance`,
+        {
+          params: {
+            ticker: ticker,
+            apikey: POLY,
+          },
+          timeout: 10000,
+        }
+      );
+
+      const guidanceResults = guidanceData?.results || [];
+
+      if (guidanceResults.length > 0) {
+        // Find the most recent guidance for current fiscal period
+        const latestGuidance = guidanceResults[0];
+
+        // Save guidance data
+        await prisma.benzingaGuidance.upsert({
+          where: {
+            ticker_fiscalPeriod_fiscalYear: {
+              ticker: ticker,
+              fiscalPeriod: latestGuidance.fiscal_period,
+              fiscalYear: latestGuidance.fiscal_year,
+            },
+          },
+          update: {
+            estimatedEpsGuidance: latestGuidance.estimated_eps_guidance
+              ? parseFloat(latestGuidance.estimated_eps_guidance.toString())
+              : null,
+            estimatedRevenueGuidance: latestGuidance.estimated_revenue_guidance
+              ? BigInt(latestGuidance.estimated_revenue_guidance)
+              : null,
+            previousMinEpsGuidance: latestGuidance.min_eps_guidance
+              ? parseFloat(latestGuidance.min_eps_guidance.toString())
+              : null,
+            previousMaxEpsGuidance: latestGuidance.max_eps_guidance
+              ? parseFloat(latestGuidance.max_eps_guidance.toString())
+              : null,
+            previousMinRevenueGuidance: latestGuidance.min_revenue_guidance
+              ? BigInt(latestGuidance.min_revenue_guidance)
+              : null,
+            previousMaxRevenueGuidance: latestGuidance.max_revenue_guidance
+              ? BigInt(latestGuidance.max_revenue_guidance)
+              : null,
+            releaseType: latestGuidance.release_type || null,
+            notes: latestGuidance.notes || latestGuidance.comments || null,
+            lastUpdated: latestGuidance.updated_at
+              ? new Date(latestGuidance.updated_at)
+              : new Date(),
+          },
+          create: {
+            ticker: ticker,
+            fiscalYear: latestGuidance.fiscal_year,
+            fiscalPeriod: latestGuidance.fiscal_period,
+            estimatedEpsGuidance: latestGuidance.estimated_eps_guidance
+              ? parseFloat(latestGuidance.estimated_eps_guidance.toString())
+              : null,
+            estimatedRevenueGuidance: latestGuidance.estimated_revenue_guidance
+              ? BigInt(latestGuidance.estimated_revenue_guidance)
+              : null,
+            previousMinEpsGuidance: latestGuidance.min_eps_guidance
+              ? parseFloat(latestGuidance.min_eps_guidance.toString())
+              : null,
+            previousMaxEpsGuidance: latestGuidance.max_eps_guidance
+              ? parseFloat(latestGuidance.max_eps_guidance.toString())
+              : null,
+            previousMinRevenueGuidance: latestGuidance.min_revenue_guidance
+              ? BigInt(latestGuidance.min_revenue_guidance)
+              : null,
+            previousMaxRevenueGuidance: latestGuidance.max_revenue_guidance
+              ? BigInt(latestGuidance.max_revenue_guidance)
+              : null,
+            releaseType: latestGuidance.release_type || null,
+            notes: latestGuidance.notes || latestGuidance.comments || null,
+            lastUpdated: latestGuidance.updated_at
+              ? new Date(latestGuidance.updated_at)
+              : new Date(),
+            createdAt: new Date(),
+          },
+        });
+
+        const epsGuidance = latestGuidance.estimated_eps_guidance
+          ? `EPS: ${latestGuidance.estimated_eps_guidance}`
+          : "EPS: N/A";
+        const revenueGuidance = latestGuidance.estimated_revenue_guidance
+          ? `Rev: $${(
+              Number(latestGuidance.estimated_revenue_guidance) / 1_000_000_000
+            ).toFixed(1)}B`
+          : "Rev: N/A";
+
+        console.log(
+          `✅ Guidance: ${ticker} - ${epsGuidance}, ${revenueGuidance}`
+        );
+      } else {
+        console.log(`⚠️ No guidance data found for ${ticker}`);
+      }
+    } catch (error) {
+      console.error(
+        `❌ Failed to fetch guidance data for ${ticker}:`,
+        error.message
+      );
+    }
+  }
+}
+*/
+
 async function main() {
   try {
     console.log("🔄 Starting data fetch...\n");
@@ -319,7 +447,11 @@ async function main() {
     await fetchMarketData(tickers);
     console.log("");
 
-    // 3. Show results - use same date as API
+    // 3. Fetch guidance data - DISABLED FOR PRODUCTION
+    // await fetchGuidanceData(tickers);
+    // console.log("");
+
+    // 4. Show results - use same date as API
     const today = todayDate;
 
     const earningsCount = await prisma.earningsTickersToday.count({
@@ -330,9 +462,17 @@ async function main() {
       where: { reportDate: todayDate },
     });
 
+    // const guidanceCount = await prisma.benzingaGuidance.count({
+    //   where: {
+    //     fiscalYear: { not: null },
+    //     fiscalPeriod: { not: null },
+    //   },
+    // });
+
     console.log("📊 FINAL RESULTS:");
     console.log(`✅ Earnings records: ${earningsCount}`);
     console.log(`✅ Market records: ${marketCount}`);
+    // console.log(`✅ Guidance records: ${guidanceCount}`);
     console.log("");
     console.log("🎉 Data fetch completed!");
     console.log("🌐 Refresh your app at http://localhost:3000");

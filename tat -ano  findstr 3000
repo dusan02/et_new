@@ -1,0 +1,5 @@
+[33m22da96e[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Merge branch 'main' of https://github.com/dusan02/et_new
+[33mc3d49ea[m[33m ([m[1;31morigin/perf/monitoring[m[33m, [m[1;32mperf/monitoring[m[33m)[m  Fix date/timezone logic and comprehensive data flow analysis
+[33m91a372e[m Merge pull request #1 from dusan02/perf/monitoring
+[33m264b9c9[m feat: Complete performance optimization and UI improvements
+[33m9ca55ef[m[33m ([m[1;32mperf/frontend-virtualization[m[33m, [m[1;32mperf/db-postgres-migration[m[33m, [m[1;32mperf/db-indexing[m[33m, [m[1;32mperf/api-cache[m[33m, [m[1;32mperf/api-batch[m[33m)[m feat: Implement Google Analytics, fix company names, ticker color, and loading spinners

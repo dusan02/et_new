@@ -2,13 +2,19 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getTodayStart, getNYTimeString } from '@/lib/dates'
 import { serializeBigInts } from '@/lib/bigint-utils'
+// 🚫 GUIDANCE DISABLED FOR PRODUCTION - Import commented out
+// import { 
+//   isGuidanceCompatible, 
+//   calculateGuidanceSurprise 
+// } from '@/lib/guidance-utils'
+import { 
+  getCachedData, 
+  setCachedData, 
+  getCacheAge 
+} from '@/lib/cache-utils'
 
-// Cache for 5 minutes
-export const revalidate = 300
-
-// Simple in-memory cache
-const apiCache = new Map<string, { data: any; timestamp: number }>()
-const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+// Cache for 1 minute (shorter for testing)
+export const revalidate = 60
 
 export async function GET() {
   const startTime = Date.now()
@@ -20,10 +26,10 @@ export async function GET() {
     
     // Check cache first
     const cacheKey = `earnings-${today.toISOString().split('T')[0]}`
-    const cached = apiCache.get(cacheKey)
+    const cached = getCachedData(cacheKey)
     
-    if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
-      console.log(`[CACHE] HIT - returning cached data (age: ${Math.round((Date.now() - cached.timestamp) / 1000)}s)`)
+    if (cached) {
+      console.log(`[CACHE] HIT - returning cached data (age: ${getCacheAge(cached.timestamp)}s)`)
       return NextResponse.json({
         success: true,
         data: cached.data,
@@ -32,11 +38,11 @@ export async function GET() {
           duration: `${Date.now() - startTime}ms`,
           date: today.toISOString().split('T')[0],
           cached: true,
-          cacheAge: Math.round((Date.now() - cached.timestamp) / 1000)
+          cacheAge: getCacheAge(cached.timestamp)
         }
       }, {
         headers: {
-          'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
+          'Cache-Control': 'public, max-age=60, stale-while-revalidate=120',
           'X-Cache': 'HIT'
         }
       })
@@ -89,6 +95,9 @@ export async function GET() {
       })
     ])
 
+    // 🚫 GUIDANCE DISABLED FOR PRODUCTION - COMMENTED OUT
+    // TODO: Re-enable when guidance issues are resolved
+    /*
     // Fetch guidance data only for today's tickers - optimized
     const todayTickers = rows.map(r => r.ticker)
     const guidanceData = todayTickers.length > 0 ? await prisma.benzingaGuidance.findMany({
@@ -110,10 +119,13 @@ export async function GET() {
         fiscalPeriod: true,
         fiscalYear: true,
         releaseType: true,
+        notes: true,
         lastUpdated: true,
       },
       orderBy: [{ releaseType: 'asc' }, { lastUpdated: 'desc' }],
     }) : []
+    */
+    const guidanceData: any[] = [] // Empty array for production
 
     console.log(`[API] Database query results:`, {
       earningsCount: rows.length,
@@ -145,12 +157,30 @@ export async function GET() {
       // Find matching market data
       const marketInfo = marketData.find(m => m.ticker === earning.ticker)
       
-      // Find matching guidance data (get the most recent one)
-      const guidanceInfo = guidanceData
-        .filter(g => g.ticker === earning.ticker)
-        .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())[0]
+      // 🚫 GUIDANCE DISABLED FOR PRODUCTION - COMMENTED OUT
+      // TODO: Re-enable when guidance issues are resolved
+      /*
+      // Find matching guidance data - try exact match first, then fallback to latest
+      const tickerGuidance = guidanceData.filter(g => g.ticker === earning.ticker)
       
-      // Calculate guidance surprises
+      let compatibleGuidance = tickerGuidance.find(g => isGuidanceCompatible(
+        { fiscalPeriod: g.fiscalPeriod, fiscalYear: g.fiscalYear },
+        { fiscalPeriod: earning.fiscalPeriod, fiscalYear: earning.fiscalYear }
+      ))
+      
+      // If no exact match, use the most recent guidance for this ticker
+      if (!compatibleGuidance && tickerGuidance.length > 0) {
+        compatibleGuidance = tickerGuidance.sort((a, b) => {
+          // Sort by year desc, then by period (Q4 > Q3 > Q2 > Q1 > FY)
+          if (a.fiscalYear !== b.fiscalYear) return (b.fiscalYear || 0) - (a.fiscalYear || 0)
+          const periodOrder: Record<string, number> = { 'Q4': 4, 'Q3': 3, 'Q2': 2, 'Q1': 1, 'FY': 0 }
+          const aPeriod = a.fiscalPeriod || ''
+          const bPeriod = b.fiscalPeriod || ''
+          return (periodOrder[bPeriod] || 0) - (periodOrder[aPeriod] || 0)
+        })[0]
+      }
+      
+      // Calculate guidance surprises - check if periods match exactly
       let epsGuideSurprise = null
       let epsGuideBasis = null
       let epsGuideExtreme = false
@@ -158,19 +188,57 @@ export async function GET() {
       let revenueGuideBasis = null
       let revenueGuideExtreme = false
       
-      if (guidanceInfo && earning.epsEstimate) {
-        epsGuideSurprise = ((guidanceInfo.estimatedEpsGuidance - earning.epsEstimate) / earning.epsEstimate) * 100
-        epsGuideBasis = 'consensus'
-        epsGuideExtreme = Math.abs(epsGuideSurprise) > 300
+      if (compatibleGuidance) {
+        // Check if periods match exactly
+        const periodsMatch = isGuidanceCompatible(
+          { fiscalPeriod: compatibleGuidance.fiscalPeriod, fiscalYear: compatibleGuidance.fiscalYear },
+          { fiscalPeriod: earning.fiscalPeriod, fiscalYear: earning.fiscalYear }
+        )
+        
+        if (earning.epsEstimate && compatibleGuidance.estimatedEpsGuidance) {
+          if (periodsMatch) {
+            // Exact match - calculate surprise
+            const epsResult = calculateGuidanceSurprise(
+              compatibleGuidance.estimatedEpsGuidance,
+              earning.epsEstimate,
+              false // isRevenue = false for EPS
+            )
+            epsGuideSurprise = epsResult.surprise
+            epsGuideBasis = 'consensus'
+            epsGuideExtreme = epsResult.extreme
+          } else {
+            // Period mismatch - show guidance but no surprise calculation
+            epsGuideBasis = 'guidance_only'
+          }
+        }
+        
+        if (earning.revenueEstimate && compatibleGuidance.estimatedRevenueGuidance) {
+          if (periodsMatch) {
+            // Exact match - calculate surprise
+            const revenueResult = calculateGuidanceSurprise(
+              compatibleGuidance.estimatedRevenueGuidance,
+              earning.revenueEstimate,
+              true // isRevenue = true for revenue
+            )
+            revenueGuideSurprise = revenueResult.surprise
+            revenueGuideBasis = 'consensus'
+            revenueGuideExtreme = revenueResult.extreme
+          } else {
+            // Period mismatch - show guidance but no surprise calculation
+            revenueGuideBasis = 'guidance_only'
+          }
+        }
       }
+      */
       
-      if (guidanceInfo && earning.revenueEstimate) {
-        const guidanceRev = Number(guidanceInfo.estimatedRevenueGuidance)
-        const estimateRev = Number(earning.revenueEstimate)
-        revenueGuideSurprise = ((guidanceRev - estimateRev) / estimateRev) * 100
-        revenueGuideBasis = 'consensus'
-        revenueGuideExtreme = Math.abs(revenueGuideSurprise) > 300
-      }
+      // Default values for production (no guidance)
+      const epsGuideSurprise = null
+      const epsGuideBasis = null
+      const epsGuideExtreme = false
+      const revenueGuideSurprise = null
+      const revenueGuideBasis = null
+      const revenueGuideExtreme = false
+      const compatibleGuidance = null
       
       return {
         ...earning,
@@ -191,14 +259,18 @@ export async function GET() {
         revenueGuideSurprise,
         revenueGuideBasis,
         revenueGuideExtreme,
-        // Raw guidance data for debugging
-        guidanceData: guidanceInfo ? {
-          estimatedEpsGuidance: guidanceInfo.estimatedEpsGuidance,
-          estimatedRevenueGuidance: guidanceInfo.estimatedRevenueGuidance,
-          epsGuideVsConsensusPct: guidanceInfo.epsGuideVsConsensusPct,
-          revenueGuideVsConsensusPct: guidanceInfo.revenueGuideVsConsensusPct,
-          lastUpdated: guidanceInfo.lastUpdated?.toISOString() || null,
-        } : null,
+        // 🚫 GUIDANCE DISABLED FOR PRODUCTION - Raw guidance data commented out
+        // guidanceData: compatibleGuidance ? {
+        //   estimatedEpsGuidance: compatibleGuidance.estimatedEpsGuidance,
+        //   estimatedRevenueGuidance: compatibleGuidance.estimatedRevenueGuidance,
+        //   epsGuideVsConsensusPct: compatibleGuidance.epsGuideVsConsensusPct,
+        //   revenueGuideVsConsensusPct: compatibleGuidance.revenueGuideVsConsensusPct,
+        //   notes: compatibleGuidance.notes,
+        //   lastUpdated: compatibleGuidance.lastUpdated?.toISOString() || null,
+        //   fiscalPeriod: compatibleGuidance.fiscalPeriod,
+        //   fiscalYear: compatibleGuidance.fiscalYear,
+        // } : null,
+        guidanceData: null, // Always null for production
       }
     })
     
@@ -209,10 +281,7 @@ export async function GET() {
     
     // Cache the result
     const serializedData = serializeBigInts(combinedData)
-    apiCache.set(cacheKey, {
-      data: serializedData,
-      timestamp: Date.now()
-    })
+    setCachedData(cacheKey, serializedData)
     
     return NextResponse.json({
       success: true,

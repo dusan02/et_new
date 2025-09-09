@@ -17,7 +17,7 @@ export function Footer() {
           
           <div className="pt-4 border-t border-gray-200">
             <p className="text-sm text-gray-500">
-              © 2025 EarningsTable. All rights reserved. | Data sourced from Polygon.io and Benzinga
+              © 2025 EarningsTable. All rights reserved. | Data sourced from Polygon.io
             </p>
           </div>
         </div>
