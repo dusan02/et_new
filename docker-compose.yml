@@ -36,12 +36,12 @@ services:
     container_name: earnings-app
     ports:
       - "3000:3000"
-      - "3001:3001"
-      - "3002:3002"
     environment:
       - DATABASE_URL=postgresql://earnings_user:earnings_password@postgres:5432/earnings_table
       - REDIS_URL=redis://redis:6379
       - NODE_ENV=production
+      - FINNHUB_API_KEY=${FINNHUB_API_KEY}
+      - POLYGON_API_KEY=${POLYGON_API_KEY}
     depends_on:
       postgres:
         condition: service_healthy
@@ -57,6 +57,31 @@ services:
         npm run build &&
         npm start
       "
+    restart: unless-stopped
+
+  cron-worker:
+    build: .
+    container_name: earnings-cron
+    environment:
+      - DATABASE_URL=postgresql://earnings_user:earnings_password@postgres:5432/earnings_table
+      - REDIS_URL=redis://redis:6379
+      - NODE_ENV=production
+      - FINNHUB_API_KEY=${FINNHUB_API_KEY}
+      - POLYGON_API_KEY=${POLYGON_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+      - ./prisma:/app/prisma
+    command: >
+      sh -c "
+        npm run db:generate &&
+        node src/workers/production-cron.js
+      "
+    restart: unless-stopped
 
 volumes:
   postgres_data:

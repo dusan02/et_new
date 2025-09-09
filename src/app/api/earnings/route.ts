@@ -1,39 +1,52 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { pickEpsSurprise, pickRevSurprise, normalizeRevenueToUSD } from '@/utils/guidance'
-import { getTodayStart } from '@/lib/dates'
+import { getTodayStart, getNYTimeString } from '@/lib/dates'
 import { serializeBigInts } from '@/lib/bigint-utils'
-// Cache for 60 seconds
-export const revalidate = 60
+
+// Cache for 5 minutes
+export const revalidate = 300
 
 // Simple in-memory cache
 const apiCache = new Map<string, { data: any; timestamp: number }>()
-const CACHE_TTL = 60 * 1000 // 60 seconds
+const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
 export async function GET() {
   const startTime = Date.now()
   try {
-    // Use today's date since we have real data for 2025-09-08
-    const today = new Date('2025-09-08')
+    // Use dynamic date based on NY timezone
+    const today = getTodayStart()
+    
+    console.log(`[API] Starting earnings fetch for date: ${today.toISOString().split('T')[0]} (NY time: ${getNYTimeString()})`)
     
     // Check cache first
     const cacheKey = `earnings-${today.toISOString().split('T')[0]}`
-    const cachedEntry = apiCache.get(cacheKey)
+    const cached = apiCache.get(cacheKey)
     
-    if (cachedEntry && (Date.now() - cachedEntry.timestamp) < CACHE_TTL) {
-      console.log(`[CACHE] HIT for ${cacheKey}`)
-      return NextResponse.json(cachedEntry.data, {
+    if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
+      console.log(`[CACHE] HIT - returning cached data (age: ${Math.round((Date.now() - cached.timestamp) / 1000)}s)`)
+      return NextResponse.json({
+        success: true,
+        data: cached.data,
+        meta: {
+          total: cached.data.length,
+          duration: `${Date.now() - startTime}ms`,
+          date: today.toISOString().split('T')[0],
+          cached: true,
+          cacheAge: Math.round((Date.now() - cached.timestamp) / 1000)
+        }
+      }, {
         headers: {
-          'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
+          'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
           'X-Cache': 'HIT'
         }
       })
     }
     
-    console.log(`[CACHE] MISS for ${cacheKey}`)
+    console.log(`[CACHE] MISS - fetching fresh data`)
     
-    // Fetch all data in parallel for better performance
-    const [rows, marketData, guidanceData] = await Promise.all([
+    // Fetch earnings and market data in parallel first
+    console.log(`[API] Fetching data from database...`)
+    const [rows, marketData] = await Promise.all([
       // Fetch earnings data for today - optimized with select
       prisma.earningsTickersToday.findMany({
         where: { reportDate: today },
@@ -65,188 +78,163 @@ export async function GET() {
           companyName: true,
           currentPrice: true,
           previousClose: true,
+          priceChangePercent: true,
           marketCap: true,
-          size: true,
           marketCapDiff: true,
           marketCapDiffBillions: true,
-          priceChangePercent: true,
           sharesOutstanding: true,
-          companyType: true,
-          primaryExchange: true,
-          reportTime: true,
+          size: true,
         },
-      }),
-      
-      // Fetch guidance data for all tickers - optimized with select
-      prisma.benzingaGuidance.findMany({
-        where: { 
-          fiscalYear: { not: null },
-          fiscalPeriod: { not: null },
-        },
-        select: {
-          ticker: true,
-          estimatedEpsGuidance: true,
-          estimatedRevenueGuidance: true,
-          epsGuideVsConsensusPct: true,
-          revenueGuideVsConsensusPct: true,
-          previousMinEpsGuidance: true,
-          previousMaxEpsGuidance: true,
-          previousMinRevenueGuidance: true,
-          previousMaxRevenueGuidance: true,
-          fiscalPeriod: true,
-          fiscalYear: true,
-          releaseType: true,
-          lastUpdated: true,
-        },
-        orderBy: [{ releaseType: 'asc' }, { lastUpdated: 'desc' }],
+        orderBy: { ticker: 'asc' },
       })
     ])
 
-    // Get unique tickers for filtering
-    const tickers = rows.map(r => r.ticker)
+    // Fetch guidance data only for today's tickers - optimized
+    const todayTickers = rows.map(r => r.ticker)
+    const guidanceData = todayTickers.length > 0 ? await prisma.benzingaGuidance.findMany({
+      where: { 
+        ticker: { in: todayTickers },
+        fiscalYear: { not: null },
+        fiscalPeriod: { not: null },
+      },
+      select: {
+        ticker: true,
+        estimatedEpsGuidance: true,
+        estimatedRevenueGuidance: true,
+        epsGuideVsConsensusPct: true,
+        revenueGuideVsConsensusPct: true,
+        previousMinEpsGuidance: true,
+        previousMaxEpsGuidance: true,
+        previousMinRevenueGuidance: true,
+        previousMaxRevenueGuidance: true,
+        fiscalPeriod: true,
+        fiscalYear: true,
+        releaseType: true,
+        lastUpdated: true,
+      },
+      orderBy: [{ releaseType: 'asc' }, { lastUpdated: 'desc' }],
+    }) : []
+
+    console.log(`[API] Database query results:`, {
+      earningsCount: rows.length,
+      marketDataCount: marketData.length,
+      guidanceDataCount: guidanceData.length
+    })
+
+    // Count actual data
+    const withEpsActual = rows.filter(r => r.epsActual !== null).length
+    const withRevenueActual = rows.filter(r => r.revenueActual !== null).length
+    const withBothActual = rows.filter(r => r.epsActual !== null && r.revenueActual !== null).length
     
-    // Create a map of market data per ticker
-    const marketDataMap = new Map<string, typeof marketData[number]>()
-    for (const m of marketData) {
-      marketDataMap.set(m.ticker, m)
-    }
+    console.log(`[API] Actual data counts:`, {
+      withEpsActual,
+      withRevenueActual,
+      withBothActual,
+      withoutAnyActual: rows.length - withEpsActual - withRevenueActual + withBothActual
+    })
 
-    // Create a map of the latest guidance per (ticker, period, year) - EXACT MATCH ONLY
-    const gKey = (t: string, p?: string | null, y?: number | null) =>
-      `${t}::${(p||'').toUpperCase()}::${y ?? 'NA'}`;
-
-    const latestGuidance: Record<string, typeof guidanceData[number]> = {};
+    // Log detailed breakdown
+    const epsActualTickers = rows.filter(r => r.epsActual !== null).map(r => r.ticker)
+    const revenueActualTickers = rows.filter(r => r.revenueActual !== null).map(r => r.ticker)
     
-    for (const g of guidanceData) {
-      const key = gKey(g.ticker, g.fiscalPeriod, g.fiscalYear);
-      
-      // Exact match only (ticker + period + year)
-      const cur = latestGuidance[key];
-      if (!cur) { 
-        latestGuidance[key] = g; 
-      } else {
-        const curScore = (cur.releaseType === 'final' ? 1 : 0);
-        const newScore = (g.releaseType === 'final' ? 1 : 0);
-        if (newScore > curScore) latestGuidance[key] = g;
-        else if (newScore === curScore) {
-          if (new Date(g.lastUpdated ?? 0) > new Date(cur.lastUpdated ?? 0)) latestGuidance[key] = g;
-        }
-      }
-    }
+    console.log(`[API] Tickers with EPS Actual (${epsActualTickers.length}):`, epsActualTickers.join(', '))
+    console.log(`[API] Tickers with Revenue Actual (${revenueActualTickers.length}):`, revenueActualTickers.join(', '))
 
-    // Process each earnings record with guidance calculations (optimized)
-    const data = rows.map(r => {
-      const key = gKey(r.ticker, r.fiscalPeriod, r.fiscalYear);
-      const guidance = latestGuidance[key];
-      const market = marketDataMap.get(r.ticker);
+    // Combine earnings data with market data and guidance data
+    const combinedData = rows.map(earning => {
+      // Find matching market data
+      const marketInfo = marketData.find(m => m.ticker === earning.ticker)
       
-      // Pre-calculate normalized values to avoid repeated calls
-      const revGuide = guidance?.estimatedRevenueGuidance ? normalizeRevenueToUSD(guidance.estimatedRevenueGuidance) : null;
-      const revEst = r.revenueEstimate ? normalizeRevenueToUSD(r.revenueEstimate) : null;
-      const prevMinRev = guidance?.previousMinRevenueGuidance ? normalizeRevenueToUSD(guidance.previousMinRevenueGuidance) : null;
-      const prevMaxRev = guidance?.previousMaxRevenueGuidance ? normalizeRevenueToUSD(guidance.previousMaxRevenueGuidance) : null;
+      // Find matching guidance data (get the most recent one)
+      const guidanceInfo = guidanceData
+        .filter(g => g.ticker === earning.ticker)
+        .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())[0]
       
-      // EPS surprise calculation (only if we have data)
-      let epsS: { value: number | null; basis: string | null; extreme: boolean } = { value: null, basis: null, extreme: false };
-      if (guidance?.estimatedEpsGuidance != null || r.epsEstimate != null) {
-        epsS = pickEpsSurprise({
-          guide: guidance?.estimatedEpsGuidance ?? null,
-          est: r.epsEstimate ?? null,
-          consensusPct: guidance?.epsGuideVsConsensusPct ?? null,
-          prevMin: guidance?.previousMinEpsGuidance ?? null,
-          prevMax: guidance?.previousMaxEpsGuidance ?? null,
-          gFiscal: { fiscalPeriod: guidance?.fiscalPeriod, fiscalYear: guidance?.fiscalYear ?? null },
-          eFiscal: { fiscalPeriod: r.fiscalPeriod, fiscalYear: r.fiscalYear ?? null },
-          gMethod: null,
-          eMethod: null
-        });
+      // Calculate guidance surprises
+      let epsGuideSurprise = null
+      let epsGuideBasis = null
+      let epsGuideExtreme = false
+      let revenueGuideSurprise = null
+      let revenueGuideBasis = null
+      let revenueGuideExtreme = false
+      
+      if (guidanceInfo && earning.epsEstimate) {
+        epsGuideSurprise = ((guidanceInfo.estimatedEpsGuidance - earning.epsEstimate) / earning.epsEstimate) * 100
+        epsGuideBasis = 'consensus'
+        epsGuideExtreme = Math.abs(epsGuideSurprise) > 300
       }
-
-      // Revenue surprise calculation (only if we have data)
-      let revS: { value: number | null; basis: string | null; extreme: boolean } = { value: null, basis: null, extreme: false };
-      if (revGuide != null || revEst != null) {
-        revS = pickRevSurprise({
-          guide: revGuide,
-          est: revEst,
-          consensusPct: guidance?.revenueGuideVsConsensusPct ?? null,
-          prevMin: prevMinRev,
-          prevMax: prevMaxRev,
-          gFiscal: { fiscalPeriod: guidance?.fiscalPeriod, fiscalYear: guidance?.fiscalYear ?? null },
-          eFiscal: { fiscalPeriod: r.fiscalPeriod, fiscalYear: r.fiscalYear ?? null }
-        });
+      
+      if (guidanceInfo && earning.revenueEstimate) {
+        const guidanceRev = Number(guidanceInfo.estimatedRevenueGuidance)
+        const estimateRev = Number(earning.revenueEstimate)
+        revenueGuideSurprise = ((guidanceRev - estimateRev) / estimateRev) * 100
+        revenueGuideBasis = 'consensus'
+        revenueGuideExtreme = Math.abs(revenueGuideSurprise) > 300
       }
-
+      
       return {
-        ticker: r.ticker,
-        reportTime: r.reportTime,
-        epsEstimate: r.epsEstimate,
-        epsActual: r.epsActual,
-        revenueEstimate: r.revenueEstimate,
-        revenueActual: r.revenueActual,
-        sector: r.sector,
-        companyType: r.companyType,
-        dataSource: r.dataSource,
-        fiscalPeriod: r.fiscalPeriod,
-        fiscalYear: r.fiscalYear,
-        primaryExchange: r.primaryExchange,
+        ...earning,
         // Market data from Polygon
-        companyName: market?.companyName && market.companyName.trim() !== '' ? market.companyName : r.ticker,
-        size: market?.size || null,
-        marketCap: market?.marketCap || null,
-        marketCapDiff: market?.marketCapDiff || null,
-        marketCapDiffBillions: market?.marketCapDiffBillions || null,
-        currentPrice: market?.currentPrice || null,
-        previousClose: market?.previousClose || null,
-        priceChangePercent: market?.priceChangePercent || null,
-        sharesOutstanding: market?.sharesOutstanding || null,
-        // Guidance calculations (with validation)
-        epsGuideSurprise: (epsS.value != null && isFinite(epsS.value)) ? epsS.value : null,
-        epsGuideBasis: epsS.basis ?? null,
-        epsGuideExtreme: epsS.extreme,
-        revenueGuideSurprise: (revS.value != null && isFinite(revS.value)) ? revS.value : null,
-        revenueGuideBasis: revS.basis ?? null,
-        revenueGuideExtreme: revS.extreme,
-        // Raw guidance data for debugging (only if exists)
-        guidanceData: guidance ? {
-          estimatedEpsGuidance: guidance.estimatedEpsGuidance,
-          estimatedRevenueGuidance: guidance.estimatedRevenueGuidance,
-          epsGuideVsConsensusPct: guidance.epsGuideVsConsensusPct,
-          revenueGuideVsConsensusPct: guidance.revenueGuideVsConsensusPct,
-          lastUpdated: guidance.lastUpdated,
+        companyName: marketInfo?.companyName || earning.ticker,
+        size: marketInfo?.size || null,
+        marketCap: marketInfo?.marketCap || null,
+        marketCapDiff: marketInfo?.marketCapDiff || null,
+        marketCapDiffBillions: marketInfo?.marketCapDiffBillions || null,
+        currentPrice: marketInfo?.currentPrice || null,
+        previousClose: marketInfo?.previousClose || null,
+        priceChangePercent: marketInfo?.priceChangePercent || null,
+        sharesOutstanding: marketInfo?.sharesOutstanding || null,
+        // Guidance calculations
+        epsGuideSurprise,
+        epsGuideBasis,
+        epsGuideExtreme,
+        revenueGuideSurprise,
+        revenueGuideBasis,
+        revenueGuideExtreme,
+        // Raw guidance data for debugging
+        guidanceData: guidanceInfo ? {
+          estimatedEpsGuidance: guidanceInfo.estimatedEpsGuidance,
+          estimatedRevenueGuidance: guidanceInfo.estimatedRevenueGuidance,
+          epsGuideVsConsensusPct: guidanceInfo.epsGuideVsConsensusPct,
+          revenueGuideVsConsensusPct: guidanceInfo.revenueGuideVsConsensusPct,
+          lastUpdated: guidanceInfo.lastUpdated?.toISOString() || null,
         } : null,
       }
     })
-
-    // Serialize BigInt values before sending
-    const serializedData = serializeBigInts(data)
     
     const endTime = Date.now()
     const duration = endTime - startTime
     
-    // Log performance metrics
-    console.log(`[PERF] /api/earnings: ${duration}ms, ${data.length} records`)
+    console.log(`[API] Request completed in ${duration}ms`)
     
-    const responseData = { 
-      date: today, 
-      count: data.length, 
+    // Cache the result
+    const serializedData = serializeBigInts(combinedData)
+    apiCache.set(cacheKey, {
       data: serializedData,
-      performance: {
-        duration: duration,
-        records: data.length
+      timestamp: Date.now()
+    })
+    
+    return NextResponse.json({
+      success: true,
+      data: serializedData,
+      meta: {
+        total: combinedData.length,
+        duration: `${duration}ms`,
+        date: today.toISOString().split('T')[0],
+        cached: false
       }
-    }
-    
-    // Cache the response
-    apiCache.set(cacheKey, { data: responseData, timestamp: Date.now() })
-    
-    return NextResponse.json(responseData, {
+    }, {
       headers: {
-        'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
+        'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
         'X-Cache': 'MISS'
       }
     })
-  } catch (e: any) {
-    console.error('Error in /api/earnings:', e)
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+    
+  } catch (error) {
+    console.error('[API] Error:', error)
+    return NextResponse.json(
+      { error: 'Internal Server Error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    )
   }
 }

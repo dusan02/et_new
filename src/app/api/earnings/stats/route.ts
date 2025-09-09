@@ -1,15 +1,17 @@
 import { NextResponse } from 'next/server';
 import { serializeBigInts } from '@/lib/bigint-utils';
 import { prisma } from '@/lib/prisma';
-import { getTodayStart } from '@/lib/dates';
+import { getTodayStart, getNYTimeString } from '@/lib/dates';
 
-// Cache for 60 seconds
-export const revalidate = 60
+// Cache for 5 minutes
+export const revalidate = 300
 
 export async function GET() {
   try {
-    // Use today's date since we have real data for 2025-09-08
-    const today = new Date('2025-09-08');
+    // Use dynamic date based on NY timezone
+    const today = getTodayStart();
+    
+    console.log(`[STATS] Fetching stats for date: ${today.toISOString().split('T')[0]} (NY time: ${getNYTimeString()})`);
 
     // Fetch real stats from database
     const [

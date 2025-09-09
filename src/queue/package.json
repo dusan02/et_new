@@ -1,11 +1,13 @@
 {
     "name": "earnings-queue",
     "version": "1.0.0",
-    "description": "Queue worker for earnings data fetching",
-    "main": "worker.js",
+    "description": "Queue worker for earnings data fetching with NY timezone support",
+    "main": "worker-new.js",
     "scripts": {
-        "start": "node worker.js",
-        "dev": "nodemon worker.js"
+        "start": "node worker-new.js",
+        "start-old": "node worker.js",
+        "dev": "nodemon worker-new.js",
+        "dev-old": "nodemon worker.js"
     },
     "dependencies": {
         "node-cron": "^3.0.3",

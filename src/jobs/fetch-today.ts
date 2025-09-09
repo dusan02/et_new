@@ -1,7 +1,7 @@
 import dotenv from 'dotenv'
 dotenv.config()
 import { prisma } from '@/lib/prisma'
-import { isoDate } from '@/lib/dates'
+import { isoDate, getNYDate, getNYTimeString } from '@/lib/dates'
 import axios from 'axios'
 import { batchFetchPolygonData, batchFetchFinnhubData, batchFetchBenzingaData, extractSuccessfulResults, extractFailedResults } from '@/utils/fetchers'
 
@@ -10,6 +10,8 @@ console.log('Environment variables:', {
   POLYGON_API_KEY: process.env.POLYGON_API_KEY,
   NODE_ENV: process.env.NODE_ENV
 })
+
+console.log('Current NY time:', getNYTimeString())
 
 const FINN = process.env.FINNHUB_API_KEY!
 const POLY = process.env.POLYGON_API_KEY!
@@ -122,7 +124,8 @@ async function fetchPolygonMarketData(tickers: string[]) {
           sharesOutstanding = tickerData.results.share_class_shares_outstanding ? BigInt(tickerData.results.share_class_shares_outstanding) : null
         }
       } catch (error) {
-        console.warn(`Failed to fetch ticker details for ${ticker}:`, error)
+        console.warn(`Failed to fetch ticker details for ${ticker}:`, (error as Error).message)
+        // Continue processing even if ticker details fail
       }
       
       if (prevClose && currentPrice) {
@@ -195,15 +198,24 @@ async function fetchPolygonMarketData(tickers: string[]) {
     }
   })
   
-    // Wait for all ticker promises in this batch to complete
-    const results = await Promise.all(tickerPromises)
+    // Wait for all ticker promises in this batch to complete with Promise.allSettled
+    const results = await Promise.allSettled(tickerPromises)
     
     // Process results and build marketData object
-    results.forEach(result => {
-      if (result) {
-        marketData[result.ticker] = result.data
+    let successfulCount = 0
+    let failedCount = 0
+    
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled' && result.value) {
+        marketData[result.value.ticker] = result.value.data
+        successfulCount++
+      } else if (result.status === 'rejected') {
+        console.warn(`Failed to process ticker ${batch[index]}:`, result.reason)
+        failedCount++
       }
     })
+    
+    console.log(`📊 Batch ${batches.indexOf(batch) + 1}/${batches.length} completed: ${successfulCount} successful, ${failedCount} failed`)
     
     // Small delay between batches to be respectful to the API
     if (batches.indexOf(batch) < batches.length - 1) {
@@ -499,7 +511,7 @@ async function upsertGuidanceData(guidanceData: any[]) {
 async function main() {
   try {
     const date = process.env.DATE || isoDate()
-    console.log(`Starting data fetch for ${date}`)
+    console.log(`Starting data fetch for ${date} (NY time: ${getNYTimeString()})`)
     
     // Fetch earnings data from Finnhub
     console.log('Fetching earnings data from Finnhub...')
