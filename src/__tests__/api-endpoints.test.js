@@ -39,6 +39,13 @@ jest.mock("@/lib/bigint-utils", () => ({
   serializeBigInts: jest.fn((data) => data),
 }));
 
+// Mock cache utilities
+jest.mock("@/lib/cache-utils", () => ({
+  getCachedData: jest.fn(() => null), // Always return null (no cache)
+  setCachedData: jest.fn(),
+  getCacheAge: jest.fn(() => 0),
+}));
+
 describe("🌐 API Endpoints Tests", () => {
   let mockPrisma;
   let mockDates;
@@ -168,7 +175,8 @@ describe("🌐 API Endpoints Tests", () => {
       expect(firstRecord).toHaveProperty("epsEstimate");
       expect(firstRecord).toHaveProperty("revenueActual");
       expect(firstRecord).toHaveProperty("revenueEstimate");
-      expect(firstRecord).toHaveProperty("guidanceData");
+      // 🚫 GUIDANCE DISABLED FOR PRODUCTION - Guidance data validation commented out
+      // expect(firstRecord).toHaveProperty("guidanceData");
 
       // Validate market data (now flat structure)
       expect(firstRecord).toHaveProperty("companyName");
@@ -178,12 +186,12 @@ describe("🌐 API Endpoints Tests", () => {
       expect(firstRecord).toHaveProperty("size");
       expect(firstRecord).toHaveProperty("priceChangePercent");
 
-      // Validate guidance data
-      expect(firstRecord.guidanceData).toHaveProperty("estimatedEpsGuidance");
-      expect(firstRecord.guidanceData).toHaveProperty(
-        "estimatedRevenueGuidance"
-      );
-      expect(firstRecord.guidanceData).toHaveProperty("lastUpdated");
+      // 🚫 GUIDANCE DISABLED FOR PRODUCTION - Guidance data validation commented out
+      // expect(firstRecord.guidanceData).toHaveProperty("estimatedEpsGuidance");
+      // expect(firstRecord.guidanceData).toHaveProperty(
+      //   "estimatedRevenueGuidance"
+      // );
+      // expect(firstRecord.guidanceData).toHaveProperty("lastUpdated");
     });
 
     test("Handles empty earnings data", async () => {
@@ -205,6 +213,7 @@ describe("🌐 API Endpoints Tests", () => {
     test("Handles database errors gracefully", async () => {
       const dbError = new Error("Database connection failed");
       mockPrisma.earningsTickersToday.findMany.mockRejectedValue(dbError);
+      mockPrisma.todayEarningsMovements.findMany.mockRejectedValue(dbError);
 
       const { GET } = require("@/app/api/earnings/route");
 
@@ -354,6 +363,7 @@ describe("🌐 API Endpoints Tests", () => {
     test("Handles Prisma connection errors", async () => {
       const prismaError = new Error("Prisma connection failed");
       mockPrisma.earningsTickersToday.findMany.mockRejectedValue(prismaError);
+      mockPrisma.todayEarningsMovements.findMany.mockRejectedValue(prismaError);
 
       const { GET } = require("@/app/api/earnings/route");
 

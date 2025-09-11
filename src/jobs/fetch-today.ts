@@ -22,12 +22,12 @@ async function fetchFinnhubEarnings(date: string) {
     timeout: 30000
   })
   
-  if (!data || !Array.isArray(data)) {
+  if (!data || !data.earningsCalendar || !Array.isArray(data.earningsCalendar)) {
     console.warn('No earnings data received from Finnhub')
     return []
   }
   
-  return data.map((earning: any) => ({
+  return data.earningsCalendar.map((earning: any) => ({
     ticker: earning.symbol,
     reportDate: new Date(earning.date),
     reportTime: earning.hour || 'AMC',
@@ -108,14 +108,33 @@ async function fetchPolygonMarketData(tickers: string[]) {
           return null
         }
         
-        // Get market cap and shares outstanding
-        const marketCap = prevData?.results?.[0]?.vw * prevData?.results?.[0]?.n || null
-        const sharesOutstanding = prevData?.results?.[0]?.n || null
+        // Get shares outstanding from company details
+        let sharesOutstanding = null
         
-        // Calculate market cap difference
+        try {
+          const { data: profileData } = await axios.get(
+            `https://api.polygon.io/v3/reference/tickers/${ticker}`,
+            { params: { apikey: POLY }, timeout: 10000 }
+          )
+          sharesOutstanding = profileData?.results?.share_class_shares_outstanding || null
+        } catch (error) {
+          console.warn(`Failed to fetch shares outstanding for ${ticker}:`, error)
+          // Fallback: get shares from previous day data if available
+          if (prevData?.results?.[0]?.n) {
+            sharesOutstanding = prevData.results[0].n
+          }
+        }
+        
+        // Calculate current market cap using current price and shares outstanding
+        let marketCap = null
+        if (current && sharesOutstanding) {
+          marketCap = current * sharesOutstanding
+        }
+        
+        // Calculate market cap difference (current vs previous day)
         let marketCapDiff = null
         let marketCapDiffBillions = null
-        if (marketCap && sharesOutstanding) {
+        if (marketCap && sharesOutstanding && prevClose) {
           const prevMarketCap = prevClose * sharesOutstanding
           marketCapDiff = ((marketCap - prevMarketCap) / prevMarketCap) * 100
           
@@ -131,10 +150,10 @@ async function fetchPolygonMarketData(tickers: string[]) {
         // Determine company size
         let size = 'Unknown'
         if (marketCap) {
-          if (marketCap >= 200e9) size = 'Large Cap'
-          else if (marketCap >= 10e9) size = 'Mid Cap'
-          else if (marketCap >= 2e9) size = 'Small Cap'
-          else size = 'Micro Cap'
+          if (marketCap >= 200e9) size = 'Large'
+          else if (marketCap >= 10e9) size = 'Mid'
+          else if (marketCap >= 2e9) size = 'Small'
+          else size = 'Small'
         }
         
         return {
@@ -142,7 +161,7 @@ async function fetchPolygonMarketData(tickers: string[]) {
           currentPrice: current,
           previousClose: prevClose,
           priceChangePercent,
-          companyName,
+          companyName: companyName || ticker, // Fallback to ticker if company name is null
           size,
           marketCap,
           marketCapDiff,
@@ -237,7 +256,7 @@ async function upsertMarketData(marketData: Record<string, any>, reportDate: Dat
           priceChangePercent: data.priceChangePercent,
           companyName: data.companyName,
           size: data.size,
-          marketCap: data.marketCap,
+          marketCap: data.marketCap ? BigInt(Math.round(data.marketCap)) : null,
           marketCapDiff: data.marketCapDiff,
           marketCapDiffBillions: data.marketCapDiffBillions,
           sharesOutstanding: data.sharesOutstanding,
@@ -253,7 +272,7 @@ async function upsertMarketData(marketData: Record<string, any>, reportDate: Dat
           priceChangePercent: data.priceChangePercent,
           companyName: data.companyName,
           size: data.size,
-          marketCap: data.marketCap,
+          marketCap: data.marketCap ? BigInt(Math.round(data.marketCap)) : null,
           marketCapDiff: data.marketCapDiff,
           marketCapDiffBillions: data.marketCapDiffBillions,
           sharesOutstanding: data.sharesOutstanding,

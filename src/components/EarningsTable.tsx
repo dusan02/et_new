@@ -580,7 +580,7 @@ export const EarningsTable = memo(function EarningsTable({ data, isLoading, onRe
               <colgroup>
                 <col style={{ width: '40px' }} />
                 <col style={{ width: '60px' }} />
-                <col style={{ width: '120px' }} />
+                <col style={{ width: '80px' }} />
                 <col style={{ width: '60px' }} />
                 <col style={{ width: '80px' }} />
                 <col style={{ width: '70px' }} />
@@ -696,7 +696,9 @@ export const EarningsTable = memo(function EarningsTable({ data, isLoading, onRe
                         {item.ticker}
                       </td>
                       <td className="px-1 py-3 text-sm text-gray-900 truncate" title={item.companyName || item.ticker}>
-                        {item.companyName || item.ticker}
+                        {item.companyName ? 
+                          (item.companyName.length > 15 ? `${item.companyName.substring(0, 15)}...` : item.companyName) 
+                          : item.ticker}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
                         {item.size || '-'}

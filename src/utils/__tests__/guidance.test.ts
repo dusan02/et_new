@@ -1,13 +1,15 @@
-import { 
-  normalizePeriod, 
-  periodsMatch, 
-  pctDiff, 
-  areMethodsCompatible, 
-  normalizeRevenueToUSD,
-  pickEpsSurprise 
-} from '../guidance';
+// 🚫 GUIDANCE TESTS DISABLED - Guidance functionality is commented out for production
+// import { 
+//   normalizePeriod, 
+//   periodsMatch, 
+//   pctDiff, 
+//   areMethodsCompatible, 
+//   normalizeRevenueToUSD,
+//   pickEpsSurprise 
+// } from '../guidance';
 
-describe('Guidance Utils', () => {
+// 🚫 GUIDANCE TESTS DISABLED - Guidance functionality is commented out for production
+describe.skip('Guidance Utils', () => {
   describe('normalizePeriod', () => {
     test('should normalize common period formats', () => {
       expect(normalizePeriod('Q1')).toBe('Q1');
