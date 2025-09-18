@@ -79,11 +79,11 @@ function useDebounce<T>(value: T, delay: number): T {
 
 export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTableProps) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortField, setSortField] = useState<string>('marketCap');
+  const [sortField, setSortField] = useState<string>('market_cap');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [activeView, setActiveView] = useState<'eps-revenue' | 'guidance'>('eps-revenue');
   const [hoveredColumn, setHoveredColumn] = useState<string | null>(null);
-  const [selectedColumn, setSelectedColumn] = useState<string | null>('marketCap');
+  const [selectedColumn, setSelectedColumn] = useState<string | null>('market_cap');
   
   // Debounced search term for performance
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -138,20 +138,20 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
     return `$${num.toFixed(0)}`;
   };
 
-  const formatBillions = (value: number | null | undefined) => {
-    if (value === null || value === undefined) return '-';
+  const formatBillions = (value: number | null) => {
+    if (value === null) return '-';
     const sign = value >= 0 ? '+' : '';
     return `${sign}${value.toFixed(1)}B`;
   };
 
-  const formatPercentage = (value: number | null | undefined) => {
-    if (value === null || value === undefined) return '-';
+  const formatPercentage = (value: number | null) => {
+    if (value === null) return '-';
     const sign = value >= 0 ? '+' : '';
     return `${sign}${value.toFixed(2)}%`;
   };
 
-  const formatEPS = (value: number | null | undefined) => {
-    if (value === null || value === undefined) return '-';
+  const formatEPS = (value: number | null) => {
+    if (value === null) return '-';
     return `$${value.toFixed(2)}`;
   };
 
@@ -160,19 +160,19 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
     return formatCurrency(value);
   };
 
-  const formatSurprise = (value: number | null | undefined) => {
-    if (value === null || value === undefined) return '-';
+  const formatSurprise = (value: number | null) => {
+    if (value === null) return '-';
     const sign = value >= 0 ? '+' : '';
     return `${sign}${value.toFixed(1)}%`;
   };
 
-  const getPriceChangeClass = (value: number | null | undefined) => {
-    if (value === null || value === undefined) return 'text-gray-500';
+  const getPriceChangeClass = (value: number | null) => {
+    if (value === null) return 'text-gray-500';
     return value >= 0 ? 'text-green-600' : 'text-red-600';
   };
 
-  const getDiffClass = (value: bigint | null | undefined) => {
-    if (value === null || value === undefined) return 'text-gray-500';
+  const getDiffClass = (value: bigint | null) => {
+    if (value === null) return 'text-gray-500';
     return value >= 0n ? 'text-green-600' : 'text-red-600';
   };
 
@@ -191,76 +191,23 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
 
     // Apply sorting
     return filtered.sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+      let aValue: any = a[sortField as keyof EarningsData];
+      let bValue: any = b[sortField as keyof EarningsData];
 
-      // Handle special cases for sorting
-      switch (sortField) {
-        case 'index':
-          aValue = filtered.indexOf(a);
-          bValue = filtered.indexOf(b);
-          break;
-        case 'ticker':
-          aValue = a.ticker;
-          bValue = b.ticker;
-          break;
-        case 'company':
-          aValue = a.companyName || a.ticker;
-          bValue = b.companyName || b.ticker;
-          break;
-        case 'size':
-          aValue = a.size;
-          bValue = b.size;
-          break;
-        case 'marketCap':
-          aValue = a.marketCap ? Number(a.marketCap) : null;
-          bValue = b.marketCap ? Number(b.marketCap) : null;
-          break;
-        case 'marketCapDiffBillions':
-          aValue = a.marketCapDiffBillions;
-          bValue = b.marketCapDiffBillions;
-          break;
-        case 'currentPrice':
-          aValue = a.currentPrice;
-          bValue = b.currentPrice;
-          break;
-        case 'priceChangePercent':
-          aValue = a.priceChangePercent;
-          bValue = b.priceChangePercent;
-          break;
-        case 'epsEstimate':
-          aValue = a.epsEstimate;
-          bValue = b.epsEstimate;
-          break;
-        case 'epsActual':
-          aValue = a.epsActual;
-          bValue = b.epsActual;
-          break;
-        case 'epsSurprise':
-          aValue = a.epsSurprise;
-          bValue = b.epsSurprise;
-          break;
-        case 'revenueEstimate':
-          aValue = a.revenueEstimate ? Number(a.revenueEstimate) : null;
-          bValue = b.revenueEstimate ? Number(b.revenueEstimate) : null;
-          break;
-        case 'revenueActual':
-          aValue = a.revenueActual ? Number(a.revenueActual) : null;
-          bValue = b.revenueActual ? Number(b.revenueActual) : null;
-          break;
-        case 'revenueSurprise':
-          aValue = a.revenueSurprise;
-          bValue = b.revenueSurprise;
-          break;
-        default:
-          aValue = a.ticker;
-          bValue = b.ticker;
+      // Handle BigInt values
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        try {
+          aValue = BigInt(aValue);
+          bValue = BigInt(bValue);
+        } catch {
+          // Keep as string if not valid BigInt
+        }
       }
 
-      // Handle null values - null values go to the end regardless of sort direction
+      // Handle null values
       if (aValue === null && bValue === null) return 0;
-      if (aValue === null) return 1; // null values go to end
-      if (bValue === null) return -1; // null values go to end
+      if (aValue === null) return sortDirection === 'asc' ? -1 : 1;
+      if (bValue === null) return sortDirection === 'asc' ? 1 : -1;
 
       // Compare values
       if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
@@ -270,32 +217,6 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
   }, [data, debouncedSearchTerm, sortField, sortDirection]);
 
   const sortedData = filteredAndSortedData;
-
-  // SortButton component for clickable headers
-  const SortButton = ({ field, children, align = 'left' }: { field: string; children: React.ReactNode; align?: 'left' | 'right' | 'center' }) => {
-    const isSelected = selectedColumn === field;
-    const isHovered = hoveredColumn === field;
-    
-    const alignClass = align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left';
-    
-    return (
-      <button
-        onClick={() => handleColumnClick(field)}
-        onMouseEnter={() => handleColumnHover(field)}
-        onMouseLeave={() => handleColumnHover(null)}
-        className={`w-full h-full px-2 py-3 ${alignClass} font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-          isSelected 
-            ? 'bg-blue-200 text-blue-800' 
-            : isHovered 
-              ? 'bg-blue-50 text-gray-700' 
-              : 'bg-transparent text-gray-700'
-        }`}
-        aria-sort={isSelected ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-      >
-        {children}
-      </button>
-    );
-  };
 
   return (
     <div>
@@ -361,21 +282,20 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
       </div>
 
       {/* Table Container with Sticky Columns */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-300 overflow-hidden">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-300">
         {/* Table Structure - Single Table with Sticky Columns */}
-        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-          <table className="w-full border-collapse table-fixed" aria-label="Earnings table">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse min-w-max" aria-label="Earnings table">
             <caption className="sr-only">Company earnings data with market information</caption>
             <colgroup>
               {/* Sticky columns - fixed width */}
               <col style={{ width: '50px' }} />
+              <col style={{ width: '70px' }} />
+              <col style={{ width: '120px' }} />
+              {/* Scrollable columns */}
               <col style={{ width: '60px' }} />
-              <col style={{ width: '100px' }} />
-              {/* Scrollable columns - uniform widths */}
-              <col style={{ width: '70px' }} />
-              <col style={{ width: '70px' }} />
-              <col style={{ width: '70px' }} />
-              <col style={{ width: '70px' }} />
+              <col style={{ width: '90px' }} />
+              <col style={{ width: '80px' }} />
               <col style={{ width: '70px' }} />
               <col style={{ width: '70px' }} />
               <col style={{ width: '70px' }} />
@@ -384,183 +304,183 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
               <col style={{ width: '70px' }} />
               <col style={{ width: '70px' }} />
             </colgroup>
-              <thead className="bg-blue-100 border-b border-gray-300">
-                <tr>
+            <thead className="bg-blue-100 border-b border-gray-300">
+              <tr>
                 {/* Sticky columns */}
                 <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-blue-100 z-10 border-r border-gray-200" 
+                  className="text-xs font-medium text-gray-500 uppercase tracking-wider px-2 py-3 sticky left-0 bg-blue-100 z-10 border-r border-gray-200" 
                   scope="col"
                 >
-                  <SortButton field="index" align="center">#</SortButton>
+                  #
                 </th>
                 <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-[50px] bg-blue-100 z-10 border-r border-gray-200" 
+                  className="text-xs font-medium text-gray-500 uppercase tracking-wider px-2 py-3 sticky left-[50px] bg-blue-100 z-10 border-r border-gray-200" 
                   scope="col"
                 >
-                  <SortButton field="ticker" align="left">Ticker</SortButton>
+                  Ticker
                 </th>
                 <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-[110px] bg-blue-100 z-10 border-r border-gray-200" 
+                  className="text-xs font-medium text-gray-500 uppercase tracking-wider px-2 py-3 sticky left-[120px] bg-blue-100 z-10 border-r border-gray-200" 
                   scope="col"
                 >
-                  <SortButton field="company" align="left">Company</SortButton>
+                  Company
                 </th>
                 {/* Scrollable columns */}
                 <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
+                  className="text-xs font-medium text-gray-500 uppercase tracking-wider px-2 py-3" 
                   scope="col"
                 >
-                  <SortButton field="size" align="center">Size</SortButton>
+                  Size
                 </th>
                 <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
+                  className="text-xs font-medium text-gray-500 uppercase tracking-wider px-2 py-3" 
                   scope="col"
                 >
-                  <SortButton field="marketCap" align="right">Market Cap</SortButton>
+                  Market Cap
                 </th>
                 <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
+                  className="text-xs font-medium text-gray-500 uppercase tracking-wider px-2 py-3" 
                   scope="col"
                 >
-                  <SortButton field="marketCapDiffBillions" align="right">Cap Diff</SortButton>
+                  Cap Diff
                 </th>
                 <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
+                  className="text-xs font-medium text-gray-500 uppercase tracking-wider px-2 py-3" 
                   scope="col"
                 >
-                  <SortButton field="currentPrice" align="right">Price</SortButton>
+                  Price
                 </th>
                 <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
+                  className="text-xs font-medium text-gray-500 uppercase tracking-wider px-2 py-3" 
                   scope="col"
                 >
-                  <SortButton field="priceChangePercent" align="right">Change</SortButton>
+                  Change
                 </th>
                 <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
+                  className="text-xs font-medium text-gray-500 uppercase tracking-wider px-2 py-3" 
                   scope="col"
                 >
-                  <SortButton field="epsEstimate" align="right">EPS Est</SortButton>
+                  EPS Est
                 </th>
                 <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
+                  className="text-xs font-medium text-gray-500 uppercase tracking-wider px-2 py-3" 
                   scope="col"
                 >
-                  <SortButton field="epsActual" align="right">EPS Act</SortButton>
+                  EPS Act
                 </th>
                 <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
+                  className="text-xs font-medium text-gray-500 uppercase tracking-wider px-2 py-3" 
                   scope="col"
                 >
-                  <SortButton field="epsSurprise" align="right">EPS Surp</SortButton>
+                  EPS Surp
                 </th>
                 <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
+                  className="text-xs font-medium text-gray-500 uppercase tracking-wider px-2 py-3" 
                   scope="col"
                 >
-                  <SortButton field="revenueEstimate" align="right">Rev Est</SortButton>
+                  Rev Est
                 </th>
                 <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
+                  className="text-xs font-medium text-gray-500 uppercase tracking-wider px-2 py-3" 
                   scope="col"
                 >
-                  <SortButton field="revenueActual" align="right">Rev Act</SortButton>
+                  Rev Act
                 </th>
                 <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
+                  className="text-xs font-medium text-gray-500 uppercase tracking-wider px-2 py-3" 
                   scope="col"
                 >
-                  <SortButton field="revenueSurprise" align="right">Rev Surp</SortButton>
+                  Rev Surp
                 </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {isLoading ? (
-                  <tr>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {isLoading ? (
+                <tr>
                   <td colSpan={14} className="px-4 py-8 text-center">
-                      <LoadingSpinner size="md" />
-                    </td>
-                  </tr>
-                ) : sortedData.length === 0 ? (
-                  <tr>
+                    <LoadingSpinner size="md" />
+                  </td>
+                </tr>
+              ) : sortedData.length === 0 ? (
+                <tr>
                   <td colSpan={14} className="px-4 py-8 text-center text-gray-500">
-                      {data.length === 0 ? (
-                        <div className="flex flex-col items-center space-y-4">
-                          <div className="relative">
-                            <svg className="w-16 h-16 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                    {data.length === 0 ? (
+                      <div className="flex flex-col items-center space-y-4">
+                        <div className="relative">
+                          <svg className="w-16 h-16 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                          </svg>
+                          <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                             </svg>
-                            <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
-                              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                              </svg>
-                            </div>
-                          </div>
-                          <div className="text-xl font-semibold text-gray-700">No Earnings Scheduled</div>
-                          <div className="text-sm text-gray-500 text-center max-w-md">
-                            There are no earnings reports scheduled for today.<br />
-                            Check back tomorrow for new earnings data.
                           </div>
                         </div>
-                      ) : (
-                        "No results found for your search"
-                      )}
-                    </td>
-                  </tr>
-                ) : (
-                  sortedData.map((item, index) => (
-                    <tr key={item.ticker} className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                        <div className="text-xl font-semibold text-gray-700">No Earnings Scheduled</div>
+                        <div className="text-sm text-gray-500 text-center max-w-md">
+                          There are no earnings reports scheduled for today.<br />
+                          Check back tomorrow for new earnings data.
+                        </div>
+                      </div>
+                    ) : (
+                      "No results found for your search"
+                    )}
+                  </td>
+                </tr>
+              ) : (
+                sortedData.map((item, index) => (
+                  <tr key={item.ticker} className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
                     {/* Sticky columns */}
-                    <td className="px-2 py-3 text-sm text-gray-900 sticky left-0 bg-inherit z-10 border-r border-gray-200 text-center">
+                    <td className="px-2 py-3 text-sm text-gray-900 sticky left-0 bg-inherit z-10 border-r border-gray-200">
                       {index + 1}
                     </td>
                     <td className="px-2 py-3 text-sm font-medium text-gray-900 sticky left-[50px] bg-inherit z-10 border-r border-gray-200">
-                        {item.ticker}
-                      </td>
-                    <td className="px-2 py-3 text-sm text-gray-900 sticky left-[110px] bg-inherit z-10 border-r border-gray-200 truncate" title={item.companyName || item.ticker}>
-                        {item.companyName ? 
-                        (item.companyName.length > 12 ? `${item.companyName.substring(0, 12)}...` : item.companyName) 
-                          : item.ticker}
-                      </td>
-                    {/* Scrollable columns */}
-                    <td className="px-2 py-3 text-sm text-gray-600 whitespace-nowrap">
-                      {item.size && item.size !== 'Unknown' ? item.size : '-'}
+                      {item.ticker}
                     </td>
-                    <td className="px-2 py-3 text-sm text-gray-900 text-right whitespace-nowrap">
+                    <td className="px-2 py-3 text-sm text-gray-900 sticky left-[120px] bg-inherit z-10 border-r border-gray-200 truncate" title={item.companyName || item.ticker}>
+                      {item.companyName ? 
+                        (item.companyName.length > 12 ? `${item.companyName.substring(0, 12)}...` : item.companyName) 
+                        : item.ticker}
+                    </td>
+                    {/* Scrollable columns */}
+                    <td className="px-2 py-3 text-sm text-gray-600">
+                      {item.size || '-'}
+                    </td>
+                    <td className="px-2 py-3 text-sm text-gray-900 text-right">
                       {item.marketCap ? formatMarketCap(item.marketCap) : '-'}
                     </td>
-                    <td className={`px-2 py-3 text-sm text-right whitespace-nowrap ${getDiffClass(item.marketCapDiffBillions ? BigInt(Math.round(item.marketCapDiffBillions * 1e9)) : null)}`}>
+                    <td className={`px-2 py-3 text-sm text-right ${getDiffClass(item.marketCapDiffBillions ? BigInt(Math.round(item.marketCapDiffBillions * 1e9)) : null)}`}>
                       {item.marketCapDiffBillions ? formatBillions(item.marketCapDiffBillions) : '-'}
                     </td>
-                    <td className="px-2 py-3 text-sm text-gray-900 text-right whitespace-nowrap">
+                    <td className="px-2 py-3 text-sm text-gray-900 text-right">
                       {item.currentPrice ? `$${item.currentPrice.toFixed(2)}` : '-'}
                     </td>
-                    <td className={`px-2 py-3 text-sm text-right whitespace-nowrap ${getPriceChangeClass(item.priceChangePercent)}`}>
+                    <td className={`px-2 py-3 text-sm text-right ${getPriceChangeClass(item.priceChangePercent)}`}>
                       {item.priceChangePercent ? formatPercentage(item.priceChangePercent) : '-'}
                     </td>
-                    <td className="px-2 py-3 text-sm text-gray-600 text-right whitespace-nowrap">
+                    <td className="px-2 py-3 text-sm text-gray-600 text-right">
                       {formatEPS(item.epsEstimate)}
                     </td>
-                    <td className="px-2 py-3 text-sm text-gray-900 text-right whitespace-nowrap">
+                    <td className="px-2 py-3 text-sm text-gray-900 text-right">
                       {formatEPS(item.epsActual)}
                     </td>
-                    <td className="px-2 py-3 text-sm text-right whitespace-nowrap">
+                    <td className="px-2 py-3 text-sm text-right">
                       {formatSurprise(item.epsSurprise)}
                     </td>
-                    <td className="px-2 py-3 text-sm text-gray-600 text-right whitespace-nowrap">
+                    <td className="px-2 py-3 text-sm text-gray-600 text-right">
                       {formatRevenue(item.revenueEstimate)}
                     </td>
-                    <td className="px-2 py-3 text-sm text-gray-900 text-right whitespace-nowrap">
+                    <td className="px-2 py-3 text-sm text-gray-900 text-right">
                       {formatRevenue(item.revenueActual)}
                     </td>
-                    <td className="px-2 py-3 text-sm text-right whitespace-nowrap">
+                    <td className="px-2 py-3 text-sm text-right">
                       {formatSurprise(item.revenueSurprise)}
                     </td>
                   </tr>
                 ))
               )}
-                </tbody>
-              </table>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

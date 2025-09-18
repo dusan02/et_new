@@ -148,8 +148,8 @@ async function fetchPolygonMarketData(tickers: string[]) {
         }
         
         // Determine company size
-        let size = 'Unknown'
-        if (marketCap) {
+        let size = null
+        if (marketCap && marketCap > 0) {
           if (marketCap >= 200e9) size = 'Large'
           else if (marketCap >= 10e9) size = 'Mid'
           else if (marketCap >= 2e9) size = 'Small'
