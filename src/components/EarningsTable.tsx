@@ -173,7 +173,7 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
 
   const getDiffClass = (value: bigint | null | undefined) => {
     if (value === null || value === undefined) return 'text-gray-500';
-    return value >= 0n ? 'text-green-600' : 'text-red-600';
+    return value >= BigInt(0) ? 'text-green-600' : 'text-red-600';
   };
 
   // Filter and sort data
