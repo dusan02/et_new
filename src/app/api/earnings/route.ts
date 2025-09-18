@@ -2,6 +2,14 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getTodayStart, getNYTimeString } from '@/lib/dates'
 import { serializeBigInts } from '@/lib/bigint-utils'
+
+// Simple surprise calculation function
+function calculateSurprise(actual: number | null, estimate: number | null): number | null {
+  if (actual === null || estimate === null || estimate === 0) {
+    return null
+  }
+  return ((actual - estimate) / Math.abs(estimate)) * 100
+}
 // 🚫 GUIDANCE DISABLED FOR PRODUCTION - Import commented out
 // import { 
 //   isGuidanceCompatible, 
@@ -231,13 +239,20 @@ export async function GET() {
       }
       */
       
-      // Default values for production (no guidance)
-      const epsGuideSurprise = null
-      const epsGuideBasis = null
-      const epsGuideExtreme = false
-      const revenueGuideSurprise = null
-      const revenueGuideBasis = null
-      const revenueGuideExtreme = false
+        // Default values for production (no guidance)
+        const epsGuideSurprise = null
+        const epsGuideBasis = null
+        const epsGuideExtreme = false
+        const revenueGuideSurprise = null
+        const revenueGuideBasis = null
+        const revenueGuideExtreme = false
+        
+        // Calculate surprise values
+        const epsSurprise = calculateSurprise(earning.epsActual, earning.epsEstimate)
+        const revenueSurprise = calculateSurprise(
+          earning.revenueActual ? Number(earning.revenueActual) : null,
+          earning.revenueEstimate ? Number(earning.revenueEstimate) : null
+        )
       const compatibleGuidance = null
       
       return {
@@ -271,6 +286,9 @@ export async function GET() {
         //   fiscalYear: compatibleGuidance.fiscalYear,
         // } : null,
         guidanceData: null, // Always null for production
+        // Surprise calculations
+        epsSurprise,
+        revenueSurprise
       }
     })
     
