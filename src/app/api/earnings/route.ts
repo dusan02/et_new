@@ -259,8 +259,8 @@ export async function GET() {
         ...earning,
         // Market data from Polygon
         companyName: marketInfo?.companyName || earning.ticker,
-        size: marketInfo?.size || null,
-        marketCap: marketInfo?.marketCap || null,
+        marketCap: marketInfo?.marketCap && marketInfo.marketCap > 0 ? marketInfo.marketCap : null,
+        size: marketInfo?.marketCap && marketInfo.marketCap > 0 ? marketInfo.size : null,
         marketCapDiff: marketInfo?.marketCapDiff || null,
         marketCapDiffBillions: marketInfo?.marketCapDiffBillions || null,
         currentPrice: marketInfo?.currentPrice || null,

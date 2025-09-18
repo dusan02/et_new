@@ -176,6 +176,11 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
     return value >= BigInt(0) ? 'text-green-600' : 'text-red-600';
   };
 
+  const getSurpriseClass = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return 'text-gray-500';
+    return value >= 0 ? 'text-green-600' : 'text-red-600';
+  };
+
   // Filter and sort data
   const filteredAndSortedData = useMemo(() => {
     let filtered = data;
@@ -542,7 +547,7 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
                     <td className="px-2 py-3 text-sm text-gray-900 text-right whitespace-nowrap">
                       {formatEPS(item.epsActual)}
                     </td>
-                    <td className="px-2 py-3 text-sm text-right whitespace-nowrap">
+                    <td className={`px-2 py-3 text-sm text-right whitespace-nowrap ${getSurpriseClass(item.epsSurprise)}`}>
                       {formatSurprise(item.epsSurprise)}
                     </td>
                     <td className="px-2 py-3 text-sm text-gray-600 text-right whitespace-nowrap">
@@ -551,7 +556,7 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
                     <td className="px-2 py-3 text-sm text-gray-900 text-right whitespace-nowrap">
                       {formatRevenue(item.revenueActual)}
                     </td>
-                    <td className="px-2 py-3 text-sm text-right whitespace-nowrap">
+                    <td className={`px-2 py-3 text-sm text-right whitespace-nowrap ${getSurpriseClass(item.revenueSurprise)}`}>
                       {formatSurprise(item.revenueSurprise)}
                     </td>
                   </tr>
