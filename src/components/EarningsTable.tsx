@@ -368,9 +368,9 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
             <caption className="sr-only">Company earnings data with market information</caption>
             <colgroup>
               {/* Sticky columns - fixed width */}
-              <col style={{ width: '50px' }} />
-              <col style={{ width: '60px' }} />
-              <col style={{ width: '100px' }} />
+              <col style={{ width: '25px' }} />
+              <col style={{ width: '42px' }} />
+              <col style={{ width: '143px' }} />
               {/* Scrollable columns - uniform widths */}
               <col style={{ width: '70px' }} />
               <col style={{ width: '70px' }} />
@@ -394,13 +394,13 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
                   <SortButton field="index" align="center">#</SortButton>
                 </th>
                 <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-[50px] bg-blue-100 z-10 border-r border-gray-200" 
+                  className="text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-[25px] bg-blue-100 z-10 border-r border-gray-200" 
                   scope="col"
                 >
                   <SortButton field="ticker" align="left">Ticker</SortButton>
                 </th>
                 <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-[110px] bg-blue-100 z-10 border-r border-gray-200" 
+                  className="text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-[67px] bg-blue-100 z-10 border-r border-gray-200" 
                   scope="col"
                 >
                   <SortButton field="company" align="left">Company</SortButton>
@@ -514,13 +514,11 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
                     <td className="px-2 py-3 text-sm text-gray-900 sticky left-0 bg-inherit z-10 border-r border-gray-200 text-center">
                       {index + 1}
                     </td>
-                    <td className="px-2 py-3 text-sm font-medium text-gray-900 sticky left-[50px] bg-inherit z-10 border-r border-gray-200">
+                    <td className="px-2 py-3 text-sm font-medium text-gray-900 sticky left-[25px] bg-inherit z-10 border-r border-gray-200">
                         {item.ticker}
                       </td>
-                    <td className="px-2 py-3 text-sm text-gray-900 sticky left-[110px] bg-inherit z-10 border-r border-gray-200 truncate" title={item.companyName || item.ticker}>
-                        {item.companyName ? 
-                        (item.companyName.length > 12 ? `${item.companyName.substring(0, 12)}...` : item.companyName) 
-                          : item.ticker}
+                    <td className="px-2 py-3 text-sm text-gray-900 sticky left-[67px] bg-inherit z-10 border-r border-gray-200 truncate" title={item.companyName || item.ticker}>
+                        {item.companyName || item.ticker}
                       </td>
                     {/* Scrollable columns */}
                     <td className="px-2 py-3 text-sm text-gray-600 whitespace-nowrap">
