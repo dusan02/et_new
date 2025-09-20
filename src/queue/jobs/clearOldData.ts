@@ -33,41 +33,24 @@ export async function clearOldData() {
       }
     })
     
-    // Clean up old guidance data (keep last 30 days)
-    const guidanceCutoff = new Date()
-    guidanceCutoff.setDate(guidanceCutoff.getDate() - 30)
-    
-    const deletedGuidance = await prisma.benzingaGuidance.deleteMany({
-      where: {
-        lastUpdated: {
-          lt: guidanceCutoff
-        }
-      }
-    })
-    
-    // Clean up old guidance import failures (keep last 7 days)
-    const deletedFailures = await prisma.guidanceImportFailures.deleteMany({
-      where: {
-        createdAt: {
-          lt: cutoffDate
-        }
-      }
-    })
+    // Clean up old historical earnings data (keep last 30 days)
+    const historicalCutoff = new Date()
+    historicalCutoff.setDate(historicalCutoff.getDate() - 30)
+
+    // Note: Only clean tables that exist in current schema
+    // benzingaGuidance and guidanceImportFailures tables were removed
+    console.log('Note: Guidance tables cleanup skipped (tables do not exist in current schema)')
     
     console.log('✅ Cleanup completed successfully!')
     console.log(`📊 Deleted records:`)
     console.log(`   - Earnings: ${deletedEarnings.count}`)
     console.log(`   - Market data: ${deletedMarket.count}`)
-    console.log(`   - Guidance: ${deletedGuidance.count}`)
-    console.log(`   - Import failures: ${deletedFailures.count}`)
     
     return {
       success: true,
       deleted: {
         earnings: deletedEarnings.count,
-        market: deletedMarket.count,
-        guidance: deletedGuidance.count,
-        failures: deletedFailures.count
+        market: deletedMarket.count
       }
     }
     

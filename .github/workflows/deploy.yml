@@ -1,0 +1,34 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /opt/earnings-table
+            git pull origin main
+            cp prisma/schema.prod.prisma prisma/schema.prisma
+            cp production.env .env
+            docker-compose -f deployment/docker-compose.yml down
+            docker-compose -f deployment/docker-compose.yml up -d --build
+
+      - name: Health check
+        run: |
+          sleep 60
+          curl -f http://${{ secrets.HOST }}:3000 || exit 1
+

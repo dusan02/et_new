@@ -262,10 +262,10 @@ export async function GET() {
         marketCap: marketInfo?.marketCap && marketInfo.marketCap > 0 ? marketInfo.marketCap : null,
         size: marketInfo?.marketCap && marketInfo.marketCap > 0 ? marketInfo.size : null,
         marketCapDiff: marketInfo?.marketCapDiff || null,
-        marketCapDiffBillions: marketInfo?.marketCapDiffBillions || null,
         currentPrice: marketInfo?.currentPrice || null,
         previousClose: marketInfo?.previousClose || null,
         priceChangePercent: marketInfo?.priceChangePercent || null,
+        marketCapDiffBillions: marketInfo?.marketCapDiffBillions || null,
         sharesOutstanding: marketInfo?.sharesOutstanding || null,
         // Guidance calculations
         epsGuideSurprise,

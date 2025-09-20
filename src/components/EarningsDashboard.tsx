@@ -49,6 +49,9 @@ interface EarningsData {
     fiscalPeriod: string | null;
     fiscalYear: number | null;
   } | null;
+  // Surprise calculations
+  epsSurprise: number | null;
+  revenueSurprise: number | null;
 }
 
 interface EarningsStats {
