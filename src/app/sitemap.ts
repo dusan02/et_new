@@ -11,13 +11,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
     },
     {
-      url: `${baseUrl}/api/earnings/today`,
+      url: `${baseUrl}/api/earnings`,
+      lastModified: new Date(),
+      changeFrequency: 'hourly',
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/api/earnings/stats`,
       lastModified: new Date(),
       changeFrequency: 'hourly',
       priority: 0.8,
     },
     {
-      url: `${baseUrl}/api/earnings/stats`,
+      url: `${baseUrl}/feed.xml`,
       lastModified: new Date(),
       changeFrequency: 'hourly',
       priority: 0.7,
