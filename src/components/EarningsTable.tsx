@@ -393,11 +393,11 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
             
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Est:</span>
-                <span>{formatEPS(item.epsEstimate)}</span>
+                <span className="text-gray-900">{formatEPS(item.epsEstimate)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Act:</span>
-                <span className="font-medium">{formatEPS(item.epsActual)}</span>
+                <span className="font-medium text-gray-900">{formatEPS(item.epsActual)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Surp:</span>
@@ -410,11 +410,11 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
             <div className="space-y-1">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Est:</span>
-                <span>{formatRevenue(item.revenueEstimate)}</span>
+                <span className="text-gray-900">{formatRevenue(item.revenueEstimate)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Act:</span>
-                <span className="font-medium">{formatRevenue(item.revenueActual)}</span>
+                <span className="font-medium text-gray-900">{formatRevenue(item.revenueActual)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Surp:</span>
