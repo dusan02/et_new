@@ -25,13 +25,13 @@ interface EarningsData {
   // Market data from Polygon
   companyName: string;
   size: string | null;
-  marketCap: string | null; // BigInt serialized as string
-  marketCapDiff: string | null; // BigInt serialized as string
+  marketCap: number | null; // BigInt serialized as number via serializeBigInts()
+  marketCapDiff: number | null; // BigInt serialized as number via serializeBigInts()
   marketCapDiffBillions: number | null;
   currentPrice: number | null;
   previousClose: number | null;
   priceChangePercent: number | null;
-  sharesOutstanding: string | null; // BigInt serialized as string
+  sharesOutstanding: number | null; // BigInt serialized as number via serializeBigInts()
   // Guidance calculations
   epsGuideSurprise: number | null;
   epsGuideBasis: string | null;

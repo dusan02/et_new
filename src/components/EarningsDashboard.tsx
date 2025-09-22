@@ -13,8 +13,8 @@ interface EarningsData {
   reportTime: string | null;
   epsEstimate: number | null;
   epsActual: number | null;
-  revenueEstimate: string | null; // BigInt serialized as string
-  revenueActual: string | null; // BigInt serialized as string
+  revenueEstimate: number | null; // BigInt serialized as number via serializeBigInts()
+  revenueActual: number | null; // BigInt serialized as number via serializeBigInts()
   sector: string | null;
   companyType: string | null;
   dataSource: string | null;
@@ -24,13 +24,13 @@ interface EarningsData {
   // Market data from Polygon
   companyName: string;
   size: string | null;
-  marketCap: string | null; // BigInt serialized as string
-  marketCapDiff: string | null; // BigInt serialized as string
+  marketCap: number | null; // BigInt serialized as number via serializeBigInts()
+  marketCapDiff: number | null; // BigInt serialized as number via serializeBigInts()
   marketCapDiffBillions: number | null;
   currentPrice: number | null;
   previousClose: number | null;
   priceChangePercent: number | null;
-  sharesOutstanding: string | null; // BigInt serialized as string
+  sharesOutstanding: number | null; // BigInt serialized as number via serializeBigInts()
   // Guidance calculations
   epsGuideSurprise: number | null;
   epsGuideBasis: string | null;
@@ -41,7 +41,7 @@ interface EarningsData {
   // Raw guidance data for debugging
   guidanceData: {
     estimatedEpsGuidance: number | null;
-    estimatedRevenueGuidance: string | null;
+    estimatedRevenueGuidance: number | null;
     epsGuideVsConsensusPct: number | null;
     revenueGuideVsConsensusPct: number | null;
     notes: string | null;
