@@ -64,9 +64,9 @@ DATABASE_URL=\"postgresql://earnings_user:earnings_password@postgres:5432/earnin
 REDIS_URL=\"redis://redis:6379\"
 NODE_ENV=\"production\"
 
-# API Keys - REPLACE WITH YOUR ACTUAL KEYS
-FINNHUB_API_KEY=\"your_finnhub_api_key_here\"
-POLYGON_API_KEY=\"your_polygon_api_key_here\"
+# API Keys - ACTUAL PRODUCTION KEYS
+FINNHUB_API_KEY=\"d28f1dhr01qjsuf342ogd28f1dhr01qjsuf342p0\"
+POLYGON_API_KEY=\"Vi_pMLcusE8RA_SUvkPAmiyziVzlmOoX\"
 
 # Next.js
 NEXTAUTH_URL=\"http://$SERVER_IP:3000\"

@@ -14,8 +14,8 @@ interface EarningsData {
   reportTime: string | null;
   epsEstimate: number | null;
   epsActual: number | null;
-  revenueEstimate: string | null; // BigInt serialized as string
-  revenueActual: string | null; // BigInt serialized as string
+  revenueEstimate: number | null; // API sends as number
+  revenueActual: number | null; // API sends as number
   sector: string | null;
   companyType: string | null;
   dataSource: string | null;
@@ -150,7 +150,6 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
     const sign = value >= 0 ? '+' : '';
     return `${sign}${value.toFixed(2)}%`;
   };
-
   const toNum = (v: any): number | null => {
     if (v === null || v === undefined) return null;
     if (typeof v === "number") return Number.isFinite(v) ? v : null;
@@ -182,6 +181,7 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
     if (n === null) return "N/A";
     return `${n > 0 ? "+" : ""}${n.toFixed(1)}%`;
   };
+
 
   const getPriceChangeClass = (value: number | null | undefined) => {
     if (value === null || value === undefined) return 'text-gray-500';
@@ -320,7 +320,26 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
   };
 
   // Mobile Card Component
-  const MobileCard = ({ item, index }: { item: EarningsData; index: number }) => (
+  const MobileCard = ({ item, index }: { item: EarningsData; index: number }) => {
+    
+    // Debug log pre EBF
+    if (item.ticker === 'EBF') {
+      console.log('EBF Mobile Debug:', {
+        ticker: item.ticker,
+        epsEstimate: item.epsEstimate,
+        epsEstimateType: typeof item.epsEstimate,
+        epsActual: item.epsActual,
+        epsActualType: typeof item.epsActual,
+        revenueEstimate: item.revenueEstimate,
+        revenueEstimateType: typeof item.revenueEstimate,
+        revenueActual: item.revenueActual,
+        revenueActualType: typeof item.revenueActual,
+        formatEPS_Est: formatEPS(item.epsEstimate),
+        formatEPS_Act: formatEPS(item.epsActual)
+      });
+    }
+
+    return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center space-x-3">
@@ -371,6 +390,7 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
           <div>
             <p className="text-xs text-gray-500 mb-1">EPS</p>
             <div className="space-y-1">
+            
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Est:</span>
                 <span>{formatEPS(item.epsEstimate)}</span>
@@ -406,6 +426,7 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
       </div>
     </div>
   );
+  };
 
   return (
     <div>
