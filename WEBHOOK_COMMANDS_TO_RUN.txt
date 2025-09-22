@@ -1,0 +1,41 @@
+🚀 WEBHOOK MIGRATION COMMANDS
+============================
+
+Heslo servera: EJXTfBOG2t
+
+Skopíruj a spusti tieto príkazy jeden za druhým vo svojom PowerShell:
+
+1️⃣ Nahraj webhook script:
+scp webhook-deploy.sh root@89.185.250.213:/usr/local/bin/
+
+2️⃣ Nahrај webhook config:
+scp webhook.conf root@89.185.250.213:/etc/webhook.conf
+
+3️⃣ Nastav oprávnenia:
+ssh root@89.185.250.213 "chmod +x /usr/local/bin/webhook-deploy.sh"
+
+4️⃣ Nainštaluj webhook service:
+ssh root@89.185.250.213 "apt update && apt install -y webhook"
+
+5️⃣ Spusti webhook service:
+ssh root@89.185.250.213 "pkill webhook 2>/dev/null; nohup webhook -hooks /etc/webhook.conf -verbose -port 9000 > /var/log/webhook.log 2>&1 &"
+
+6️⃣ Skontroluj či webhook beží:
+ssh root@89.185.250.213 "ps aux | grep webhook | grep -v grep"
+
+7️⃣ Otestuj webhook endpoint:
+curl -X POST http://89.185.250.213:9000/hooks/deploy-earnings-table
+
+===========================
+Po dokončení týchto príkazov:
+
+🔗 Choď na GitHub a nastav webhook:
+https://github.com/dusan02/et_new/settings/hooks
+
+Klikni "Add webhook" a zadaj:
+- Payload URL: http://89.185.250.213:9000/hooks/deploy-earnings-table
+- Content type: application/json  
+- Secret: earnings-webhook-secret-2024
+- Events: Just the push event
+
+✅ Po nastavení webhook-u bude deployment automatický pri každom push na GitHub!

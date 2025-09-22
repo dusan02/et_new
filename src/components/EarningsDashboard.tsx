@@ -209,13 +209,8 @@ export function EarningsDashboard() {
         lastUpdated={lastUpdated}
       />
       
-      <main className="flex-1 flex py-8" role="main" aria-label="Earnings dashboard main content">
-        {/* Left Ad Space - 15% */}
-        <aside className="w-[15%] bg-gray-50" aria-hidden="true" aria-label="Advertisement space">
-        </aside>
-        
-        {/* Main Content - 70% */}
-        <section className="w-[70%] px-4" aria-label="Earnings data and statistics">
+      <main className="flex-1 py-8" role="main" aria-label="Earnings dashboard main content">
+        <section className="container mx-auto px-4 max-w-7xl" aria-label="Earnings data and statistics">
           {stats && <EarningsStats stats={stats} />}
           <div className="px-0">
             <EarningsTable 
@@ -225,10 +220,6 @@ export function EarningsDashboard() {
             />
           </div>
         </section>
-        
-        {/* Right Ad Space - 15% */}
-        <aside className="w-[15%] bg-gray-50" aria-hidden="true" aria-label="Advertisement space">
-        </aside>
       </main>
       
       <Footer />

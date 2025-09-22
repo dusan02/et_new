@@ -37,42 +37,33 @@ export function Header({ lastUpdated }: HeaderProps) {
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200" role="banner">
-      <div className="flex py-6">
-        {/* Left spacer - 15% */}
-        <div className="w-[15%]"></div>
-        
-        {/* Main content - 70% */}
-        <div className="w-[70%] px-4">
-          <div className="text-left">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">
-              EARNINGS TABLE
-            </h1>
-            <time 
-              className="text-lg text-gray-600 mt-2 block" 
-              dateTime={currentDate.toISOString()}
-              aria-label={`Current date: ${currentDate.toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}`}
-            >
-              {currentDate.toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </time>
-            <div className="flex items-center gap-2 text-sm text-gray-500 mt-1" aria-live="polite" aria-label="Auto refresh status">
-              <RefreshCw className="h-4 w-4" aria-hidden="true" />
-              <span>Autorefresh</span>
-            </div>
+      <div className="container mx-auto px-4 py-6 max-w-7xl">
+        <div className="text-left">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">
+            EARNINGS TABLE
+          </h1>
+          <time 
+            className="text-lg text-gray-600 mt-2 block" 
+            dateTime={currentDate.toISOString()}
+            aria-label={`Current date: ${currentDate.toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}`}
+          >
+            {currentDate.toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </time>
+          <div className="flex items-center gap-2 text-sm text-gray-500 mt-1" aria-live="polite" aria-label="Auto refresh status">
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
+            <span>Autorefresh</span>
           </div>
         </div>
-        
-        {/* Right spacer - 15% */}
-        <div className="w-[15%]"></div>
       </div>
     </header>
   );
