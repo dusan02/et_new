@@ -141,12 +141,10 @@ export function EarningsDashboard() {
     fetchData();
   }, []);
 
-  // Force refresh when component key changes (from parent)
-  useEffect(() => {
-    fetchData();
-  }, []);
+  // Don't show full screen loader if we have some data
+  const showFullScreenLoader = isLoading && !earningsData.length && !stats;
 
-  if (isLoading && !earningsData.length) {
+  if (showFullScreenLoader) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner size="lg" />
@@ -163,7 +161,7 @@ export function EarningsDashboard() {
   }
 
   // If no earnings data, show simplified view
-  if (earningsData.length === 0) {
+  if (earningsData.length === 0 && !isLoading) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-50">
         <Header 

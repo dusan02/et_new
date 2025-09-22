@@ -21,8 +21,8 @@ import {
   getCacheAge 
 } from '@/lib/cache-utils'
 
-// Cache for 1 minute (shorter for testing)
-export const revalidate = 60
+// Cache for 5 minutes for better performance
+export const revalidate = 300
 
 export async function GET() {
   const startTime = Date.now()
@@ -50,7 +50,7 @@ export async function GET() {
         }
       }, {
         headers: {
-          'Cache-Control': 'public, max-age=60, stale-while-revalidate=120',
+          'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
           'X-Cache': 'HIT'
         }
       })

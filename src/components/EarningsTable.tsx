@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback, memo } from 'react';
 import { ArrowUpDown, ArrowUp, ArrowDown, RefreshCw } from 'lucide-react';
 import { LoadingSpinner } from './ui/LoadingSpinner';
+import { SkeletonCard, SkeletonTable } from './ui/SkeletonCard';
 // 🚫 GUIDANCE DISABLED FOR PRODUCTION - Import commented out
 // import { formatGuidePercent, getGuidanceTitle } from '@/utils/format';
 import { trackTableSort, trackTableFilter, trackViewToggle, trackRefresh } from './Analytics';
@@ -427,9 +428,19 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
 
       {/* Responsive Layout: Mobile Cards + Desktop Table */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <LoadingSpinner size="lg" />
-        </div>
+        <>
+          {/* Mobile Skeleton */}
+          <div className="lg:hidden space-y-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+          
+          {/* Desktop Skeleton */}
+          <div className="hidden lg:block">
+            <SkeletonTable />
+          </div>
+        </>
       ) : sortedData.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 bg-white rounded-lg shadow-sm border border-gray-300">
           {data.length === 0 ? (
