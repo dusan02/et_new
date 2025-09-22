@@ -163,13 +163,13 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
 
   const formatEPS = (value: any): string => {
     const n = toNum(value);
-    if (n === null) return "N/A";
+    if (n === null) return "-";
     return `$${n.toFixed(2)}`;
   };
 
   const formatRevenue = (value: any): string => {
     const n = toNum(value);
-    if (n === null) return "N/A";
+    if (n === null) return "-";
     if (n >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
     if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
     if (n >= 1e3) return `$${(n / 1e3).toFixed(1)}K`;
@@ -178,7 +178,7 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
 
   const formatSurprise = (value: any): string => {
     const n = toNum(value);
-    if (n === null) return "N/A";
+    if (n === null) return "-";
     return `${n > 0 ? "+" : ""}${n.toFixed(1)}%`;
   };
 
