@@ -41,7 +41,7 @@ interface EarningsData {
   // Raw guidance data for debugging
   guidanceData: {
     estimatedEpsGuidance: number | null;
-    estimatedRevenueGuidance: number | null;
+    estimatedRevenueGuidance: string | null;
     epsGuideVsConsensusPct: number | null;
     revenueGuideVsConsensusPct: number | null;
     notes: string | null;
