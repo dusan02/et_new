@@ -19,16 +19,19 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
+          timeout: 60s
+          command_timeout: 15m
           script: |
-            cd /opt/earnings-table
+            cd /var/www/earnings-table
             git pull origin main
-            cp prisma/schema.prod.prisma prisma/schema.prisma
-            cp production.env .env
-            docker-compose -f deployment/docker-compose.yml down
-            docker-compose -f deployment/docker-compose.yml up -d --build
+            npm install
+            npm run build
+            pkill -f "node.*next" || true
+            nohup npm start > app.log 2>&1 &
+            echo "Deployment completed"
 
       - name: Health check
         run: |
-          sleep 60
-          curl -f http://${{ secrets.HOST }}:3000 || exit 1
+          sleep 30
+          curl -f https://${{ secrets.HOST }} || exit 1
 
