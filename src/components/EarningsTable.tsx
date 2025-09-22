@@ -123,7 +123,7 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
     return num.toFixed(0);
   };
 
-  const formatMarketCap = (value: string | bigint | null) => {
+  const formatMarketCap = (value: string | bigint | number | null) => {
     if (!value) return '-';
     const num = typeof value === 'string' ? Number(value) : Number(value);
     
@@ -152,13 +152,32 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
   };
   const toNum = (v: any): number | null => {
     if (v === null || v === undefined) return null;
-    if (typeof v === "number") return Number.isFinite(v) ? v : null;
+    
+    // Handle numbers (including NaN and Infinity)
+    if (typeof v === "number") {
+      return Number.isFinite(v) ? v : null;
+    }
+    
+    // Handle strings
     if (typeof v === "string") {
       const s = v.replace(/[,$\s]/g, ""); // odstráni $ , medzery
+      if (s === "" || s === "null" || s === "undefined") return null;
       const n = Number(s);
       return Number.isFinite(n) ? n : null;
     }
-    return null;
+    
+    // Handle BigInt (should be already converted but just in case)
+    if (typeof v === "bigint") {
+      return Number(v);
+    }
+    
+    // Try to convert any other type to number
+    try {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    } catch {
+      return null;
+    }
   };
 
   const formatEPS = (value: any): string => {
@@ -322,9 +341,11 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
   // Mobile Card Component
   const MobileCard = ({ item, index }: { item: EarningsData; index: number }) => {
     
-    // Debug log pre EBF
-    if (item.ticker === 'EBF') {
-      console.log('EBF Mobile Debug:', {
+    // Debug log pre prvy ticker s dátami (rozšírené debug)
+    if (item.ticker === 'EBF' || 
+        (item.epsEstimate !== null || item.epsActual !== null || 
+         item.revenueEstimate !== null || item.revenueActual !== null)) {
+      console.log('Mobile Debug:', {
         ticker: item.ticker,
         epsEstimate: item.epsEstimate,
         epsEstimateType: typeof item.epsEstimate,
@@ -334,8 +355,16 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
         revenueEstimateType: typeof item.revenueEstimate,
         revenueActual: item.revenueActual,
         revenueActualType: typeof item.revenueActual,
+        epsSurprise: item.epsSurprise,
+        revenueSurprise: item.revenueSurprise,
+        toNum_epsEst: toNum(item.epsEstimate),
+        toNum_epsAct: toNum(item.epsActual),
+        toNum_revEst: toNum(item.revenueEstimate),
+        toNum_revAct: toNum(item.revenueActual),
         formatEPS_Est: formatEPS(item.epsEstimate),
-        formatEPS_Act: formatEPS(item.epsActual)
+        formatEPS_Act: formatEPS(item.epsActual),
+        formatRev_Est: formatRevenue(item.revenueEstimate),
+        formatRev_Act: formatRevenue(item.revenueActual)
       });
     }
 
