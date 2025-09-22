@@ -151,20 +151,36 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
     return `${sign}${value.toFixed(2)}%`;
   };
 
-  const formatEPS = (value: number | null | undefined) => {
-    if (value === null || value === undefined) return '-';
-    return `$${value.toFixed(2)}`;
+  const toNum = (v: any): number | null => {
+    if (v === null || v === undefined) return null;
+    if (typeof v === "number") return Number.isFinite(v) ? v : null;
+    if (typeof v === "string") {
+      const s = v.replace(/[,$\s]/g, ""); // odstráni $ , medzery
+      const n = Number(s);
+      return Number.isFinite(n) ? n : null;
+    }
+    return null;
   };
 
-  const formatRevenue = (value: string | null) => {
-    if (!value) return '-';
-    return formatCurrency(value);
+  const formatEPS = (value: any): string => {
+    const n = toNum(value);
+    if (n === null) return "N/A";
+    return `$${n.toFixed(2)}`;
   };
 
-  const formatSurprise = (value: number | null | undefined) => {
-    if (value === null || value === undefined) return '-';
-    const sign = value >= 0 ? '+' : '';
-    return `${sign}${value.toFixed(1)}%`;
+  const formatRevenue = (value: any): string => {
+    const n = toNum(value);
+    if (n === null) return "N/A";
+    if (n >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
+    if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
+    if (n >= 1e3) return `$${(n / 1e3).toFixed(1)}K`;
+    return `$${n.toFixed(0)}`;
+  };
+
+  const formatSurprise = (value: any): string => {
+    const n = toNum(value);
+    if (n === null) return "N/A";
+    return `${n > 0 ? "+" : ""}${n.toFixed(1)}%`;
   };
 
   const getPriceChangeClass = (value: number | null | undefined) => {
