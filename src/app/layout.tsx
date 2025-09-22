@@ -45,7 +45,7 @@ export const metadata: Metadata = {
     images: ['https://earningstable.com/og-image.png'],
   },
   verification: {
-    google: 'google-site-verification=YOUR_ACTUAL_CODE_HERE',
+    google: 'PASTE_YOUR_GOOGLE_VERIFICATION_CODE_HERE',
     yandex: 'YOUR_YANDEX_CODE_HERE',
     yahoo: 'YOUR_YAHOO_CODE_HERE',
   },
@@ -183,6 +183,23 @@ export default function RootLayout({
       <body className={inter.className} suppressHydrationWarning>
         {children}
         <Analytics measurementId="G-E6DJ7N6W1L" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                      console.log('[SW] Registration successful:', registration.scope);
+                    })
+                    .catch(function(error) {
+                      console.log('[SW] Registration failed:', error);
+                    });
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );
