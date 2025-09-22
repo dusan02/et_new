@@ -45,9 +45,9 @@ export const metadata: Metadata = {
     images: ['https://earningstable.com/og-image.png'],
   },
   verification: {
-    google: 'your-google-verification-code',
-    yandex: 'your-yandex-verification-code',
-    yahoo: 'your-yahoo-verification-code',
+    google: 'google-site-verification=YOUR_ACTUAL_CODE_HERE',
+    yandex: 'YOUR_YANDEX_CODE_HERE',
+    yahoo: 'YOUR_YAHOO_CODE_HERE',
   },
   other: {
     'msapplication-TileColor': '#3b82f6',
