@@ -302,11 +302,99 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
     );
   };
 
+  // Mobile Card Component
+  const MobileCard = ({ item, index }: { item: EarningsData; index: number }) => (
+    <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center space-x-3">
+          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">{index + 1}</span>
+          <div>
+            <h3 className="font-semibold text-lg text-gray-900">{item.ticker}</h3>
+            <p className="text-sm text-gray-600 truncate max-w-[200px]" title={item.companyName}>
+              {item.companyName || item.ticker}
+            </p>
+          </div>
+        </div>
+        {item.size && (
+          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+            {item.size}
+          </span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div>
+          <p className="text-xs text-gray-500 mb-1">Market Cap</p>
+          <p className="font-medium text-gray-900">
+            {item.marketCap ? formatMarketCap(item.marketCap) : '-'}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500 mb-1">Cap Change</p>
+          <p className={`font-medium ${getDiffClass(item.marketCapDiffBillions ? BigInt(Math.round(item.marketCapDiffBillions * 1e9)) : null)}`}>
+            {item.marketCapDiffBillions ? formatBillions(item.marketCapDiffBillions) : '-'}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500 mb-1">Price</p>
+          <p className="font-medium text-gray-900">
+            {item.currentPrice ? `$${item.currentPrice.toFixed(2)}` : '-'}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500 mb-1">Price Change</p>
+          <p className={`font-medium ${getPriceChangeClass(item.priceChangePercent)}`}>
+            {item.priceChangePercent ? formatPercentage(item.priceChangePercent) : '-'}
+          </p>
+        </div>
+      </div>
+
+      <div className="border-t border-gray-100 pt-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className="text-xs text-gray-500 mb-1">EPS</p>
+            <div className="space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Est:</span>
+                <span>{formatEPS(item.epsEstimate)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Act:</span>
+                <span className="font-medium">{formatEPS(item.epsActual)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Surp:</span>
+                <span className={getSurpriseClass(item.epsSurprise)}>{formatSurprise(item.epsSurprise)}</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 mb-1">Revenue</p>
+            <div className="space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Est:</span>
+                <span>{formatRevenue(item.revenueEstimate)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Act:</span>
+                <span className="font-medium">{formatRevenue(item.revenueActual)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Surp:</span>
+                <span className={getSurpriseClass(item.revenueSurprise)}>{formatSurprise(item.revenueSurprise)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div>
       {/* Header - Outside of table container */}
-      <div className="py-6 overflow-x-auto">
-        <div className="flex items-center justify-between min-w-max">
+      <div className="py-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 className="text-xl font-bold text-gray-900">Today's Earnings</h2>
             {data.length === 0 ? (
@@ -321,7 +409,7 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
           </div>
         </div>
         
-        <div className="mt-4 flex items-center justify-between min-w-max">
+        <div className="mt-4">
           <input
             type="text"
             placeholder="Search tickers, companies..."
@@ -332,188 +420,166 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
                 trackTableFilter('search', e.target.value);
               }
             }}
-            className="w-80 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full sm:w-80 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
-          
-          {/* 🚫 GUIDANCE DISABLED FOR PRODUCTION - View Toggle Buttons commented out */}
-          {/* 
-          <div className="flex bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => {
-                setActiveView('eps-revenue');
-                trackViewToggle('eps_revenue');
-              }}
-              className={`px-4 py-2 rounded-md font-medium transition-all ${
-                activeView === 'eps-revenue' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              EPS & Revenue
-            </button>
-            <button
-              onClick={() => {
-                setActiveView('guidance');
-                trackViewToggle('guidance');
-              }}
-              className={`px-4 py-2 rounded-md font-medium transition-all ${
-                activeView === 'guidance' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Guidance
-            </button>
-          </div>
-          */}
         </div>
       </div>
 
-      {/* Table Container with Sticky Columns */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-300 overflow-hidden">
-        {/* Table Structure - Single Table with Sticky Columns */}
-        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-          <table className="w-full border-collapse table-fixed" aria-label="Earnings table">
-            <caption className="sr-only">Company earnings data with market information</caption>
-            <colgroup>
-              {/* Sticky columns - fixed width */}
-              <col style={{ width: '25px' }} />
-              <col style={{ width: '42px' }} />
-              <col style={{ width: '143px' }} />
-              {/* Scrollable columns - uniform widths */}
-              <col style={{ width: '70px' }} />
-              <col style={{ width: '70px' }} />
-              <col style={{ width: '70px' }} />
-              <col style={{ width: '70px' }} />
-              <col style={{ width: '70px' }} />
-              <col style={{ width: '70px' }} />
-              <col style={{ width: '70px' }} />
-              <col style={{ width: '70px' }} />
-              <col style={{ width: '70px' }} />
-              <col style={{ width: '70px' }} />
-              <col style={{ width: '70px' }} />
-            </colgroup>
-              <thead className="bg-blue-100 border-b border-gray-300">
-                <tr>
-                {/* Sticky columns */}
-                <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-blue-100 z-10 border-r border-gray-200" 
-                  scope="col"
-                >
-                  <SortButton field="index" align="center">#</SortButton>
-                </th>
-                <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-[25px] bg-blue-100 z-10 border-r border-gray-200" 
-                  scope="col"
-                >
-                  <SortButton field="ticker" align="left">Ticker</SortButton>
-                </th>
-                <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-[67px] bg-blue-100 z-10 border-r border-gray-200" 
-                  scope="col"
-                >
-                  <SortButton field="company" align="left">Company</SortButton>
-                </th>
-                {/* Scrollable columns */}
-                <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
-                  scope="col"
-                >
-                  <SortButton field="size" align="center">Size</SortButton>
-                </th>
-                <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
-                  scope="col"
-                >
-                  <SortButton field="marketCap" align="right">Market Cap</SortButton>
-                </th>
-                <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
-                  scope="col"
-                >
-                  <SortButton field="marketCapDiffBillions" align="right">Cap Diff</SortButton>
-                </th>
-                <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
-                  scope="col"
-                >
-                  <SortButton field="currentPrice" align="right">Price</SortButton>
-                </th>
-                <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
-                  scope="col"
-                >
-                  <SortButton field="priceChangePercent" align="right">Change</SortButton>
-                </th>
-                <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
-                  scope="col"
-                >
-                  <SortButton field="epsEstimate" align="right">EPS Est</SortButton>
-                </th>
-                <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
-                  scope="col"
-                >
-                  <SortButton field="epsActual" align="right">EPS Act</SortButton>
-                </th>
-                <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
-                  scope="col"
-                >
-                  <SortButton field="epsSurprise" align="right">EPS Surp</SortButton>
-                </th>
-                <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
-                  scope="col"
-                >
-                  <SortButton field="revenueEstimate" align="right">Rev Est</SortButton>
-                </th>
-                <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
-                  scope="col"
-                >
-                  <SortButton field="revenueActual" align="right">Rev Act</SortButton>
-                </th>
-                <th 
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
-                  scope="col"
-                >
-                  <SortButton field="revenueSurprise" align="right">Rev Surp</SortButton>
-                </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {isLoading ? (
+      {/* Responsive Layout: Mobile Cards + Desktop Table */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <LoadingSpinner size="lg" />
+        </div>
+      ) : sortedData.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 bg-white rounded-lg shadow-sm border border-gray-300">
+          {data.length === 0 ? (
+            <div className="text-center">
+              <div className="relative inline-block mb-6">
+                <svg className="w-16 h-16 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                </svg>
+                <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+              <div className="text-xl font-semibold text-gray-700">No Earnings Scheduled</div>
+              <div className="text-sm text-gray-500 text-center max-w-md">
+                There are no earnings reports scheduled for today.<br />
+                Check back tomorrow for new earnings data.
+              </div>
+            </div>
+          ) : (
+            <div className="text-center text-gray-500">
+              No results found for your search
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* Mobile Cards View (hidden on lg+ screens) */}
+          <div className="lg:hidden space-y-4">
+            {sortedData.map((item, index) => (
+              <MobileCard key={item.ticker} item={item} index={index} />
+            ))}
+          </div>
+
+          {/* Desktop Table View (hidden on smaller screens) */}
+          <div className="hidden lg:block bg-white rounded-lg shadow-sm border border-gray-300 overflow-hidden">
+            <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+              <table className="w-full border-collapse table-fixed" aria-label="Earnings table">
+                <caption className="sr-only">Company earnings data with market information</caption>
+                <colgroup>
+                  {/* Sticky columns - fixed width */}
+                  <col style={{ width: '25px' }} />
+                  <col style={{ width: '42px' }} />
+                  <col style={{ width: '143px' }} />
+                  {/* Scrollable columns - uniform widths */}
+                  <col style={{ width: '70px' }} />
+                  <col style={{ width: '70px' }} />
+                  <col style={{ width: '70px' }} />
+                  <col style={{ width: '70px' }} />
+                  <col style={{ width: '70px' }} />
+                  <col style={{ width: '70px' }} />
+                  <col style={{ width: '70px' }} />
+                  <col style={{ width: '70px' }} />
+                  <col style={{ width: '70px' }} />
+                  <col style={{ width: '70px' }} />
+                  <col style={{ width: '70px' }} />
+                </colgroup>
+                <thead className="bg-blue-100 border-b border-gray-300">
                   <tr>
-                  <td colSpan={14} className="px-4 py-8 text-center">
-                      <LoadingSpinner size="md" />
-                    </td>
+                  {/* Sticky columns */}
+                  <th 
+                    className="text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-blue-100 z-10 border-r border-gray-200" 
+                    scope="col"
+                  >
+                    <SortButton field="index" align="center">#</SortButton>
+                  </th>
+                  <th 
+                    className="text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-[25px] bg-blue-100 z-10 border-r border-gray-200" 
+                    scope="col"
+                  >
+                    <SortButton field="ticker" align="left">Ticker</SortButton>
+                  </th>
+                  <th 
+                    className="text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-[67px] bg-blue-100 z-10 border-r border-gray-200" 
+                    scope="col"
+                  >
+                    <SortButton field="company" align="left">Company</SortButton>
+                  </th>
+                  {/* Scrollable columns */}
+                  <th 
+                    className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
+                    scope="col"
+                  >
+                    <SortButton field="size" align="center">Size</SortButton>
+                  </th>
+                  <th 
+                    className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
+                    scope="col"
+                  >
+                    <SortButton field="marketCap" align="right">Market Cap</SortButton>
+                  </th>
+                  <th 
+                    className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
+                    scope="col"
+                  >
+                    <SortButton field="marketCapDiffBillions" align="right">Cap Diff</SortButton>
+                  </th>
+                  <th 
+                    className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
+                    scope="col"
+                  >
+                    <SortButton field="currentPrice" align="right">Price</SortButton>
+                  </th>
+                  <th 
+                    className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
+                    scope="col"
+                  >
+                    <SortButton field="priceChangePercent" align="right">Change</SortButton>
+                  </th>
+                  <th 
+                    className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
+                    scope="col"
+                  >
+                    <SortButton field="epsEstimate" align="right">EPS Est</SortButton>
+                  </th>
+                  <th 
+                    className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
+                    scope="col"
+                  >
+                    <SortButton field="epsActual" align="right">EPS Act</SortButton>
+                  </th>
+                  <th 
+                    className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
+                    scope="col"
+                  >
+                    <SortButton field="epsSurprise" align="right">EPS Surp</SortButton>
+                  </th>
+                  <th 
+                    className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
+                    scope="col"
+                  >
+                    <SortButton field="revenueEstimate" align="right">Rev Est</SortButton>
+                  </th>
+                  <th 
+                    className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
+                    scope="col"
+                  >
+                    <SortButton field="revenueActual" align="right">Rev Act</SortButton>
+                  </th>
+                  <th 
+                    className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
+                    scope="col"
+                  >
+                    <SortButton field="revenueSurprise" align="right">Rev Surp</SortButton>
+                  </th>
                   </tr>
-                ) : sortedData.length === 0 ? (
-                  <tr>
-                  <td colSpan={14} className="px-4 py-8 text-center text-gray-500">
-                      {data.length === 0 ? (
-                        <div className="flex flex-col items-center space-y-4">
-                          <div className="relative">
-                            <svg className="w-16 h-16 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                            </svg>
-                            <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
-                              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                              </svg>
-                            </div>
-                          </div>
-                          <div className="text-xl font-semibold text-gray-700">No Earnings Scheduled</div>
-                          <div className="text-sm text-gray-500 text-center max-w-md">
-                            There are no earnings reports scheduled for today.<br />
-                            Check back tomorrow for new earnings data.
-                          </div>
-                        </div>
-                      ) : (
-                        "No results found for your search"
-                      )}
-                    </td>
-                  </tr>
-                ) : (
-                  sortedData.map((item, index) => (
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {sortedData.map((item, index) => (
                     <tr key={item.ticker} className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
                     {/* Sticky columns */}
                     <td className="px-2 py-3 text-sm text-gray-900 sticky left-0 bg-inherit z-10 border-r border-gray-200 text-center">
@@ -560,12 +626,13 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
                       {formatSurprise(item.revenueSurprise)}
                     </td>
                   </tr>
-                ))
-              )}
+                  ))}
                 </tbody>
               </table>
-        </div>
-      </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 });
