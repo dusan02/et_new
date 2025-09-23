@@ -221,8 +221,8 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
   return (
     <div>
       {/* Header - Outside of table container */}
-      <div className="py-6 overflow-x-auto">
-        <div className="flex items-center justify-between min-w-max">
+      <div className="py-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 className="text-xl font-bold text-gray-900">Today's Earnings</h2>
             {data.length === 0 ? (
@@ -237,7 +237,7 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
           </div>
         </div>
         
-        <div className="mt-4 flex items-center justify-between min-w-max">
+        <div className="mt-4">
           <input
             type="text"
             placeholder="Search tickers, companies..."
@@ -248,7 +248,7 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
                 trackTableFilter('search', e.target.value);
               }
             }}
-            className="w-80 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full sm:w-80 px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white placeholder-gray-500 shadow-sm"
           />
           
           {/* 🚫 GUIDANCE DISABLED FOR PRODUCTION - View Toggle Buttons commented out */}
