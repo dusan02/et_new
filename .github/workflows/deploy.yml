@@ -29,7 +29,9 @@ jobs:
             npm install
             npm run build
             pkill -f "node.*next" || true
+            sleep 3
             nohup npm start > app.log 2>&1 &
+            sleep 5
             echo "Deployment completed"
 
       - name: Health check
