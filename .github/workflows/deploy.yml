@@ -27,17 +27,11 @@ jobs:
             cd /var/www/earnings-table
             echo "🚀 Starting deployment..."
             
-            # Clean up any untracked files that might conflict
-            echo "🧹 Cleaning untracked files..."
+            # Force reset to match remote exactly
+            echo "🧹 Force resetting to remote state..."
+            git fetch origin main
+            git reset --hard origin/main
             git clean -fd
-            
-            # Stash any local changes
-            echo "💾 Stashing local changes..."
-            git stash
-            
-            # Pull latest changes
-            echo "📥 Pulling latest changes..."
-            git pull origin main
             
             # Install dependencies with cache
             echo "📦 Installing dependencies..."
