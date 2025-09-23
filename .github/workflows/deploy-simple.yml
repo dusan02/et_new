@@ -1,8 +1,6 @@
 name: Deploy to VPS (Simple)
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 jobs:
