@@ -44,18 +44,10 @@ jobs:
                 npm run build
             }
             
-            # Stop any running Next.js processes gracefully
+            # Stop any running Next.js processes (simplified)
             echo "🛑 Stopping existing processes..."
-            if pgrep -f "node.*next" > /dev/null; then
-                echo "Found running Next.js processes, stopping..."
-                pkill -TERM -f "node.*next" || true
-                sleep 3
-                # Force kill if still running
-                pkill -KILL -f "node.*next" || true
-                sleep 2
-            else
-                echo "No running Next.js processes found"
-            fi
+            pkill -f "node.*next" 2>/dev/null || echo "No processes to stop"
+            sleep 3
             
             # Start the application in background
             echo "▶️ Starting application..."
