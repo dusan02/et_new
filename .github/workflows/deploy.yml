@@ -46,27 +46,41 @@ jobs:
             echo "🏗️ Building application..."
             npm run build
             
-            # Stop any running Next.js processes
+            # Stop any running Next.js processes gracefully
             echo "🛑 Stopping existing processes..."
-            pkill -f "node.*next" || true
-            sleep 5
+            if pgrep -f "node.*next" > /dev/null; then
+                echo "Found running Next.js processes, stopping..."
+                pkill -TERM -f "node.*next" || true
+                sleep 3
+                # Force kill if still running
+                pkill -KILL -f "node.*next" || true
+                sleep 2
+            else
+                echo "No running Next.js processes found"
+            fi
             
             # Start the application in background
             echo "▶️ Starting application..."
             nohup npm start > /var/log/earnings-table.log 2>&1 &
+            APP_PID=$!
+            echo "Application started with PID: $APP_PID"
             
-            # Wait for application to start
+            # Wait for application to start with timeout
             echo "⏳ Waiting for application to start..."
-            sleep 15
+            for i in {1..20}; do
+                if curl -f http://localhost:3000 > /dev/null 2>&1; then
+                    echo "✅ Application started successfully!"
+                    break
+                fi
+                if [ $i -eq 20 ]; then
+                    echo "❌ Application failed to start within 20 seconds"
+                    echo "📋 Check logs: tail -20 /var/log/earnings-table.log"
+                    exit 1
+                fi
+                sleep 1
+            done
             
-            # Health check
-            echo "🏥 Performing health check..."
-            if curl -f http://localhost:3000 > /dev/null 2>&1; then
-                echo "✅ Deployment completed successfully!"
-            else
-                echo "❌ Health check failed. Check logs at /var/log/earnings-table.log"
-                exit 1
-            fi
+            echo "✅ Deployment completed successfully!"
 
       - name: Health check
         run: |

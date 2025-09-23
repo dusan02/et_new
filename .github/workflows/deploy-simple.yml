@@ -1,0 +1,65 @@
+name: Deploy to VPS (Simple)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to server (Simple)
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: 22
+          timeout: 180s
+          command_timeout: 25m
+          script: |
+            cd /var/www/earnings-table
+            echo "🚀 Starting simple deployment..."
+            
+            # Clean and pull
+            echo "🧹 Cleaning and pulling..."
+            git clean -fd
+            git stash
+            git pull origin main
+            
+            # Install and build
+            echo "📦 Installing dependencies..."
+            npm ci --production=false
+            
+            echo "🏗️ Building application..."
+            npm run build
+            
+            # Simple restart
+            echo "🔄 Restarting application..."
+            pkill -f "node.*next" 2>/dev/null || true
+            sleep 3
+            
+            echo "▶️ Starting application..."
+            nohup npm start > /var/log/earnings-table.log 2>&1 &
+            echo "Application started in background"
+            
+            # Quick health check
+            echo "🏥 Health check..."
+            sleep 8
+            if curl -f http://localhost:3000 > /dev/null 2>&1; then
+                echo "✅ Deployment successful!"
+            else
+                echo "⚠️ Health check inconclusive - check logs"
+            fi
+            
+            echo "🎉 Simple deployment completed!"
+
+      - name: Final health check
+        run: |
+          sleep 45
+          curl -f https://${{ secrets.HOST }} || echo "Final health check failed - may need manual verification"
