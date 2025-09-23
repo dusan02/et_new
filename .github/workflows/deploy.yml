@@ -8,6 +8,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
 
     steps:
       - name: Checkout code
@@ -20,8 +21,8 @@ jobs:
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
           port: 22
-          timeout: 120s
-          command_timeout: 20m
+          timeout: 300s
+          command_timeout: 30m
           script: |
             cd /var/www/earnings-table
             echo "🚀 Starting deployment..."
@@ -42,9 +43,12 @@ jobs:
             echo "📦 Installing dependencies..."
             npm ci --production=false
             
-            # Build the application
+            # Build the application with timeout protection
             echo "🏗️ Building application..."
-            npm run build
+            timeout 600 npm run build || {
+                echo "⚠️ Build timed out, trying again..."
+                npm run build
+            }
             
             # Stop any running Next.js processes gracefully
             echo "🛑 Stopping existing processes..."

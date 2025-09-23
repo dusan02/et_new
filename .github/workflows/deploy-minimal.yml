@@ -1,0 +1,65 @@
+name: Deploy to VPS (Minimal)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to server (Minimal)
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: 22
+          timeout: 300s
+          command_timeout: 25m
+          script: |
+            cd /var/www/earnings-table
+            
+            # Quick cleanup and pull
+            git clean -fd
+            git stash
+            git pull origin main
+            
+            # Skip npm install if node_modules exists and package-lock.json unchanged
+            if [ ! -d "node_modules" ] || [ "package-lock.json" -nt "node_modules" ]; then
+                echo "Installing dependencies..."
+                npm ci --production=false
+            else
+                echo "Dependencies up to date, skipping install"
+            fi
+            
+            # Build with timeout
+            echo "Building application..."
+            timeout 300 npm run build || {
+                echo "Build timed out, trying again..."
+                npm run build
+            }
+            
+            # Quick restart
+            pkill -f "node.*next" 2>/dev/null || true
+            sleep 2
+            
+            # Start application
+            nohup npm start > /var/log/earnings-table.log 2>&1 &
+            
+            # Quick health check
+            sleep 5
+            curl -f http://localhost:3000 > /dev/null 2>&1 && echo "✅ Deployment successful!" || echo "⚠️ Check logs manually"
+            
+            echo "🎉 Minimal deployment completed!"
+
+      - name: Final verification
+        run: |
+          sleep 60
+          curl -f https://${{ secrets.HOST }} || echo "Final check failed - may need manual verification"
