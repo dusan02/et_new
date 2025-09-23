@@ -20,27 +20,53 @@ jobs:
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
           port: 22
-          timeout: 60s
-          command_timeout: 15m
+          timeout: 120s
+          command_timeout: 20m
           script: |
             cd /var/www/earnings-table
+            echo "🚀 Starting deployment..."
+            
             # Clean up any untracked files that might conflict
+            echo "🧹 Cleaning untracked files..."
             git clean -fd
+            
             # Stash any local changes
+            echo "💾 Stashing local changes..."
             git stash
+            
             # Pull latest changes
+            echo "📥 Pulling latest changes..."
             git pull origin main
-            # Install dependencies
-            npm install
+            
+            # Install dependencies with cache
+            echo "📦 Installing dependencies..."
+            npm ci --production=false
+            
             # Build the application
+            echo "🏗️ Building application..."
             npm run build
+            
             # Stop any running Next.js processes
+            echo "🛑 Stopping existing processes..."
             pkill -f "node.*next" || true
-            sleep 3
-            # Start the application
-            npm start &
-            sleep 10
-            echo "Deployment completed"
+            sleep 5
+            
+            # Start the application in background
+            echo "▶️ Starting application..."
+            nohup npm start > /var/log/earnings-table.log 2>&1 &
+            
+            # Wait for application to start
+            echo "⏳ Waiting for application to start..."
+            sleep 15
+            
+            # Health check
+            echo "🏥 Performing health check..."
+            if curl -f http://localhost:3000 > /dev/null 2>&1; then
+                echo "✅ Deployment completed successfully!"
+            else
+                echo "❌ Health check failed. Check logs at /var/log/earnings-table.log"
+                exit 1
+            fi
 
       - name: Health check
         run: |
