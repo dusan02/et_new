@@ -24,6 +24,7 @@ jobs:
           command_timeout: 15m
           script: |
             cd /var/www/earnings-table
+            git stash
             git pull origin main
             npm install
             npm run build
@@ -35,4 +36,3 @@ jobs:
         run: |
           sleep 30
           curl -f https://${{ secrets.HOST }} || exit 1
-
