@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Favicon</title>
+</head>
+<body>
+    <canvas id="canvas" width="32" height="32" style="border: 1px solid #ccc;"></canvas>
+    <br>
+    <button onclick="downloadFavicon()">Download favicon.ico</button>
+    
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Draw calendar icon
+        ctx.fillStyle = '#3B82F6';
+        ctx.fillRect(4, 6, 24, 22);
+        ctx.fillStyle = '#1E40AF';
+        ctx.fillRect(4, 6, 24, 6);
+        
+        // Calendar rings
+        ctx.fillStyle = '#6B7280';
+        ctx.fillRect(8, 2, 2, 6);
+        ctx.fillRect(22, 2, 2, 6);
+        
+        // Grid lines
+        ctx.strokeStyle = '#E5E7EB';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(8, 12); ctx.lineTo(24, 12);
+        ctx.moveTo(8, 16); ctx.lineTo(24, 16);
+        ctx.moveTo(8, 20); ctx.lineTo(24, 20);
+        ctx.moveTo(8, 24); ctx.lineTo(24, 24);
+        ctx.moveTo(12, 8); ctx.lineTo(12, 28);
+        ctx.moveTo(16, 8); ctx.lineTo(16, 28);
+        ctx.moveTo(20, 8); ctx.lineTo(20, 28);
+        ctx.stroke();
+        
+        // Today highlight
+        ctx.fillStyle = '#F59E0B';
+        ctx.beginPath();
+        ctx.arc(16, 18, 3, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Number 8
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 6px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('8', 16, 20);
+        
+        // Earnings dots
+        ctx.fillStyle = '#10B981';
+        ctx.beginPath(); ctx.arc(10, 14, 1, 0, 2 * Math.PI); ctx.fill();
+        ctx.beginPath(); ctx.arc(18, 14, 1, 0, 2 * Math.PI); ctx.fill();
+        ctx.beginPath(); ctx.arc(10, 22, 1, 0, 2 * Math.PI); ctx.fill();
+        ctx.beginPath(); ctx.arc(18, 22, 1, 0, 2 * Math.PI); ctx.fill();
+        ctx.beginPath(); ctx.arc(10, 26, 1, 0, 2 * Math.PI); ctx.fill();
+        
+        ctx.fillStyle = '#EF4444';
+        ctx.beginPath(); ctx.arc(14, 14, 1, 0, 2 * Math.PI); ctx.fill();
+        ctx.beginPath(); ctx.arc(22, 14, 1, 0, 2 * Math.PI); ctx.fill();
+        ctx.beginPath(); ctx.arc(14, 22, 1, 0, 2 * Math.PI); ctx.fill();
+        ctx.beginPath(); ctx.arc(14, 26, 1, 0, 2 * Math.PI); ctx.fill();
+        
+        ctx.fillStyle = '#F59E0B';
+        ctx.beginPath(); ctx.arc(22, 22, 1, 0, 2 * Math.PI); ctx.fill();
+        
+        function downloadFavicon() {
+            const link = document.createElement('a');
+            link.download = 'favicon.ico';
+            link.href = canvas.toDataURL('image/x-icon');
+            link.click();
+        }
+    </script>
+</body>
+</html>
