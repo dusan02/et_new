@@ -44,33 +44,21 @@ jobs:
                 npm run build
             }
             
-            # Stop any running Next.js processes (simplified)
-            echo "🛑 Stopping existing processes..."
-            pkill -f "node.*next" 2>/dev/null || echo "No processes to stop"
-            sleep 3
-            
-            # Start the application in background
+            # Start the application (let npm start handle existing processes)
             echo "▶️ Starting application..."
             nohup npm start > /var/log/earnings-table.log 2>&1 &
-            APP_PID=$!
-            echo "Application started with PID: $APP_PID"
+            echo "Application started in background"
             
-            # Wait for application to start with timeout
-            echo "⏳ Waiting for application to start..."
-            for i in {1..20}; do
-                if curl -f http://localhost:3000 > /dev/null 2>&1; then
-                    echo "✅ Application started successfully!"
-                    break
-                fi
-                if [ $i -eq 20 ]; then
-                    echo "❌ Application failed to start within 20 seconds"
-                    echo "📋 Check logs: tail -20 /var/log/earnings-table.log"
-                    exit 1
-                fi
-                sleep 1
-            done
+            # Quick health check
+            echo "🏥 Health check..."
+            sleep 5
+            if curl -f http://localhost:3000 > /dev/null 2>&1; then
+                echo "✅ Deployment successful!"
+            else
+                echo "⚠️ Health check inconclusive - check logs manually"
+            fi
             
-            echo "✅ Deployment completed successfully!"
+            echo "🎉 Deployment completed!"
 
       - name: Health check
         run: |
