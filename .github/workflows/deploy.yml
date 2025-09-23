@@ -24,12 +24,20 @@ jobs:
           command_timeout: 15m
           script: |
             cd /var/www/earnings-table
+            # Clean up any untracked files that might conflict
+            git clean -fd
+            # Stash any local changes
             git stash
+            # Pull latest changes
             git pull origin main
+            # Install dependencies
             npm install
+            # Build the application
             npm run build
+            # Stop any running Next.js processes
             pkill -f "node.*next" || true
             sleep 3
+            # Start the application
             npm start &
             sleep 10
             echo "Deployment completed"
