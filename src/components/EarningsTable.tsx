@@ -676,7 +676,7 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
                         {item.companyName || item.ticker}
                       </td>
                     {/* Scrollable columns */}
-                    <td className="px-2 py-3 text-sm text-gray-600 whitespace-nowrap">
+                    <td className="px-2 py-3 text-sm text-gray-600 whitespace-nowrap text-center" style={{textAlign: 'center'}}>
                       {item.size && item.size !== 'Unknown' ? item.size : '-'}
                     </td>
                     <td className="px-2 py-3 text-sm text-gray-900 text-right whitespace-nowrap">

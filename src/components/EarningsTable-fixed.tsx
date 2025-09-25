@@ -443,7 +443,7 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
                         : item.ticker}
                     </td>
                     {/* Scrollable columns */}
-                    <td className="px-2 py-3 text-sm text-gray-600">
+                    <td className="px-2 py-3 text-sm text-gray-600 text-center" style={{textAlign: 'center'}}>
                       {item.size || '-'}
                     </td>
                     <td className="px-2 py-3 text-sm text-gray-900 text-right">
