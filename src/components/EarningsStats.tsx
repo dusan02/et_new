@@ -55,16 +55,25 @@ export function EarningsStats({ stats }: EarningsStatsProps) {
   }, 0);
 
   // Calculate market cap distribution
+  const megaCount = stats.sizeDistribution.find(d => d.size === 'Mega')?._count.size || 0;
   const largeCount = stats.sizeDistribution.find(d => d.size === 'Large')?._count.size || 0;
   const midCount = stats.sizeDistribution.find(d => d.size === 'Mid')?._count.size || 0;
   const smallCount = stats.sizeDistribution.find(d => d.size === 'Small')?._count.size || 0;
   
-  const largeCap = stats.sizeDistribution.find(d => d.size === 'Large')?._sum.marketCap || BigInt(0);
-  const midCap = stats.sizeDistribution.find(d => d.size === 'Mid')?._sum.marketCap || BigInt(0);
-  const smallCap = stats.sizeDistribution.find(d => d.size === 'Small')?._sum.marketCap || BigInt(0);
+  // Large + includes both Mega and Large
+  const largePlusCount = megaCount + largeCount;
+  
+  const megaCap = stats.sizeDistribution.find(d => d.size === 'Mega')?._sum.marketCap || 0;
+  const largeCap = stats.sizeDistribution.find(d => d.size === 'Large')?._sum.marketCap || 0;
+  const midCap = stats.sizeDistribution.find(d => d.size === 'Mid')?._sum.marketCap || 0;
+  const smallCap = stats.sizeDistribution.find(d => d.size === 'Small')?._sum.marketCap || 0;
+  
+  // Large + market cap includes both Mega and Large
+  const largePlusCap = megaCap + largeCap;
 
-  const formatMarketCap = (value: bigint) => {
-    const billions = Number(value) / 1e9;
+  const formatMarketCap = (value: number | bigint) => {
+    const numValue = typeof value === 'bigint' ? Number(value) : value;
+    const billions = numValue / 1e9;
     return `${billions.toFixed(0)}B`;
   };
 
@@ -100,7 +109,7 @@ export function EarningsStats({ stats }: EarningsStatsProps) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12 gap-3 md:gap-4 mb-8">
       {/* BLUE — Size buckets */}
-      <StatCard title="LARGE+" main={largeCount ?? "—"} sub={formatMarketCap(largeCap)} variant="blue" onClick={() => trackCardClick('large_cap')} />
+      <StatCard title="LARGE+" main={largePlusCount ?? "—"} sub={formatMarketCap(largePlusCap)} variant="blue" onClick={() => trackCardClick('large_cap')} />
       <StatCard title="MID" main={midCount ?? "—"} sub={formatMarketCap(midCap)} variant="blue" onClick={() => trackCardClick('mid_cap')} />
       <StatCard title="SMALL" main={smallCount ?? "—"} sub={formatMarketCap(smallCap)} variant="blue" onClick={() => trackCardClick('small_cap')} />
       <StatCard title="TOTAL" main={stats.totalEarnings ?? "—"} sub={`${(totalMarketCap / 1e9).toFixed(0)}B`} variant="blue" onClick={() => trackCardClick('total_earnings')} />
