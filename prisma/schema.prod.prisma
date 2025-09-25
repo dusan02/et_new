@@ -15,6 +15,7 @@ enum ReportTime {
 }
 
 enum CompanySize {
+  Mega
   Large
   Mid
   Small

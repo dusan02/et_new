@@ -5,7 +5,28 @@
 const NY_TIMEZONE = 'America/New_York'
 
 export function getNYDate(): Date {
-  return new Date(new Date().toLocaleString("en-US", {timeZone: NY_TIMEZONE}))
+  const now = new Date()
+  // Use Intl.DateTimeFormat to get NY timezone date components
+  const nyFormatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: NY_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  })
+  
+  const parts = nyFormatter.formatToParts(now)
+  const year = parseInt(parts.find(p => p.type === 'year')!.value)
+  const month = parseInt(parts.find(p => p.type === 'month')!.value) - 1 // JS months are 0-based
+  const day = parseInt(parts.find(p => p.type === 'day')!.value)
+  const hour = parseInt(parts.find(p => p.type === 'hour')!.value)
+  const minute = parseInt(parts.find(p => p.type === 'minute')!.value)
+  const second = parseInt(parts.find(p => p.type === 'second')!.value)
+  
+  return new Date(year, month, day, hour, minute, second)
 }
 
 export function isoDate(d = getNYDate()) {
@@ -23,6 +44,7 @@ export function getTodayStart(): Date {
   const month = String(today.getMonth() + 1).padStart(2, '0')
   const day = String(today.getDate()).padStart(2, '0')
   const dateString = `${year}-${month}-${day}`
+  // Return date in UTC format to match database storage
   return new Date(dateString + 'T00:00:00.000Z')
 }
 

@@ -241,11 +241,17 @@ async function fetchMarketData(tickers) {
 
         // Determine size based on market cap
         const marketCapFloat = Number(marketCap);
-        if (marketCapFloat >= 10_000_000_000) {
+        if (marketCapFloat > 100_000_000_000) {
+          // > $100B
+          size = "Mega";
+        } else if (marketCapFloat >= 10_000_000_000) {
+          // $10B - $100B
           size = "Large";
         } else if (marketCapFloat >= 2_000_000_000) {
+          // $2B - $10B
           size = "Mid";
         } else {
+          // < $2B
           size = "Small";
         }
       }

@@ -158,12 +158,14 @@ describe("🚀 Fetch Today Script Tests", () => {
   describe("📊 Size Classification Tests", () => {
     test("Should classify market cap sizes correctly", () => {
       const testCases = [
-        { marketCap: 500e9, expectedSize: "Large" }, // $500B
-        { marketCap: 200e9, expectedSize: "Large" }, // $200B
-        { marketCap: 50e9, expectedSize: "Mid" }, // $50B
-        { marketCap: 10e9, expectedSize: "Mid" }, // $10B
-        { marketCap: 5e9, expectedSize: "Small" }, // $5B
-        { marketCap: 2e9, expectedSize: "Small" }, // $2B
+        { marketCap: 500e9, expectedSize: "Mega" }, // $500B
+        { marketCap: 200e9, expectedSize: "Mega" }, // $200B
+        { marketCap: 150e9, expectedSize: "Mega" }, // $150B
+        { marketCap: 100e9, expectedSize: "Large" }, // $100B
+        { marketCap: 50e9, expectedSize: "Large" }, // $50B
+        { marketCap: 10e9, expectedSize: "Large" }, // $10B
+        { marketCap: 5e9, expectedSize: "Mid" }, // $5B
+        { marketCap: 2e9, expectedSize: "Mid" }, // $2B
         { marketCap: 1e9, expectedSize: "Small" }, // $1B
         { marketCap: null, expectedSize: "Unknown" }, // No market cap
       ];
@@ -171,10 +173,10 @@ describe("🚀 Fetch Today Script Tests", () => {
       testCases.forEach(({ marketCap, expectedSize }) => {
         let size = "Unknown";
         if (marketCap) {
-          if (marketCap >= 200e9) size = "Large";
-          else if (marketCap >= 10e9) size = "Mid";
-          else if (marketCap >= 2e9) size = "Small";
-          else size = "Small";
+          if (marketCap > 100e9) size = "Mega"; // > $100B
+          else if (marketCap >= 10e9) size = "Large"; // $10B - $100B
+          else if (marketCap >= 2e9) size = "Mid"; // $2B - $10B
+          else size = "Small"; // < $2B
         }
 
         expect(size).toBe(expectedSize);

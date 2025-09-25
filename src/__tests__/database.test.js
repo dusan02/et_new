@@ -202,25 +202,34 @@ describe("🗄️ Database Tests", () => {
 
     test("Calculate market cap size classification", () => {
       const testCases = [
-        { marketCap: BigInt(5000000000000), expectedSize: "Large" },
-        { marketCap: BigInt(2000000000000), expectedSize: "Large" },
-        { marketCap: BigInt(1000000000000), expectedSize: "Large" },
-        { marketCap: BigInt(500000000000), expectedSize: "Mid" },
-        { marketCap: BigInt(200000000000), expectedSize: "Mid" },
-        { marketCap: BigInt(100000000000), expectedSize: "Mid" },
-        { marketCap: BigInt(50000000000), expectedSize: "Small" },
-        { marketCap: BigInt(10000000000), expectedSize: "Small" },
+        { marketCap: BigInt(5000000000000), expectedSize: "Mega" }, // $5T
+        { marketCap: BigInt(2000000000000), expectedSize: "Mega" }, // $2T
+        { marketCap: BigInt(1000000000000), expectedSize: "Mega" }, // $1T
+        { marketCap: BigInt(500000000000), expectedSize: "Mega" }, // $500B
+        { marketCap: BigInt(200000000000), expectedSize: "Mega" }, // $200B
+        { marketCap: BigInt(150000000000), expectedSize: "Mega" }, // $150B
+        { marketCap: BigInt(100000000000), expectedSize: "Large" }, // $100B
+        { marketCap: BigInt(50000000000), expectedSize: "Large" }, // $50B
+        { marketCap: BigInt(10000000000), expectedSize: "Large" }, // $10B
+        { marketCap: BigInt(2000000000), expectedSize: "Mid" }, // $2B
+        { marketCap: BigInt(1000000000), expectedSize: "Small" }, // $1B
       ];
 
       testCases.forEach(({ marketCap, expectedSize }) => {
         let size;
         const marketCapNum = Number(marketCap);
 
-        if (marketCapNum >= 1000000000000) {
+        if (marketCapNum > 100000000000) {
+          // > $100B
+          size = "Mega";
+        } else if (marketCapNum >= 10000000000) {
+          // $10B - $100B
           size = "Large";
-        } else if (marketCapNum >= 100000000000) {
+        } else if (marketCapNum >= 2000000000) {
+          // $2B - $10B
           size = "Mid";
         } else {
+          // < $2B
           size = "Small";
         }
 
