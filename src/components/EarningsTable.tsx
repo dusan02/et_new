@@ -141,6 +141,10 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
 
   const formatBillions = (value: number | null | undefined) => {
     if (value === null || value === undefined) return '-';
+    
+    // Handle zero case
+    if (value === 0) return '0.0B';
+    
     const sign = value >= 0 ? '+' : '';
     return `${sign}${value.toFixed(1)}B`;
   };
@@ -396,8 +400,8 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
         </div>
         <div>
           <p className="text-xs text-gray-500 mb-1">Cap Change</p>
-          <p className={`font-medium ${getDiffClass(item.marketCapDiffBillions ? BigInt(Math.round(item.marketCapDiffBillions * 1e9)) : null)}`}>
-            {item.marketCapDiffBillions ? formatBillions(item.marketCapDiffBillions) : '-'}
+          <p className={`font-medium ${getDiffClass(item.marketCapDiffBillions !== null && item.marketCapDiffBillions !== undefined ? BigInt(Math.round(item.marketCapDiffBillions * 1e9)) : null)}`}>
+            {item.marketCapDiffBillions !== null && item.marketCapDiffBillions !== undefined ? formatBillions(item.marketCapDiffBillions) : '-'}
           </p>
         </div>
         <div>
@@ -409,7 +413,7 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
         <div>
           <p className="text-xs text-gray-500 mb-1">Price Change</p>
           <p className={`font-medium ${getPriceChangeClass(item.priceChangePercent)}`}>
-            {item.priceChangePercent ? formatPercentage(item.priceChangePercent) : '-'}
+            {item.priceChangePercent !== null && item.priceChangePercent !== undefined ? formatPercentage(item.priceChangePercent) : '-'}
           </p>
         </div>
       </div>
@@ -682,14 +686,14 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
                     <td className="px-2 py-3 text-sm text-gray-900 text-right whitespace-nowrap">
                       {item.marketCap ? formatMarketCap(item.marketCap) : '-'}
                     </td>
-                    <td className={`px-2 py-3 text-sm text-right whitespace-nowrap ${getDiffClass(item.marketCapDiffBillions ? BigInt(Math.round(item.marketCapDiffBillions * 1e9)) : null)}`}>
-                      {item.marketCapDiffBillions ? formatBillions(item.marketCapDiffBillions) : '-'}
+                    <td className={`px-2 py-3 text-sm text-right whitespace-nowrap ${getDiffClass(item.marketCapDiffBillions !== null && item.marketCapDiffBillions !== undefined ? BigInt(Math.round(item.marketCapDiffBillions * 1e9)) : null)}`}>
+                      {item.marketCapDiffBillions !== null && item.marketCapDiffBillions !== undefined ? formatBillions(item.marketCapDiffBillions) : '-'}
                     </td>
                     <td className="px-2 py-3 text-sm text-gray-900 text-right whitespace-nowrap">
                       {item.currentPrice ? `$${item.currentPrice.toFixed(2)}` : '-'}
                     </td>
                     <td className={`px-2 py-3 text-sm text-right whitespace-nowrap ${getPriceChangeClass(item.priceChangePercent)}`}>
-                      {item.priceChangePercent ? formatPercentage(item.priceChangePercent) : '-'}
+                      {item.priceChangePercent !== null && item.priceChangePercent !== undefined ? formatPercentage(item.priceChangePercent) : '-'}
                     </td>
                     <td className="px-2 py-3 text-sm text-gray-600 text-right whitespace-nowrap">
                       {formatEPS(item.epsEstimate)}

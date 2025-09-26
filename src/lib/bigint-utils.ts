@@ -47,10 +47,14 @@ export function formatCurrency(value: bigint | number | null): string {
 }
 
 export function formatMarketCapDiff(value: bigint | number | null): string {
-  if (!value) return '-';
+  if (value === null || value === undefined) return '-';
   const num = typeof value === 'bigint' ? Number(value) : value;
+  
+  // Handle zero case
+  if (num === 0) return '0B';
+  
   const absNum = Math.abs(num);
-  const sign = num >= 0 ? '+' : '';
+  const sign = num >= 0 ? '+' : '-';
   
   if (absNum >= 1e12) {
     return `${sign}${(absNum / 1e12).toFixed(1)}T`;

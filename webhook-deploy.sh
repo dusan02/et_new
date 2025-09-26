@@ -1,63 +1,55 @@
 #!/bin/bash
 
-# Webhook Deployment Script for EarningsTable
-# This will run on the server when GitHub sends a webhook
+# Webhook Deployment Script for Earnings Table
+# This script is triggered by GitHub webhook on push to main branch
 
 set -e
 
 echo "🚀 Starting webhook deployment..."
+echo "📅 $(date)"
 
-# Configuration
-REPO_URL="https://github.com/dusan02/et_new.git"
-APP_DIR="/var/www/earnings-table"
-BACKUP_DIR="/var/backups/earnings-table"
+# Set working directory
+cd /var/www/earnings-table
 
-# Create backup
-echo "📦 Creating backup..."
-mkdir -p $BACKUP_DIR
-if [ -d "$APP_DIR" ]; then
-    cp -r $APP_DIR $BACKUP_DIR/backup-$(date +%Y%m%d-%H%M%S)
-fi
+# 1. Pull latest changes
+echo "📥 Pulling latest changes from GitHub..."
+git pull origin main
 
-# Stop services
-echo "⏹️ Stopping services..."
-cd $APP_DIR 2>/dev/null || true
-docker-compose -f deployment/docker-compose.yml down 2>/dev/null || true
+# 2. Install dependencies
+echo "📦 Installing dependencies..."
+npm ci --production
 
-# Clone/update repository
-echo "📥 Updating repository..."
-if [ -d "$APP_DIR" ]; then
-    cd $APP_DIR
-    git fetch origin
-    git reset --hard origin/main
-    git clean -fd
-else
-    mkdir -p $(dirname $APP_DIR)
-    git clone $REPO_URL $APP_DIR
-    cd $APP_DIR
-fi
+# 3. Generate Prisma client
+echo "🔧 Generating Prisma client..."
+npx prisma generate
 
-# Copy required files for Docker
-echo "📋 Setting up Docker environment..."
-cp src/queue/package*.json ./
-cp production.env .env
+# 4. Build application
+echo "🏗️ Building application..."
+npm run build
 
-# Build and start services
-echo "🔨 Building and starting services..."
-docker-compose -f deployment/docker-compose.yml up -d --build
+# 5. Stop existing processes
+echo "🛑 Stopping existing processes..."
+pkill -f "next" 2>/dev/null || true
+sleep 2
 
-# Wait for services to be ready
-echo "⏳ Waiting for services..."
-sleep 30
+# 6. Start application
+echo "▶️ Starting application..."
+NODE_ENV=production nohup npm start > /var/log/earnings-table.log 2>&1 &
 
-# Health check
-echo "🏥 Running health check..."
-if curl -f http://localhost:3000/api/earnings > /dev/null 2>&1; then
+# 7. Wait for startup
+echo "⏳ Waiting for application to start..."
+sleep 10
+
+# 8. Health check
+echo "🏥 Performing health check..."
+if curl -f http://localhost:3000 > /dev/null 2>&1; then
     echo "✅ Deployment successful!"
-    echo "🌐 Application is running at http://89.185.250.213:3000"
+    echo "🌐 Application is running at http://localhost:3000"
 else
-    echo "❌ Health check failed"
-    exit 1
+    echo "⚠️ Health check failed, but deployment may still be starting"
+    echo "📋 Check logs: tail -f /var/log/earnings-table.log"
 fi
 
 echo "🎉 Webhook deployment completed!"
+echo "📅 $(date)"
+

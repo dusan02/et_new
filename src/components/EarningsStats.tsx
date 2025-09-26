@@ -84,6 +84,10 @@ export function EarningsStats({ stats }: EarningsStatsProps) {
 
   const formatBillions = (value: number | null) => {
     if (value === null || value === undefined) return '-';
+    
+    // Handle zero case  
+    if (value === 0) return '0.0B';
+    
     return `${value > 0 ? '+' : ''}${value.toFixed(1)}B`;
   };
 
@@ -117,14 +121,14 @@ export function EarningsStats({ stats }: EarningsStatsProps) {
       {/* GREEN — Winners */}
       <StatCard title="PRICE" main={topPriceGainer?.ticker ?? "—"} sub={fmtPct(topPriceGainer?.priceChangePercent)} variant="green" onClick={() => trackCardClick('top_price_gainer')} />
       <StatCard title="CAP DIFF" main={topCapGainer?.ticker ?? "—"} sub={fmtBill(topCapGainer?.marketCapDiffBillions)} variant="green" onClick={() => trackCardClick('top_cap_gainer')} />
-      <StatCard title="EPS BEAT" main={stats.epsBeat?.ticker ?? "—"} sub={stats.epsBeat ? `+${((stats.epsBeat.epsActual - stats.epsBeat.epsEstimate) / Math.abs(stats.epsBeat.epsEstimate) * 100).toFixed(1)}%` : "—"} variant="green" onClick={() => trackCardClick('eps_beat')} />
-      <StatCard title="REV BEAT" main={stats.revenueBeat?.ticker ?? "—"} sub={stats.revenueBeat ? `+${((Number(stats.revenueBeat.revenueActual) - Number(stats.revenueBeat.revenueEstimate)) / Number(stats.revenueBeat.revenueEstimate) * 100).toFixed(1)}%` : "—"} variant="green" onClick={() => trackCardClick('revenue_beat')} />
+      <StatCard title="EPS BEAT" main={stats.epsBeat?.ticker ?? "—"} sub={stats.epsBeat && stats.epsBeat.epsEstimate !== 0 ? `+${((stats.epsBeat.epsActual - stats.epsBeat.epsEstimate) / Math.abs(stats.epsBeat.epsEstimate) * 100).toFixed(1)}%` : "—"} variant="green" onClick={() => trackCardClick('eps_beat')} />
+      <StatCard title="REV BEAT" main={stats.revenueBeat?.ticker ?? "—"} sub={stats.revenueBeat && Number(stats.revenueBeat.revenueEstimate) !== 0 ? `+${((Number(stats.revenueBeat.revenueActual) - Number(stats.revenueBeat.revenueEstimate)) / Math.abs(Number(stats.revenueBeat.revenueEstimate)) * 100).toFixed(1)}%` : "—"} variant="green" onClick={() => trackCardClick('revenue_beat')} />
 
       {/* RED — Losers */}
       <StatCard title="PRICE" main={topPriceLoser?.ticker ?? "—"} sub={fmtPct(topPriceLoser?.priceChangePercent)} variant="red" onClick={() => trackCardClick('top_price_loser')} />
       <StatCard title="CAP DIFF" main={topCapLoser?.ticker ?? "—"} sub={fmtBill(topCapLoser?.marketCapDiffBillions)} variant="red" onClick={() => trackCardClick('top_cap_loser')} />
-      <StatCard title="EPS MISS" main={stats.epsMiss?.ticker ?? "—"} sub={stats.epsMiss ? `${((stats.epsMiss.epsActual - stats.epsMiss.epsEstimate) / Math.abs(stats.epsMiss.epsEstimate) * 100).toFixed(1)}%` : "—"} variant="red" onClick={() => trackCardClick('eps_miss')} />
-      <StatCard title="REV MISS" main={stats.revenueMiss?.ticker ?? "—"} sub={stats.revenueMiss ? `${((Number(stats.revenueMiss.revenueActual) - Number(stats.revenueMiss.revenueEstimate)) / Number(stats.revenueMiss.revenueEstimate) * 100).toFixed(1)}%` : "—"} variant="red" onClick={() => trackCardClick('revenue_miss')} />
+      <StatCard title="EPS MISS" main={stats.epsMiss?.ticker ?? "—"} sub={stats.epsMiss && stats.epsMiss.epsEstimate !== 0 ? `${((stats.epsMiss.epsActual - stats.epsMiss.epsEstimate) / Math.abs(stats.epsMiss.epsEstimate) * 100).toFixed(1)}%` : "—"} variant="red" onClick={() => trackCardClick('eps_miss')} />
+      <StatCard title="REV MISS" main={stats.revenueMiss?.ticker ?? "—"} sub={stats.revenueMiss && Number(stats.revenueMiss.revenueEstimate) !== 0 ? `${((Number(stats.revenueMiss.revenueActual) - Number(stats.revenueMiss.revenueEstimate)) / Math.abs(Number(stats.revenueMiss.revenueEstimate)) * 100).toFixed(1)}%` : "—"} variant="red" onClick={() => trackCardClick('revenue_miss')} />
     </div>
   );
 }
