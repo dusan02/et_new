@@ -79,7 +79,7 @@ services:
     command: >
       sh -c "
         npm run db:generate &&
-        node src/workers/production-cron.js
+        node src/queue/worker-new.js
       "
     restart: unless-stopped
 

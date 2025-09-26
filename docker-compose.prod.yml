@@ -72,6 +72,13 @@ services:
       - redis
     volumes:
       - ./logs:/app/logs
+      - ./src:/app/src
+      - ./prisma:/app/prisma
+    command: >
+      sh -c "
+        npm run db:generate &&
+        node src/queue/worker-new.js
+      "
     networks:
       - earnings-network
 
