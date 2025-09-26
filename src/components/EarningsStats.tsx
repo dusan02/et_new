@@ -63,10 +63,10 @@ export function EarningsStats({ stats }: EarningsStatsProps) {
   // Large + includes both Mega and Large
   const largePlusCount = megaCount + largeCount;
   
-  const megaCap = stats.sizeDistribution.find(d => d.size === 'Mega')?._sum.marketCap || 0;
-  const largeCap = stats.sizeDistribution.find(d => d.size === 'Large')?._sum.marketCap || 0;
-  const midCap = stats.sizeDistribution.find(d => d.size === 'Mid')?._sum.marketCap || 0;
-  const smallCap = stats.sizeDistribution.find(d => d.size === 'Small')?._sum.marketCap || 0;
+  const megaCap = Number(stats.sizeDistribution.find(d => d.size === 'Mega')?._sum.marketCap || 0);
+  const largeCap = Number(stats.sizeDistribution.find(d => d.size === 'Large')?._sum.marketCap || 0);
+  const midCap = Number(stats.sizeDistribution.find(d => d.size === 'Mid')?._sum.marketCap || 0);
+  const smallCap = Number(stats.sizeDistribution.find(d => d.size === 'Small')?._sum.marketCap || 0);
   
   // Large + market cap includes both Mega and Large
   const largePlusCap = megaCap + largeCap;
