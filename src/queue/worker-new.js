@@ -1,7 +1,7 @@
 const cron = require("node-cron");
 const { spawn } = require("child_process");
 const path = require("path");
-require("dotenv").config();
+require("dotenv").config({ path: path.join(__dirname, "../../.env") });
 
 console.log("🚀 Starting Earnings Queue Worker with NY Timezone...");
 

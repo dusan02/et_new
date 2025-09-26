@@ -67,16 +67,18 @@ async function fetchPolygonMarketData(tickers: string[]) {
           { params: { apikey: POLY }, timeout: 10000 }
         )
         
-        // Get last trade price
+        // Get current price using snapshot (works with Starter plan)
         let currentPrice = null
+        let todaysChangePerc = null
         try {
-          const { data: lastTradeData } = await axios.get(
-            `https://api.polygon.io/v2/last/trade/${ticker}`,
+          const { data: snapshotData } = await axios.get(
+            `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers/${ticker}`,
             { params: { apikey: POLY }, timeout: 10000 }
           )
-          currentPrice = lastTradeData?.results?.p || null
+          currentPrice = snapshotData?.ticker?.day?.c || null
+          todaysChangePerc = snapshotData?.ticker?.todaysChangePerc || null
         } catch (error) {
-          console.warn(`Failed to fetch last trade for ${ticker}, using prev close:`, (error as Error).message)
+          console.warn(`Failed to fetch snapshot for ${ticker}, using prev close:`, (error as Error).message)
         }
         
         // Get company name
@@ -99,8 +101,8 @@ async function fetchPolygonMarketData(tickers: string[]) {
           return null
         }
         
-        // Calculate price change percentage
-        const priceChangePercent = ((current - prevClose) / prevClose) * 100
+        // Use API-provided change percentage if available, otherwise calculate
+        const priceChangePercent = todaysChangePerc !== null ? todaysChangePerc : ((current - prevClose) / prevClose) * 100
         
         // Check for extreme price changes (more than 50% in either direction)
         if (Math.abs(priceChangePercent) > 50) {
