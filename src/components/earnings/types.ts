@@ -55,6 +55,7 @@ export interface EarningsStats {
 }
 
 export type SortField = 
+  | 'index'
   | 'ticker' 
   | 'companyName' 
   | 'size' 
