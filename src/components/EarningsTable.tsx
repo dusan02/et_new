@@ -253,7 +253,7 @@ export default function EarningsTable({
             >
               <option value="">All Sizes</option>
               {uniqueSizes.map(size => (
-                <option key={size} value={size}>{size}</option>
+                <option key={size} value={size || ''}>{size}</option>
               ))}
             </select>
       </div>
