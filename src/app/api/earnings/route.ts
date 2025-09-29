@@ -1,7 +1,9 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getTodayStart, getNYTimeString } from '@/lib/dates'
 import { serializeBigInts } from '@/lib/bigint-utils'
+import { validateRequest, checkRateLimit, earningsQuerySchema, type EarningsQuery } from '@/lib/validation'
+import { getMonitoring } from '@/lib/monitoring'
 
 // Simple surprise calculation function
 function calculateSurprise(actual: number | null, estimate: number | null): number | null {
@@ -24,11 +26,64 @@ import {
 // Cache for 5 minutes for better performance
 export const revalidate = 300
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const startTime = Date.now()
+  let monitoring: any = null
+  
   try {
-    // Use dynamic date based on NY timezone
-    const today = getTodayStart()
+    // Initialize monitoring
+    try {
+      monitoring = getMonitoring()
+    } catch (error) {
+      console.warn('Monitoring not available:', error)
+    }
+    
+    // 1. Rate limiting check
+    const clientIP = request.headers.get('x-forwarded-for') || 
+                     request.headers.get('x-real-ip') || 
+                     'unknown'
+    
+    if (!checkRateLimit(clientIP, 60, 60000)) { // 60 requests per minute
+      // Track rate limit hit
+      if (monitoring) {
+        monitoring.trackMetric({
+          name: 'api.rate_limit_hit',
+          value: 1,
+          tags: { endpoint: '/api/earnings', ip: clientIP }
+        })
+      }
+      
+      return NextResponse.json(
+        { error: 'Rate limit exceeded', message: 'Too many requests. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': '60' } }
+      )
+    }
+    
+    // 2. Input validation
+    const validation = validateRequest(earningsQuerySchema, request)
+    if (!validation.success) {
+      // Track validation error
+      if (monitoring) {
+        monitoring.trackMetric({
+          name: 'api.validation_error',
+          value: 1,
+          tags: { endpoint: '/api/earnings', error_type: 'validation' }
+        })
+      }
+      
+      return NextResponse.json(
+        { 
+          error: 'Invalid request parameters',
+          details: validation.error.details
+        },
+        { status: 400 }
+      )
+    }
+    
+    const { date: requestedDate, ticker, limit, offset, sector, reportTime } = validation.data
+    
+    // 3. Use validated date or default to today
+    const today = requestedDate ? new Date(requestedDate + 'T00:00:00.000Z') : getTodayStart()
     
     console.log(`[API] Starting earnings fetch for date: ${today.toISOString().split('T')[0]} (NY time: ${getNYTimeString()})`)
     
@@ -319,6 +374,24 @@ export async function GET() {
     
   } catch (error) {
     console.error('[API] Error:', error)
+    
+    // Track error
+    if (monitoring) {
+      monitoring.trackError({
+        error: error instanceof Error ? error : new Error(String(error)),
+        context: {
+          endpoint: '/api/earnings',
+          method: 'GET',
+          duration: Date.now() - startTime
+        }
+      })
+    }
+    
+    // Track failed API call
+    if (monitoring) {
+      monitoring.trackAPICall('/api/earnings', 'GET', Date.now() - startTime, 500)
+    }
+    
     return NextResponse.json(
       { error: 'Internal Server Error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

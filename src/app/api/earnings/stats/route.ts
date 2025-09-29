@@ -1,15 +1,42 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { serializeBigInts } from '@/lib/bigint-utils';
 import { prisma } from '@/lib/prisma';
 import { getTodayStart, getNYTimeString } from '@/lib/dates';
+import { validateRequest, checkRateLimit, statsQuerySchema } from '@/lib/validation';
 
 // Cache for 5 minutes
 export const revalidate = 300
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Use dynamic date based on NY timezone
-    const today = getTodayStart();
+    // 1. Rate limiting check
+    const clientIP = request.headers.get('x-forwarded-for') || 
+                     request.headers.get('x-real-ip') || 
+                     'unknown'
+    
+    if (!checkRateLimit(clientIP, 60, 60000)) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded' },
+        { status: 429, headers: { 'Retry-After': '60' } }
+      )
+    }
+    
+    // 2. Input validation
+    const validation = validateRequest(statsQuerySchema, request)
+    if (!validation.success) {
+      return NextResponse.json(
+        { 
+          error: 'Invalid request parameters',
+          details: validation.error.details
+        },
+        { status: 400 }
+      )
+    }
+    
+    const { date: requestedDate } = validation.data
+    
+    // 3. Use validated date or default to today
+    const today = requestedDate ? new Date(requestedDate + 'T00:00:00.000Z') : getTodayStart();
     
     console.log(`[STATS] Fetching stats for date: ${today.toISOString().split('T')[0]} (NY time: ${getNYTimeString()})`);
 

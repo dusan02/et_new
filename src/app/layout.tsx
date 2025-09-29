@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Analytics } from '@/components/Analytics';
+import { SimpleMonitoringProvider, SimpleErrorBoundary } from '@/components/SimpleMonitoringProvider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -181,7 +182,11 @@ export default function RootLayout({
         />
       </head>
       <body className={inter.className} suppressHydrationWarning>
-        {children}
+        <SimpleMonitoringProvider>
+          <SimpleErrorBoundary>
+            {children}
+          </SimpleErrorBoundary>
+        </SimpleMonitoringProvider>
         <Analytics measurementId="G-E6DJ7N6W1L" />
         <script
           dangerouslySetInnerHTML={{

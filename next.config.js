@@ -6,12 +6,9 @@ const nextConfig = {
   env: {
     DATABASE_URL: process.env.DATABASE_URL || "file:./dev.db",
     REDIS_URL: process.env.REDIS_URL,
-    POLYGON_API_KEY:
-      process.env.POLYGON_API_KEY || "Vi_pMLcusE8RA_SUvkPAmiyziVzlmOoX",
-    FINNHUB_API_KEY:
-      process.env.FINNHUB_API_KEY || "d28f1dhr01qjsuf342ogd28f1dhr01qjsuf342p0",
-    BENZINGA_API_KEY:
-      process.env.POLYGON_API_KEY || "Vi_pMLcusE8RA_SUvkPAmiyziVzlmOoX",
+    POLYGON_API_KEY: process.env.POLYGON_API_KEY,
+    FINNHUB_API_KEY: process.env.FINNHUB_API_KEY,
+    BENZINGA_API_KEY: process.env.BENZINGA_API_KEY,
   },
 
   // Performance optimizations

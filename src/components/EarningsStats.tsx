@@ -50,23 +50,35 @@ interface EarningsStatsProps {
 }
 
 export function EarningsStats({ stats }: EarningsStatsProps) {
-  const totalMarketCap = stats.sizeDistribution.reduce((sum, item) => {
+  // Handle undefined stats gracefully
+  if (!stats) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">📊 Earnings Statistics</h2>
+        <div className="text-gray-500 text-center py-8">
+          No statistics available
+        </div>
+      </div>
+    );
+  }
+
+  const totalMarketCap = stats.sizeDistribution?.reduce((sum, item) => {
     return sum + (item._sum.marketCap ? Number(item._sum.marketCap) : 0);
-  }, 0);
+  }, 0) || 0;
 
   // Calculate market cap distribution
-  const megaCount = stats.sizeDistribution.find(d => d.size === 'Mega')?._count.size || 0;
-  const largeCount = stats.sizeDistribution.find(d => d.size === 'Large')?._count.size || 0;
-  const midCount = stats.sizeDistribution.find(d => d.size === 'Mid')?._count.size || 0;
-  const smallCount = stats.sizeDistribution.find(d => d.size === 'Small')?._count.size || 0;
+  const megaCount = stats.sizeDistribution?.find(d => d.size === 'Mega')?._count.size || 0;
+  const largeCount = stats.sizeDistribution?.find(d => d.size === 'Large')?._count.size || 0;
+  const midCount = stats.sizeDistribution?.find(d => d.size === 'Mid')?._count.size || 0;
+  const smallCount = stats.sizeDistribution?.find(d => d.size === 'Small')?._count.size || 0;
   
   // Large + includes both Mega and Large
   const largePlusCount = megaCount + largeCount;
   
-  const megaCap = Number(stats.sizeDistribution.find(d => d.size === 'Mega')?._sum.marketCap || 0);
-  const largeCap = Number(stats.sizeDistribution.find(d => d.size === 'Large')?._sum.marketCap || 0);
-  const midCap = Number(stats.sizeDistribution.find(d => d.size === 'Mid')?._sum.marketCap || 0);
-  const smallCap = Number(stats.sizeDistribution.find(d => d.size === 'Small')?._sum.marketCap || 0);
+  const megaCap = Number(stats.sizeDistribution?.find(d => d.size === 'Mega')?._sum.marketCap || 0);
+  const largeCap = Number(stats.sizeDistribution?.find(d => d.size === 'Large')?._sum.marketCap || 0);
+  const midCap = Number(stats.sizeDistribution?.find(d => d.size === 'Mid')?._sum.marketCap || 0);
+  const smallCap = Number(stats.sizeDistribution?.find(d => d.size === 'Small')?._sum.marketCap || 0);
   
   // Large + market cap includes both Mega and Large
   const largePlusCap = megaCap + largeCap;
@@ -92,19 +104,19 @@ export function EarningsStats({ stats }: EarningsStatsProps) {
   };
 
   // Get best performers
-  const topPriceGainer = stats.topGainers[0];
-  const topCapGainer = stats.topGainers.reduce((prev, current) => {
+  const topPriceGainer = stats.topGainers?.[0];
+  const topCapGainer = stats.topGainers?.length ? stats.topGainers.reduce((prev, current) => {
     const currentValue = current.marketCapDiffBillions || 0;
     const prevValue = prev.marketCapDiffBillions || 0;
     return currentValue > prevValue ? current : prev;
-  }, stats.topGainers[0]);
+  }, stats.topGainers[0]) : undefined;
   
-  const topPriceLoser = stats.topLosers[0];
-  const topCapLoser = stats.topLosers.reduce((prev, current) => {
+  const topPriceLoser = stats.topLosers?.[0];
+  const topCapLoser = stats.topLosers?.length ? stats.topLosers.reduce((prev, current) => {
     const currentValue = current.marketCapDiffBillions || 0;
     const prevValue = prev.marketCapDiffBillions || 0;
     return currentValue < prevValue ? current : prev;
-  }, stats.topLosers[0]);
+  }, stats.topLosers[0]) : undefined;
 
   // Utility functions
   const fmtPct = (v?: number) => (v == null ? "—" : `${v > 0 ? "+" : ""}${v.toFixed(2)}%`);

@@ -56,8 +56,9 @@ interface EarningsData {
 }
 
 interface EarningsTableProps {
-  data: EarningsData[];
+  data?: EarningsData[];
   isLoading: boolean;
+  error?: Error | null;
   onRefresh: () => void;
 }
 
@@ -78,7 +79,7 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTableProps) => {
+export const EarningsTable = memo(({ data, isLoading, error, onRefresh }: EarningsTableProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<string>('marketCap');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -223,6 +224,11 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
 
   // Filter and sort data
   const filteredAndSortedData = useMemo(() => {
+    // Handle undefined or empty data
+    if (!data || data.length === 0) {
+      return [];
+    }
+    
     let filtered = data;
 
     // Apply search filter
@@ -462,19 +468,19 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
   };
 
   return (
-    <div>
+    <div data-testid="earnings-table">
       {/* Header - Outside of table container */}
       <div className="py-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 className="text-xl font-bold text-gray-900">Today's Earnings</h2>
-            {data.length === 0 ? (
+            {!data || data.length === 0 ? (
               <p className="text-sm text-gray-600 mt-1">
                 No companies reporting earnings today
               </p>
             ) : (
               <p className="text-sm text-gray-600 mt-1">
-                {data.length} companies reporting earnings today - includes actual EPS and Revenues reporting
+                {data?.length || 0} companies reporting earnings today - includes actual EPS and Revenues reporting
               </p>
             )}
           </div>
@@ -504,8 +510,26 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
       </div>
 
       {/* Responsive Layout: Mobile Cards + Desktop Table */}
-      {isLoading ? (
-        <>
+      {error ? (
+        <div data-testid="error-message" className="flex flex-col items-center justify-center py-12 bg-red-50 rounded-lg border border-red-200">
+          <div className="text-center">
+            <div className="w-16 h-16 mx-auto mb-4 text-red-500">
+              <svg fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-red-900 mb-2">Failed to fetch data</h3>
+            <p className="text-red-700 mb-4">{error.message}</p>
+            <button 
+              onClick={onRefresh}
+              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      ) : isLoading ? (
+        <div data-testid="loading-spinner">
           {/* Mobile Skeleton */}
           <div className="lg:hidden space-y-4">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -517,10 +541,10 @@ export const EarningsTable = memo(({ data, isLoading, onRefresh }: EarningsTable
           <div className="hidden lg:block">
             <SkeletonTable />
           </div>
-        </>
+        </div>
       ) : sortedData.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 bg-white rounded-lg shadow-sm border border-gray-300">
-          {data.length === 0 ? (
+          {!data || data.length === 0 ? (
             <div className="text-center">
               <div className="relative inline-block mb-6">
                 <svg className="w-16 h-16 text-gray-400" fill="currentColor" viewBox="0 0 20 20">

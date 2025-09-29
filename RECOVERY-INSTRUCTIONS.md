@@ -21,6 +21,7 @@
 ## 🔄 NÁVRAT NA STABILNÚ VERZIU:
 
 ### 1️⃣ LOCALHOST RECOVERY:
+
 ```bash
 # V D:\Projects\EarningsTableUbuntu\
 git fetch --tags
@@ -31,6 +32,7 @@ npm run dev
 ```
 
 ### 2️⃣ PRODUCTION RECOVERY (89.185.250.213):
+
 ```bash
 ssh root@89.185.250.213
 # Heslo: EJXTfBOG2t
@@ -44,6 +46,7 @@ docker-compose -f deployment/docker-compose.yml up -d
 ```
 
 ### 3️⃣ PRODUCTION RECOVERY (earningstable.com):
+
 ```bash
 ssh root@earningstable.com
 # Heslo: EJXTfBOG2t
@@ -71,6 +74,7 @@ docker-compose -f deployment/docker-compose.yml up -d
 ## 🧪 TEST PO RECOVERY:
 
 1. **API Test:**
+
    ```bash
    curl http://localhost:3000/api/earnings
    ```
@@ -101,3 +105,4 @@ git reset --hard 1097aa9
 ---
 
 **🎯 ZÁLOŽNÁ VERZIA JE KONZEROVANÁ A CHRÁNENÁ!** 🛡️
+
