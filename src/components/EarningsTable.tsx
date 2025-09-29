@@ -147,9 +147,9 @@ export default function EarningsTable({
     // Ensure Mega comes first, then Large, Mid, Small
     const order = ['Mega', 'Large', 'Mid', 'Small'];
     return sortedSizes.sort((a, b) => {
-      const aIndex = order.indexOf(a);
-      const bIndex = order.indexOf(b);
-      if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
+      const aIndex = order.indexOf(a || '');
+      const bIndex = order.indexOf(b || '');
+      if (aIndex === -1 && bIndex === -1) return (a || '').localeCompare(b || '');
       if (aIndex === -1) return 1;
       if (bIndex === -1) return -1;
       return aIndex - bIndex;
