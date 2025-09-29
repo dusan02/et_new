@@ -140,20 +140,29 @@ export default function EarningsTable({
   const hasActiveFilters = filterConfig.searchTerm || 
     filterConfig.sizeFilter;
 
+  // Pomôcky pre typovú bezpečnosť
+  const isNonEmptyString = (v: unknown): v is string =>
+    typeof v === "string" && v.length > 0;
+
+  const ORDER = new Map<string, number>([
+    ["Mega", 0],
+    ["Large", 1],
+    ["Mid", 2],
+    ["Small", 3],
+  ]);
+  const rank = (s: string) => ORDER.get(s) ?? Number.POSITIVE_INFINITY;
+
   // Get unique values for filters
   const uniqueSizes = useMemo(() => {
     const sizes = new Set(data.map(item => item.size).filter(Boolean));
-    const sortedSizes = Array.from(sizes).sort();
-    // Ensure Mega comes first, then Large, Mid, Small
-    const order = ['Mega', 'Large', 'Mid', 'Small'];
-    return sortedSizes.sort((a, b) => {
-      const aIndex = order.indexOf(a || '');
-      const bIndex = order.indexOf(b || '');
-      if (aIndex === -1 && bIndex === -1) return (a || '').localeCompare(b || '');
-      if (aIndex === -1) return 1;
-      if (bIndex === -1) return -1;
-      return aIndex - bIndex;
+    const sortedSizes = Array.from(sizes);
+    // ✅ nová bezpečná verzia: odfiltrujeme null/undefined, potom stabilné triedenie
+    const normalizedSizes = (sortedSizes ?? []).filter(isNonEmptyString);
+    const sorted = normalizedSizes.sort((a, b) => {
+      const diff = rank(a) - rank(b);
+      return diff !== 0 ? diff : a.localeCompare(b);
     });
+    return sorted;
   }, [data]);
 
   if (isLoading) {
@@ -252,9 +261,13 @@ export default function EarningsTable({
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 dark:bg-gray-200 text-gray-900 dark:text-gray-900"
             >
               <option value="">All Sizes</option>
-              {uniqueSizes.map(size => (
-                <option key={size} value={size || ''}>{size}</option>
-              ))}
+              {Array.from(new Set(uniqueSizes ?? []))
+                .filter(isNonEmptyString)
+                .map(size => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
             </select>
       </div>
 

@@ -1,33 +1,43 @@
-// Cache utilities for API routes
+// Silné typy pre cache + utility
+export type CacheEntry<T> = {
+  data: T;
+  timestamp: number;   // ms od epochy
+  ttlMs?: number;      // voliteľná expirácia
+};
 
-// Simple in-memory cache
-const apiCache = new Map<string, { data: any; timestamp: number }>()
-const CACHE_TTL = 1 * 60 * 1000 // 1 minute (reduced for testing)
+// Centrálna cache – ak nechceš singleton, exportni factory.
+const cache = new Map<string, CacheEntry<unknown>>();
 
-// Function to clear cache
-export function clearCache() {
-  apiCache.clear()
-  console.log('[CACHE] Cleared all cached data')
+export function setCache<T>(key: string, data: T, ttlMs?: number): void {
+  cache.set(key, { data, timestamp: Date.now(), ttlMs });
 }
 
-// Function to get cached data
-export function getCachedData(key: string) {
-  const cached = apiCache.get(key)
-  if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
-    return cached
-  }
-  return null
+export function getCache<T>(key: string): CacheEntry<T> | null {
+  const entry = cache.get(key) as CacheEntry<T> | undefined;
+  return entry ?? null;
 }
 
-// Function to set cached data
-export function setCachedData(key: string, data: any) {
-  apiCache.set(key, {
-    data,
-    timestamp: Date.now()
-  })
+export function getCacheAgeMs(entry: Pick<CacheEntry<unknown>, "timestamp">): number {
+  return Date.now() - entry.timestamp;
 }
 
-// Function to get cache age
-export function getCacheAge(timestamp: number) {
-  return Math.round((Date.now() - timestamp) / 1000)
+export function getCacheAgeSeconds(entry: Pick<CacheEntry<unknown>, "timestamp">): number {
+  return Math.floor(getCacheAgeMs(entry) / 1000);
 }
+
+export function isExpired(entry: CacheEntry<unknown>): boolean {
+  return entry.ttlMs !== undefined && getCacheAgeMs(entry) > entry.ttlMs;
+}
+
+// Backward compatibility aliases
+export const getCachedData = getCache;
+export const setCachedData = setCache;
+export const getCacheAge = getCacheAgeSeconds;
+export const clearCache = () => cache.clear();
+
+// Príklad použitia v kóde:
+// const cached = getCache<MyType>(key);
+// if (cached && !isExpired(cached)) {
+//   console.log(`[CACHE] HIT - age: ${getCacheAgeSeconds(cached)}s`);
+//   return cached.data;
+// }
