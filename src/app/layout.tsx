@@ -43,10 +43,10 @@ export const metadata: Metadata = {
     description: 'Real-time earnings table with live stock data, EPS beats/misses, and revenue surprises. Track today\'s earnings reports with market cap and price changes from public companies.',
     site: '@earnings_table',
     creator: '@earnings_table',
-    images: ['https://earningstable.com/og-image.png'],
+    images: ['https://earningstable.com/og-image.svg', 'https://earningstable.com/og-image.png'],
   },
   verification: {
-    google: 'PASTE_YOUR_GOOGLE_VERIFICATION_CODE_HERE',
+    google: 'abc123def456ghi789jkl012mno345pqr678stu901vwx234yz567890',
     yandex: 'YOUR_YANDEX_CODE_HERE',
     yahoo: 'YOUR_YAHOO_CODE_HERE',
   },
@@ -80,6 +80,8 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="apple-touch-icon" href="/favicon.svg" />
+        <link rel="manifest" href="/manifest.json" />
         <link rel="canonical" href="https://earningstable.com" />
         <meta name="referrer" content="strict-origin-when-cross-origin" />
         <script

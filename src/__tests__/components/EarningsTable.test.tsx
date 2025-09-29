@@ -6,7 +6,7 @@
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
-import { EarningsTable } from '@/components/EarningsTable'
+import { OptimizedEarningsTable } from '@/components/earnings'
 
 // Mock SWR
 jest.mock('swr', () => ({
@@ -88,7 +88,7 @@ describe('EarningsTable Component', () => {
       isLoading: true,
     })
 
-    render(<EarningsTable data={[]} isLoading={true} error={null} onRefresh={() => {}} />)
+    render(<OptimizedEarningsTable />)
     
     expect(screen.getByTestId('loading-spinner')).toBeInTheDocument()
   })
@@ -101,7 +101,7 @@ describe('EarningsTable Component', () => {
       isLoading: false,
     })
 
-    render(<EarningsTable data={[]} isLoading={false} error={new Error('Failed to fetch data')} onRefresh={() => {}} />)
+    render(<OptimizedEarningsTable />)
     
     expect(screen.getByTestId('error-message')).toBeInTheDocument()
     expect(screen.getByText(/failed to fetch data/i)).toBeInTheDocument()
@@ -115,7 +115,7 @@ describe('EarningsTable Component', () => {
       isLoading: false,
     })
 
-    render(<EarningsTable data={[]} isLoading={false} error={null} onRefresh={() => {}} />)
+    render(<OptimizedEarningsTable />)
     
     expect(screen.getByText(/no earnings scheduled/i)).toBeInTheDocument()
   })
@@ -128,7 +128,7 @@ describe('EarningsTable Component', () => {
       isLoading: false,
     })
 
-    render(<EarningsTable data={mockEarningsData} isLoading={false} error={null} onRefresh={() => {}} />)
+    render(<OptimizedEarningsTable />)
 
     // Check table headers
     expect(screen.getByText('Company')).toBeInTheDocument()
@@ -152,7 +152,7 @@ describe('EarningsTable Component', () => {
       isLoading: false,
     })
 
-    render(<EarningsTable data={mockEarningsData} isLoading={false} error={null} onRefresh={() => {}} />)
+    render(<OptimizedEarningsTable />)
 
     // AAPL should show EPS beat (1.52 vs 1.50)
     const appleRow = screen.getByText('AAPL').closest('tr')
@@ -171,7 +171,7 @@ describe('EarningsTable Component', () => {
       isLoading: false,
     })
 
-    render(<EarningsTable data={mockEarningsData} isLoading={false} error={null} onRefresh={() => {}} />)
+    render(<OptimizedEarningsTable />)
     
     // Check positive price change for AAPL (+1.18%)
     expect(screen.getByText(/\+1\.18%/)).toBeInTheDocument()
@@ -188,7 +188,7 @@ describe('EarningsTable Component', () => {
       isLoading: false,
     })
 
-    render(<EarningsTable data={mockEarningsData} isLoading={false} error={null} onRefresh={() => {}} />)
+    render(<OptimizedEarningsTable />)
     
     // Check market cap formatting (should show in trillions)
     expect(screen.getAllByText(/3\.0T/)[0]).toBeInTheDocument() // AAPL
@@ -203,7 +203,7 @@ describe('EarningsTable Component', () => {
       isLoading: false,
     })
 
-    render(<EarningsTable data={mockEarningsData} isLoading={false} error={null} onRefresh={() => {}} />)
+    render(<OptimizedEarningsTable />)
     
     // Click on market cap header to sort (use role selector for table header)
     const marketCapHeader = screen.getByRole('button', { name: 'Market Cap' })
@@ -224,7 +224,7 @@ describe('EarningsTable Component', () => {
       isLoading: false,
     })
 
-    render(<EarningsTable data={mockEarningsData} isLoading={false} error={null} onRefresh={() => {}} />)
+    render(<OptimizedEarningsTable />)
     
     // Search for specific ticker
     const searchInput = screen.getByPlaceholderText(/search/i)
@@ -245,7 +245,7 @@ describe('EarningsTable Component', () => {
       isLoading: false,
     })
 
-    render(<EarningsTable data={mockEarningsData} isLoading={false} error={null} onRefresh={() => {}} />)
+    render(<OptimizedEarningsTable />)
     
     // AAPL should have guidance data (get the table cell version)
     const appleCells = screen.getAllByText('AAPL')
@@ -273,7 +273,7 @@ describe('EarningsTable Component', () => {
       isLoading: false,
     })
 
-    render(<EarningsTable data={mockEarningsData} isLoading={false} error={null} onRefresh={() => {}} />)
+    render(<OptimizedEarningsTable />)
     
     // Check if mobile layout is applied (test-id should exist)
     expect(screen.getByTestId('earnings-table')).toBeInTheDocument()

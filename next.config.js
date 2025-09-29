@@ -8,7 +8,7 @@ const nextConfig = {
     REDIS_URL: process.env.REDIS_URL,
     POLYGON_API_KEY: process.env.POLYGON_API_KEY,
     FINNHUB_API_KEY: process.env.FINNHUB_API_KEY,
-    BENZINGA_API_KEY: process.env.BENZINGA_API_KEY,
+    // BENZINGA_API_KEY: process.env.BENZINGA_API_KEY, // Not used anymore
   },
 
   // Performance optimizations

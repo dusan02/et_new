@@ -11,7 +11,7 @@ const envSchema = z.object({
   // API Keys (required for data fetching)
   POLYGON_API_KEY: z.string().min(1, 'POLYGON_API_KEY is required for market data'),
   FINNHUB_API_KEY: z.string().min(1, 'FINNHUB_API_KEY is required for earnings data'),
-  BENZINGA_API_KEY: z.string().optional(),
+  // BENZINGA_API_KEY: z.string().optional(), // Not used anymore
   
   // Application
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),

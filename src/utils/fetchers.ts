@@ -2,6 +2,37 @@
  * Optimized API fetchers with batch processing and retry logic
  */
 
+/**
+ * Retry function with exponential backoff
+ */
+export async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  options: RetryOptions = { maxRetries: 3, baseDelay: 1000, maxDelay: 10000 }
+): Promise<T> {
+  let lastError: Error;
+  
+  for (let attempt = 0; attempt <= options.maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+      
+      if (attempt === options.maxRetries) {
+        throw lastError;
+      }
+      
+      const delay = Math.min(
+        options.baseDelay * Math.pow(2, attempt),
+        options.maxDelay
+      );
+      
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError!;
+}
+
 interface RetryOptions {
   maxRetries: number;
   baseDelay: number;
@@ -28,44 +59,7 @@ async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function retryWithBackoff<T>(
-  fn: () => Promise<T>,
-  options: RetryOptions
-): Promise<FetchResult<T>> {
-  let lastError: Error | null = null;
-  
-  for (let attempt = 0; attempt <= options.maxRetries; attempt++) {
-    try {
-      const data = await fn();
-      return {
-        success: true,
-        data,
-        retryCount: attempt
-      };
-    } catch (error) {
-      lastError = error as Error;
-      
-      if (attempt === options.maxRetries) {
-        break;
-      }
-      
-      // Exponential backoff with jitter
-      const delay = Math.min(
-        options.baseDelay * Math.pow(2, attempt) + Math.random() * 1000,
-        options.maxDelay
-      );
-      
-      console.log(`[RETRY] Attempt ${attempt + 1} failed, retrying in ${delay}ms:`, error);
-      await sleep(delay);
-    }
-  }
-  
-  return {
-    success: false,
-    error: lastError?.message || 'Unknown error',
-    retryCount: options.maxRetries
-  };
-}
+// Removed duplicate retryWithBackoff function - using the exported one above
 
 /**
  * Batch fetch with Promise.allSettled for resilience

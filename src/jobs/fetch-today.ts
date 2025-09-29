@@ -1,7 +1,19 @@
 import dotenv from 'dotenv'
 dotenv.config()
 import { prisma } from '@/lib/prisma'
-import { isoDate, getNYDate, getNYTimeString } from '@/lib/dates'
+import { isoDate, getTodayStart, getNYTimeString } from '@/modules/shared'
+import { 
+  EarningsService, 
+  CreateEarningsInput,
+  calculateSurprise 
+} from '@/modules/earnings'
+import { 
+  MarketDataService,
+  CreateMarketDataInput,
+  calculateMarketCapDifference,
+  validateMarketCapInputs 
+} from '@/modules/market-data'
+import { UnifiedDataFetcher } from '@/modules/data-integration/services/unified-fetcher.service'
 import axios from 'axios'
 
 console.log('Environment variables:', {
@@ -15,12 +27,73 @@ console.log('Current NY time:', getNYTimeString())
 const FINN = process.env.FINNHUB_API_KEY!
 const POLY = process.env.POLYGON_API_KEY!
 
+/**
+ * Retry function for API calls with exponential backoff
+ * @param fn - Function to retry
+ * @param maxRetries - Maximum number of retries
+ * @param baseDelay - Base delay in milliseconds
+ * @returns Promise with result or throws error
+ */
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>, 
+  maxRetries: number = 3, 
+  baseDelay: number = 1000,
+  ticker?: string
+): Promise<T> {
+  let lastError: Error
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn()
+    } catch (error) {
+      lastError = error as Error
+      
+      if (attempt === maxRetries) {
+        // Final attempt failed
+        if (ticker) {
+          console.warn(`Final retry failed for ${ticker} after ${maxRetries + 1} attempts:`, lastError.message)
+        }
+        throw lastError
+      }
+      
+      // Check if it's a rate limit error (429) or server error (5xx)
+      const isRetryableError = 
+        (error as any)?.response?.status === 429 || 
+        (error as any)?.response?.status >= 500 ||
+        (error as any)?.code === 'ECONNRESET' ||
+        (error as any)?.code === 'ETIMEDOUT'
+      
+      if (!isRetryableError) {
+        // Don't retry for client errors (4xx) except rate limits
+        throw lastError
+      }
+      
+      const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000 // Add jitter
+      
+      if (ticker) {
+        console.warn(`Attempt ${attempt + 1}/${maxRetries + 1} failed for ${ticker}, retrying in ${delay.toFixed(0)}ms:`, lastError.message)
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+  }
+  
+  throw lastError!
+}
+
+// Validation function moved to @/modules/market-data
+
 async function fetchFinnhubEarnings(date: string) {
   const url = 'https://finnhub.io/api/v1/calendar/earnings'
-  const { data } = await axios.get(url, { 
-    params: { from: date, to: date, token: FINN },
-    timeout: 30000
-  })
+  const { data } = await retryWithBackoff(
+    () => axios.get(url, { 
+      params: { from: date, to: date, token: FINN },
+      timeout: 30000
+    }),
+    3, // maxRetries for earnings data
+    2000, // baseDelay
+    'Finnhub-Earnings'
+  )
   
   if (!data || !data.earningsCalendar || !Array.isArray(data.earningsCalendar)) {
     console.warn('No earnings data received from Finnhub')
@@ -58,24 +131,50 @@ async function fetchPolygonMarketData(tickers: string[]) {
   
   console.log(`📦 Processing ${tickers.length} tickers in ${batches.length} batches of ${BATCH_SIZE}`)
   
-  for (const batch of batches) {
-    const batchPromises = batch.map(async (ticker) => {
+  // Process all batches in parallel for maximum performance
+  const batchPromises = batches.map(async (batch, batchIndex) => {
+    const tickerPromises = batch.map(async (ticker) => {
       try {
-        // Get previous close price
-        const { data: prevData } = await axios.get(
-          `https://api.polygon.io/v2/aggs/ticker/${ticker}/prev`,
-          { params: { apikey: POLY }, timeout: 10000 }
+        // Get previous close price with retry
+        const { data: prevData } = await retryWithBackoff(
+          () => axios.get(
+            `https://api.polygon.io/v2/aggs/ticker/${ticker}/prev`,
+            { params: { apikey: POLY }, timeout: 10000 }
+          ),
+          2, // maxRetries
+          1000, // baseDelay
+          ticker
         )
         
         // Get current price using snapshot (works with Starter plan)
         let currentPrice = null
         let todaysChangePerc = null
         try {
-          const { data: snapshotData } = await axios.get(
-            `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers/${ticker}`,
-            { params: { apikey: POLY }, timeout: 10000 }
+          const { data: snapshotData } = await retryWithBackoff(
+            () => axios.get(
+              `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers/${ticker}`,
+              { params: { apikey: POLY }, timeout: 10000 }
+            ),
+            2, // maxRetries
+            1000, // baseDelay
+            ticker
           )
-          currentPrice = snapshotData?.ticker?.day?.c || null
+          // Get current price - day.c can be 0 during pre-market, so calculate from prevDay + change
+          const dayClose = snapshotData?.ticker?.day?.c
+          const prevDayClose = snapshotData?.ticker?.prevDay?.c
+          const todaysChange = snapshotData?.ticker?.todaysChange
+          
+          if (dayClose && dayClose > 0) {
+            // Market is open and we have today's close
+            currentPrice = dayClose
+          } else if (prevDayClose && todaysChange !== null && todaysChange !== undefined) {
+            // Pre-market: calculate current price from previous close + today's change
+            currentPrice = prevDayClose + todaysChange
+            console.log(`${ticker}: Using calculated current price: ${prevDayClose} + ${todaysChange} = ${currentPrice}`)
+          } else {
+            currentPrice = null
+          }
+          
           todaysChangePerc = snapshotData?.ticker?.todaysChangePerc || null
         } catch (error) {
           console.warn(`Failed to fetch snapshot for ${ticker}, using prev close:`, (error as Error).message)
@@ -84,9 +183,14 @@ async function fetchPolygonMarketData(tickers: string[]) {
         // Get company name
         let companyName = null
         try {
-          const { data: profileData } = await axios.get(
-            `https://api.polygon.io/v3/reference/tickers/${ticker}`,
-            { params: { apikey: POLY }, timeout: 10000 }
+          const { data: profileData } = await retryWithBackoff(
+            () => axios.get(
+              `https://api.polygon.io/v3/reference/tickers/${ticker}`,
+              { params: { apikey: POLY }, timeout: 10000 }
+            ),
+            2, // maxRetries
+            1000, // baseDelay
+            ticker
           )
           companyName = profileData?.results?.name || null
         } catch (error) {
@@ -94,15 +198,15 @@ async function fetchPolygonMarketData(tickers: string[]) {
         }
         
         const prevClose = prevData?.results?.[0]?.c || null
-        const current = currentPrice || prevClose
+        const current = currentPrice // Don't fallback to prevClose
         
-        if (!prevClose || !current) {
-          console.warn(`Failed to fetch ticker details for ${ticker}: No data available`)
+        if (!prevClose) {
+          console.warn(`Failed to fetch previous close for ${ticker}: No data available`)
           return null
         }
         
-        // Use API-provided change percentage if available, otherwise calculate
-        const priceChangePercent = todaysChangePerc !== null ? todaysChangePerc : ((current - prevClose) / prevClose) * 100
+        // Only calculate price change if we have current price, otherwise set to 0
+        const priceChangePercent = current ? (todaysChangePerc !== null ? todaysChangePerc : ((current - prevClose) / prevClose) * 100) : 0
         
         // Check for extreme price changes (more than 50% in either direction)
         if (Math.abs(priceChangePercent) > 50) {
@@ -114,9 +218,14 @@ async function fetchPolygonMarketData(tickers: string[]) {
         let sharesOutstanding = null
         
         try {
-          const { data: profileData } = await axios.get(
-            `https://api.polygon.io/v3/reference/tickers/${ticker}`,
-            { params: { apikey: POLY }, timeout: 10000 }
+          const { data: profileData } = await retryWithBackoff(
+            () => axios.get(
+              `https://api.polygon.io/v3/reference/tickers/${ticker}`,
+              { params: { apikey: POLY }, timeout: 10000 }
+            ),
+            2, // maxRetries
+            1000, // baseDelay
+            ticker
           )
           sharesOutstanding = profileData?.results?.share_class_shares_outstanding || null
         } catch (error) {
@@ -131,22 +240,36 @@ async function fetchPolygonMarketData(tickers: string[]) {
         let marketCap = null
         if (current && sharesOutstanding) {
           marketCap = current * sharesOutstanding
+        } else if (prevClose && sharesOutstanding) {
+          // Fallback to previous close for market cap calculation
+          marketCap = prevClose * sharesOutstanding
         }
         
-        // Calculate market cap difference (current vs previous day)
+        // Calculate market cap difference (current vs previous day) with validation
         let marketCapDiff = null
         let marketCapDiffBillions = null
-        if (marketCap && sharesOutstanding && prevClose) {
-          const prevMarketCap = prevClose * sharesOutstanding
-          marketCapDiff = ((marketCap - prevMarketCap) / prevMarketCap) * 100
-          
-          // Check for extreme market cap changes
-          if (Math.abs(marketCapDiff) > 100) {
-            console.warn(`Extreme market cap change detected for ${ticker}: ${marketCapDiff.toFixed(2)}%. Setting to null.`)
-            marketCapDiff = null
+        
+        // Use market data module for calculation
+        // If current price is null, treat it as no change (use prevClose for calculation)
+        const priceForCalculation = current || prevClose
+        const calculationResult = calculateMarketCapDifference({
+          currentPrice: priceForCalculation,
+          previousClose: prevClose,
+          sharesOutstanding: sharesOutstanding ? BigInt(sharesOutstanding) : null,
+          ticker
+        })
+        
+        if (calculationResult.isValid) {
+          // If we used prevClose as current price, the difference should be 0
+          if (!current && priceForCalculation === prevClose) {
+            marketCapDiff = 0
+            marketCapDiffBillions = 0
           } else {
-            marketCapDiffBillions = (marketCap - prevMarketCap) / 1e9
+            marketCapDiff = calculationResult.marketCapDiff
+            marketCapDiffBillions = calculationResult.marketCapDiffBillions
           }
+        } else {
+          console.warn(`❌ Pre-market data update error: ${calculationResult.validationErrors.join(', ')}`)
         }
         
         // Determine company size
@@ -160,7 +283,7 @@ async function fetchPolygonMarketData(tickers: string[]) {
         
         return {
           ticker,
-          currentPrice: current,
+          currentPrice: current || prevClose, // Return prevClose if no current price for display purposes
           previousClose: prevClose,
           priceChangePercent,
           companyName: companyName || ticker, // Fallback to ticker if company name is null
@@ -179,25 +302,30 @@ async function fetchPolygonMarketData(tickers: string[]) {
       }
     })
     
-    const results = await Promise.all(batchPromises)
+    const tickerResults = await Promise.all(tickerPromises)
     
     // Filter out null results and add to marketData
-    results.forEach((result, index) => {
+    const batchResults: any[] = []
+    tickerResults.forEach((result, index) => {
       if (result) {
         marketData[batch[index]] = result
+        batchResults.push(result)
       }
     })
     
     // Log progress
-    const successfulCount = results.filter(r => r !== null).length
-    const failedCount = results.length - successfulCount
-    console.log(`📊 Batch ${batches.indexOf(batch) + 1}/${batches.length} completed: ${successfulCount} successful, ${failedCount} failed`)
+    const successfulCount = batchResults.length
+    const failedCount = tickerResults.length - successfulCount
+    console.log(`📊 Batch ${batchIndex + 1}/${batches.length} completed: ${successfulCount} successful, ${failedCount} failed`)
     
-    // Small delay between batches
-    if (batches.indexOf(batch) < batches.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 100))
-    }
-  }
+    return batchResults
+  })
+  
+  // Wait for all batches to complete in parallel
+  const allBatchResults = await Promise.all(batchPromises)
+  const totalSuccessful = allBatchResults.flat().length
+  
+  console.log(`🎉 All batches completed! Total successful: ${totalSuccessful}/${tickers.length}`)
   
   return marketData
 }
@@ -294,48 +422,29 @@ async function upsertMarketData(marketData: Record<string, any>, reportDate: Dat
 async function main() {
   try {
     const date = process.env.DATE || isoDate()
-    console.log(`Starting data fetch for ${date} (NY time: ${getNYTimeString()})`)
+    console.log(`Starting unified data fetch for ${date} (NY time: ${getNYTimeString()})`)
     
-    // Fetch earnings data from Finnhub
-    console.log('Fetching earnings data from Finnhub...')
-    const earningsData = await fetchFinnhubEarnings(date)
-    console.log(`Found ${earningsData.length} earnings records`)
+    // Použi nový UnifiedDataFetcher
+    const fetcher = new UnifiedDataFetcher()
+    const result = await fetcher.fetchAllData({
+      date,
+      maxRetries: 3,
+      batchSize: 10,
+      delayBetweenBatches: 1000
+    })
     
-    // Upsert earnings data
-    const earningsCount = await upsertEarningsData(earningsData)
-    console.log(`Upserted ${earningsCount} earnings records`)
-    
-    // Get unique tickers for market data
-    const tickers = Array.from(new Set(earningsData.map((e: any) => e.ticker).filter(Boolean))) as string[]
-    
-    if (tickers.length > 0) {
-      console.log(`Fetching market data for ${tickers.length} tickers...`)
-      const marketData = await fetchPolygonMarketData(tickers)
-      console.log(`Found market data for ${Object.keys(marketData).length} tickers`)
-      
-      // Upsert market data
-      const marketCount = await upsertMarketData(marketData, new Date(date))
-      console.log(`Upserted ${marketCount} market records`)
+    if (!result.success) {
+      console.error('Unified fetch failed:', result.errors)
+      throw new Error(`Fetch failed: ${result.errors.join(', ')}`)
     }
     
-    // 🚫 GUIDANCE DISABLED FOR PRODUCTION - Fetch guidance data commented out
-    // if (tickers.length > 0) {
-    //   console.log(`Fetching guidance data for ${tickers.length} tickers...`)
-    //   const guidanceData = await fetchBenzingaGuidance(tickers)
-    //   console.log(`Found ${guidanceData.length} guidance records`)
-    //   
-    //   // Upsert guidance data
-    //   const guidanceCount = await upsertGuidanceData(guidanceData)
-    //   console.log(`Upserted ${guidanceCount} guidance records`)
-    // }
-    
-    console.log('Data fetch completed successfully!')
+    console.log('Unified data fetch completed successfully!')
     
     return {
       date,
-      earningsCount,
-      marketCount: tickers.length > 0 ? await upsertMarketData(await fetchPolygonMarketData(tickers), new Date(date)) : 0,
-      totalTickers: tickers.length,
+      earningsCount: result.earningsCount,
+      marketCount: result.marketCount,
+      totalTickers: result.totalTickers,
     }
   } catch (error) {
     console.error('Error in main fetch process:', error)

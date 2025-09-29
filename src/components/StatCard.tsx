@@ -38,27 +38,74 @@ export default function StatCard({
     <div
       onClick={onClick}
       className={clsx(
-        "relative bg-white rounded-xl border border-gray-200",
-        "shadow-sm hover:shadow-md transition-shadow",
-        "p-4 md:p-5 min-h-[100px]",
+        "relative group overflow-hidden",
+        "bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl",
+        "rounded-lg border border-gray-300 dark:border-gray-600",
+        "shadow-2xl hover:shadow-3xl",
+        "transition-all duration-300 ease-out",
+        "p-3 sm:p-4 md:p-6 min-h-[90px] sm:min-h-[100px] md:min-h-[110px] w-full",
         "flex flex-col justify-between",
+        "hover:scale-105 hover:rotate-1 animate-fade-in",
         align === "center" ? "items-center text-center" : "items-start text-left",
-        // top accent bar
-        "before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-1.5 before:rounded-t-xl",
-        variantBar[variant],
         onClick ? "cursor-pointer" : "",
         className
       )}
     >
-      <div className="text-[11px] uppercase text-gray-500 font-semibold whitespace-nowrap">
-        {title}
+      {/* Animated background gradient */}
+      <div className={clsx(
+        "absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500",
+        variant === "blue" ? "bg-gradient-to-br from-blue-400 via-blue-500 to-blue-600" : "",
+        variant === "green" ? "bg-gradient-to-br from-emerald-400 via-green-500 to-emerald-600" : "",
+        variant === "red" ? "bg-gradient-to-br from-red-400 via-rose-500 to-red-600" : ""
+      )} />
+      
+      
+      {/* Content */}
+      <div className="relative z-10 h-full flex flex-col justify-between px-1 py-3">
+        <div className={clsx(
+          "text-xs uppercase font-semibold tracking-wider text-center whitespace-nowrap",
+          variant === "blue" ? "text-blue-700 dark:text-blue-300" : "",
+          variant === "green" ? "text-emerald-700 dark:text-emerald-300" : "",
+          variant === "red" ? "text-red-700 dark:text-red-300" : ""
+        )}>
+          {title}
+        </div>
+        <div className={clsx(
+          "text-sm sm:text-base font-bold leading-tight tabular-nums flex items-center justify-center",
+          variant === "blue" ? "text-blue-900 dark:text-blue-100" : "",
+          variant === "green" ? "text-emerald-900 dark:text-emerald-100" : "",
+          variant === "red" ? "text-red-900 dark:text-red-100" : ""
+        )}>
+          {main ?? "—"}
+        </div>
+        <div className={clsx(
+          "text-xs font-medium leading-tight tabular-nums text-center",
+          variant === "blue" ? "text-blue-600 dark:text-blue-400" : "",
+          variant === "green" ? "text-emerald-600 dark:text-emerald-400" : "",
+          variant === "red" ? "text-red-600 dark:text-red-400" : ""
+        )}>
+          {sub ?? "—"}
+        </div>
       </div>
-      <div className="text-sm font-semibold text-gray-900 leading-tight tabular-nums">
-        {main ?? "—"}
-      </div>
-      <div className={clsx("text-sm leading-5 tabular-nums", variantSubText[variant])}>
-        {sub ?? "—"}
-      </div>
+      
+      {/* Top accent line */}
+      <div className={clsx(
+        "absolute top-0 left-0 right-0 h-1 rounded-t-lg opacity-60 transition-opacity duration-300",
+        variant === "blue" ? "bg-gradient-to-r from-blue-400 to-blue-600" : "",
+        variant === "green" ? "bg-gradient-to-r from-emerald-400 to-emerald-600" : "",
+        variant === "red" ? "bg-gradient-to-r from-red-400 to-red-600" : ""
+      )} />
+      
+      {/* Bottom accent line */}
+      <div className={clsx(
+        "absolute bottom-0 left-0 right-0 h-1 rounded-b-lg opacity-60 transition-opacity duration-300",
+        variant === "blue" ? "bg-gradient-to-r from-blue-400 to-blue-600" : "",
+        variant === "green" ? "bg-gradient-to-r from-emerald-400 to-emerald-600" : "",
+        variant === "red" ? "bg-gradient-to-r from-red-400 to-red-600" : ""
+      )} />
+      
+      {/* Glassmorphism effect */}
+      <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-white/20 to-transparent pointer-events-none" />
     </div>
   );
 }

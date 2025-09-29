@@ -1,0 +1,14 @@
+OG IMAGE PLACEHOLDER
+====================
+
+This file indicates that og-image.png needs to be created.
+
+Required specifications:
+- Dimensions: 1200x630 pixels
+- Format: PNG
+- Content: Should include "Earnings Table" branding and visual elements
+- Purpose: Open Graph image for social media sharing
+
+The image should be saved as: public/og-image.png
+
+Current status: MISSING - needs to be created manually or with image generation tool.

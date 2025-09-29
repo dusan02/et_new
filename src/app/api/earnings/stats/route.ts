@@ -181,7 +181,30 @@ export async function GET(request: NextRequest) {
       .filter(e => e.revenueActual && e.revenueEstimate && e.revenueActual < e.revenueEstimate)
       .sort((a, b) => Number(a.revenueActual! - a.revenueEstimate!) - Number(b.revenueActual! - b.revenueEstimate!));
 
+    // Get the most recent update time from the database
+    const mostRecentEarnings = await prisma.earningsTickersToday.findFirst({
+      orderBy: { updatedAt: 'desc' },
+      select: { updatedAt: true }
+    });
+    
+    const mostRecentMarket = await prisma.todayEarningsMovements.findFirst({
+      orderBy: { updatedAt: 'desc' },
+      select: { updatedAt: true }
+    });
+
+    // Use the most recent update time from either table
+    const lastUpdated = mostRecentEarnings?.updatedAt && mostRecentMarket?.updatedAt
+      ? new Date(Math.max(mostRecentEarnings.updatedAt.getTime(), mostRecentMarket.updatedAt.getTime()))
+      : mostRecentEarnings?.updatedAt || mostRecentMarket?.updatedAt || new Date();
+
     const stats = {
+      totalCompanies: totalEarnings,
+      withEpsActual: withEps,
+      withRevenueActual: withRevenue,
+      withBothActual: earningsWithActuals.filter(e => e.epsActual && e.revenueActual).length,
+      withoutAnyActual: totalEarnings - earningsWithActuals.length,
+      lastUpdated: lastUpdated.toISOString(),
+      // Legacy fields for compatibility
       totalEarnings,
       withEps,
       withRevenue,

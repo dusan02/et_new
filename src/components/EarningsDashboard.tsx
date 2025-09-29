@@ -5,7 +5,7 @@ import { LoadingSpinner } from './ui/LoadingSpinner';
 import { ErrorMessage } from './ui/ErrorMessage';
 import { Header } from './Header';
 import { Footer } from './Footer';
-import { EarningsTable } from './EarningsTable';
+import EarningsTable from './EarningsTable';
 import { EarningsStats } from './EarningsStats';
 
 interface EarningsData {
@@ -163,7 +163,7 @@ export function EarningsDashboard() {
   // If no earnings data, show simplified view
   if (earningsData.length === 0 && !isLoading) {
     return (
-      <div className="flex flex-col min-h-screen bg-gray-50">
+      <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
         <Header 
           lastUpdated={lastUpdated}
         />
@@ -202,7 +202,7 @@ export function EarningsDashboard() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
       <Header 
         lastUpdated={lastUpdated}
       />
@@ -211,9 +211,11 @@ export function EarningsDashboard() {
         <section className="container mx-auto px-4 max-w-7xl" aria-label="Earnings data and statistics">
           {stats && <EarningsStats stats={stats} />}
           <div className="px-0">
-            <EarningsTable 
-              data={earningsData} 
+            <EarningsTable
+              data={earningsData}
+              stats={stats}
               isLoading={isLoading}
+              error={error}
               onRefresh={fetchData}
             />
           </div>

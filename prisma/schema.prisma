@@ -28,6 +28,9 @@ model EarningsTickersToday {
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
 
+  // Relácie
+  marketData        TodayEarningsMovements?
+
   @@id([reportDate, ticker])
   @@index([reportDate])
   @@index([reportDate, ticker])
@@ -59,6 +62,9 @@ model TodayEarningsMovements {
   companyType              String?
   primaryExchange          String?
   reportTime               String?    // BMO, AMC, TNS
+
+  // Relácie
+  earningsData      EarningsTickersToday? @relation(fields: [ticker, reportDate], references: [ticker, reportDate])
 
   @@id([ticker, reportDate])
   @@index([reportDate])

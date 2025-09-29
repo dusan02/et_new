@@ -1,17 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getTodayStart, getNYTimeString } from '@/lib/dates'
-import { serializeBigInts } from '@/lib/bigint-utils'
+import { getTodayStart, getNYTimeString, serializeBigInts, isoDate } from '@/modules/shared'
+import { calculateSurprise } from '@/modules/earnings'
 import { validateRequest, checkRateLimit, earningsQuerySchema, type EarningsQuery } from '@/lib/validation'
 import { getMonitoring } from '@/lib/monitoring'
-
-// Simple surprise calculation function
-function calculateSurprise(actual: number | null, estimate: number | null): number | null {
-  if (actual === null || estimate === null || estimate === 0) {
-    return null
-  }
-  return ((actual - estimate) / Math.abs(estimate)) * 100
-}
 // 🚫 GUIDANCE DISABLED FOR PRODUCTION - Import commented out
 // import { 
 //   isGuidanceCompatible, 
@@ -82,13 +74,14 @@ export async function GET(request: NextRequest) {
     
     const { date: requestedDate, ticker, limit, offset, sector, reportTime } = validation.data
     
-    // 3. Use validated date or default to today
-    const today = requestedDate ? new Date(requestedDate + 'T00:00:00.000Z') : getTodayStart()
+    // 3. Use validated date or default to today (using same logic as worker)
+    const todayString = requestedDate || isoDate()
+    const today = new Date(todayString + 'T00:00:00.000Z')
     
-    console.log(`[API] Starting earnings fetch for date: ${today.toISOString().split('T')[0]} (NY time: ${getNYTimeString()})`)
+    console.log(`[API] Starting earnings fetch for date: ${todayString} (NY time: ${getNYTimeString()})`)
     
     // Check cache first
-    const cacheKey = `earnings-${today.toISOString().split('T')[0]}`
+    const cacheKey = `earnings-${todayString}`
     const cached = getCachedData(cacheKey)
     
     if (cached) {
@@ -99,7 +92,7 @@ export async function GET(request: NextRequest) {
         meta: {
           total: cached.data.length,
           duration: `${Date.now() - startTime}ms`,
-          date: today.toISOString().split('T')[0],
+          date: todayString,
           cached: true,
           cacheAge: getCacheAge(cached.timestamp)
         }
@@ -113,50 +106,46 @@ export async function GET(request: NextRequest) {
     
     console.log(`[CACHE] MISS - fetching fresh data`)
     
-    // Fetch earnings and market data in parallel first
-    console.log(`[API] Fetching data from database...`)
-    const [rows, marketData] = await Promise.all([
-      // Fetch earnings data for today - optimized with select
-      prisma.earningsTickersToday.findMany({
-        where: { reportDate: today },
-        select: {
-          ticker: true,
-          reportTime: true,
-          epsActual: true,
-          epsEstimate: true,
-          revenueActual: true,
-          revenueEstimate: true,
-          sector: true,
-          companyType: true,
-          dataSource: true,
-          fiscalPeriod: true,
-          fiscalYear: true,
-          primaryExchange: true,
-        },
-        orderBy: { ticker: 'asc' },
-        take: 500,
-      }),
-      
-      // Fetch market data from TodayEarningsMovements - optimized with select
-      prisma.todayEarningsMovements.findMany({
-        where: { 
-          reportDate: today
-        },
-        select: {
-          ticker: true,
-          companyName: true,
-          currentPrice: true,
-          previousClose: true,
-          priceChangePercent: true,
-          marketCap: true,
-          marketCapDiff: true,
-          marketCapDiffBillions: true,
-          sharesOutstanding: true,
-          size: true,
-        },
-        orderBy: { ticker: 'asc' },
-      })
-    ])
+    // Fetch combined earnings and market data with optimized JOIN query
+    console.log(`[API] Fetching combined data from database with optimized JOIN...`)
+    
+    // Use optimized Prisma query - fallback to separate queries for now
+    const combinedRows = await prisma.earningsTickersToday.findMany({
+      where: { reportDate: today },
+      select: {
+        ticker: true,
+        reportTime: true,
+        epsActual: true,
+        epsEstimate: true,
+        revenueActual: true,
+        revenueEstimate: true,
+        sector: true,
+        companyType: true,
+        dataSource: true,
+        fiscalPeriod: true,
+        fiscalYear: true,
+        primaryExchange: true,
+      },
+      orderBy: { ticker: 'asc' },
+      take: 500,
+    })
+    
+    // Get market data separately (optimized query)
+    const marketData = await prisma.todayEarningsMovements.findMany({
+      where: { reportDate: today },
+      select: {
+        ticker: true,
+        companyName: true,
+        currentPrice: true,
+        previousClose: true,
+        priceChangePercent: true,
+        marketCap: true,
+        marketCapDiff: true,
+        marketCapDiffBillions: true,
+        sharesOutstanding: true,
+        size: true,
+      }
+    })
 
     // 🚫 GUIDANCE DISABLED FOR PRODUCTION - COMMENTED OUT
     // TODO: Re-enable when guidance issues are resolved
@@ -191,34 +180,33 @@ export async function GET(request: NextRequest) {
     const guidanceData: any[] = [] // Empty array for production
 
     console.log(`[API] Database query results:`, {
-      earningsCount: rows.length,
-      marketDataCount: marketData.length,
+      combinedRowsCount: combinedRows.length,
       guidanceDataCount: guidanceData.length
     })
 
     // Count actual data
-    const withEpsActual = rows.filter(r => r.epsActual !== null).length
-    const withRevenueActual = rows.filter(r => r.revenueActual !== null).length
-    const withBothActual = rows.filter(r => r.epsActual !== null && r.revenueActual !== null).length
+    const withEpsActual = combinedRows.filter(r => r.epsActual !== null).length
+    const withRevenueActual = combinedRows.filter(r => r.revenueActual !== null).length
+    const withBothActual = combinedRows.filter(r => r.epsActual !== null && r.revenueActual !== null).length
     
     console.log(`[API] Actual data counts:`, {
       withEpsActual,
       withRevenueActual,
       withBothActual,
-      withoutAnyActual: rows.length - withEpsActual - withRevenueActual + withBothActual
+      withoutAnyActual: combinedRows.length - withEpsActual - withRevenueActual + withBothActual
     })
 
     // Log detailed breakdown
-    const epsActualTickers = rows.filter(r => r.epsActual !== null).map(r => r.ticker)
-    const revenueActualTickers = rows.filter(r => r.revenueActual !== null).map(r => r.ticker)
+    const epsActualTickers = combinedRows.filter(r => r.epsActual !== null).map(r => r.ticker)
+    const revenueActualTickers = combinedRows.filter(r => r.revenueActual !== null).map(r => r.ticker)
     
     console.log(`[API] Tickers with EPS Actual (${epsActualTickers.length}):`, epsActualTickers.join(', '))
     console.log(`[API] Tickers with Revenue Actual (${revenueActualTickers.length}):`, revenueActualTickers.join(', '))
 
-    // Combine earnings data with market data and guidance data
-    const combinedData = rows.map(earning => {
-      // Find matching market data
-      const marketInfo = marketData.find(m => m.ticker === earning.ticker)
+    // Transform combined data - manually join earnings and market data
+    const combinedData = combinedRows.map(row => {
+      // Find matching market data for this ticker
+      const marketInfo = marketData.find(m => m.ticker === row.ticker)
       
       // 🚫 GUIDANCE DISABLED FOR PRODUCTION - COMMENTED OUT
       // TODO: Re-enable when guidance issues are resolved
@@ -303,24 +291,36 @@ export async function GET(request: NextRequest) {
         const revenueGuideExtreme = false
         
         // Calculate surprise values
-        const epsSurprise = calculateSurprise(earning.epsActual, earning.epsEstimate)
+        const epsSurprise = calculateSurprise(row.epsActual, row.epsEstimate)
         const revenueSurprise = calculateSurprise(
-          earning.revenueActual ? Number(earning.revenueActual) : null,
-          earning.revenueEstimate ? Number(earning.revenueEstimate) : null
+          row.revenueActual ? Number(row.revenueActual) : null,
+          row.revenueEstimate ? Number(row.revenueEstimate) : null
         )
       const compatibleGuidance = null
       
       return {
-        ...earning,
-        // Market data from Polygon
-        companyName: marketInfo?.companyName || earning.ticker,
+        // Base earnings data
+        ticker: row.ticker,
+        reportTime: row.reportTime,
+        epsActual: row.epsActual,
+        epsEstimate: row.epsEstimate,
+        revenueActual: row.revenueActual,
+        revenueEstimate: row.revenueEstimate,
+        sector: row.sector,
+        companyType: row.companyType,
+        dataSource: row.dataSource,
+        fiscalPeriod: row.fiscalPeriod,
+        fiscalYear: row.fiscalYear,
+        primaryExchange: row.primaryExchange,
+        // Market data (manually joined)
+        companyName: marketInfo?.companyName || row.ticker,
         marketCap: marketInfo?.marketCap && marketInfo.marketCap > 0 ? marketInfo.marketCap : null,
         size: marketInfo?.marketCap && marketInfo.marketCap > 0 ? marketInfo.size : null,
-        marketCapDiff: marketInfo?.marketCapDiff || null,
-        currentPrice: marketInfo?.currentPrice || null,
-        previousClose: marketInfo?.previousClose || null,
-        priceChangePercent: marketInfo?.priceChangePercent || null,
-        marketCapDiffBillions: marketInfo?.marketCapDiffBillions || null,
+        marketCapDiff: marketInfo?.marketCapDiff ?? null,
+        currentPrice: marketInfo?.currentPrice ?? null,
+        previousClose: marketInfo?.previousClose ?? null,
+        priceChangePercent: marketInfo?.priceChangePercent ?? null,
+        marketCapDiffBillions: marketInfo?.marketCapDiffBillions ?? null,
         sharesOutstanding: marketInfo?.sharesOutstanding || null,
         // Guidance calculations
         epsGuideSurprise,

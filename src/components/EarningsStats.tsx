@@ -3,6 +3,7 @@
 import { TrendingUp, TrendingDown, DollarSign, Building2 } from 'lucide-react';
 import StatCard from './StatCard';
 import { trackCardClick } from './Analytics';
+import { SkeletonCard } from './ui/SkeletonLoader';
 
 interface EarningsStatsProps {
   stats: {
@@ -53,11 +54,10 @@ export function EarningsStats({ stats }: EarningsStatsProps) {
   // Handle undefined stats gracefully
   if (!stats) {
     return (
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">📊 Earnings Statistics</h2>
-        <div className="text-gray-500 text-center py-8">
-          No statistics available
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12 gap-3 sm:gap-4 md:gap-6 lg:gap-8 mb-8 sm:mb-10 md:mb-12">
+        {Array.from({ length: 12 }).map((_, i) => (
+          <SkeletonCard key={i} />
+        ))}
       </div>
     );
   }
@@ -123,7 +123,7 @@ export function EarningsStats({ stats }: EarningsStatsProps) {
   const fmtBill = (v?: number) => (v == null ? "—" : `${v > 0 ? "+" : ""}${v.toFixed(1)}B`);
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12 gap-3 md:gap-4 mb-8">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12 gap-3 sm:gap-4 md:gap-6 lg:gap-8 mb-8 sm:mb-10 md:mb-12">
       {/* BLUE — Size buckets */}
       <StatCard title="LARGE+" main={largePlusCount ?? "—"} sub={formatMarketCap(largePlusCap)} variant="blue" onClick={() => trackCardClick('large_cap')} />
       <StatCard title="MID" main={midCount ?? "—"} sub={formatMarketCap(midCap)} variant="blue" onClick={() => trackCardClick('mid_cap')} />

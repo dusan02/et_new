@@ -1,741 +1,605 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef, useCallback, memo } from 'react';
-import { ArrowUpDown, ArrowUp, ArrowDown, RefreshCw } from 'lucide-react';
-import { LoadingSpinner } from './ui/LoadingSpinner';
-import { SkeletonCard, SkeletonTable } from './ui/SkeletonCard';
-// 🚫 GUIDANCE DISABLED FOR PRODUCTION - Import commented out
-// import { formatGuidePercent, getGuidanceTitle } from '@/utils/format';
-import { trackTableSort, trackTableFilter, trackViewToggle, trackRefresh } from './Analytics';
-import { useVirtualizer } from '@tanstack/react-virtual';
-
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
+import { SkeletonLoader, SkeletonCard } from './ui/SkeletonLoader';
+// Define EarningsData interface locally since we removed the types file
 interface EarningsData {
   ticker: string;
   reportTime: string | null;
   epsEstimate: number | null;
   epsActual: number | null;
-  revenueEstimate: number | null; // API sends as number
-  revenueActual: number | null; // API sends as number
+  revenueEstimate: number | null;
+  revenueActual: number | null;
   sector: string | null;
   companyType: string | null;
   dataSource: string | null;
   fiscalPeriod: string | null;
   fiscalYear: number | null;
   primaryExchange: string | null;
-  // Market data from Polygon
   companyName: string;
   size: string | null;
-  marketCap: number | null; // BigInt serialized as number via serializeBigInts()
-  marketCapDiff: number | null; // BigInt serialized as number via serializeBigInts()
+  marketCap: number | null;
+  marketCapDiff: number | null;
   marketCapDiffBillions: number | null;
   currentPrice: number | null;
   previousClose: number | null;
   priceChangePercent: number | null;
-  sharesOutstanding: number | null; // BigInt serialized as number via serializeBigInts()
-  // Guidance calculations
-  epsGuideSurprise: number | null;
-  epsGuideBasis: string | null;
-  epsGuideExtreme: boolean;
-  revenueGuideSurprise: number | null;
-  revenueGuideBasis: string | null;
-  revenueGuideExtreme: boolean;
-  // Raw guidance data for debugging
-  guidanceData: {
-    estimatedEpsGuidance: number | null;
-    estimatedRevenueGuidance: string | null;
-    epsGuideVsConsensusPct: number | null;
-    revenueGuideVsConsensusPct: number | null;
-    notes: string | null;
-    lastUpdated: string | null;
-    fiscalPeriod: string | null;
-    fiscalYear: number | null;
-  } | null;
-  // Surprise calculations
-  epsSurprise: number | null;
-  revenueSurprise: number | null;
+  sharesOutstanding: number | null;
 }
 
 interface EarningsTableProps {
-  data?: EarningsData[];
+  data: EarningsData[];
+  stats: any;
   isLoading: boolean;
-  error?: Error | null;
+  error: string | null;
   onRefresh: () => void;
 }
 
-// Custom hook for debouncing
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+export default function EarningsTable({
+  data,
+  stats,
+  isLoading,
+  error,
+  onRefresh
+}: EarningsTableProps) {
+  const [sortConfig, setSortConfig] = useState<{
+    field: string | null;
+    direction: 'asc' | 'desc';
+  }>({ field: 'marketCap', direction: 'desc' });
 
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
+  const [filterConfig, setFilterConfig] = useState({
+    searchTerm: '',
+    showOnlyWithActual: false,
+    sizeFilter: null as string | null,
+    sectorFilter: null as string | null
+  });
 
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-}
-
-export const EarningsTable = memo(({ data, isLoading, error, onRefresh }: EarningsTableProps) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortField, setSortField] = useState<string>('marketCap');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [activeView, setActiveView] = useState<'eps-revenue' | 'guidance'>('eps-revenue');
-  const [hoveredColumn, setHoveredColumn] = useState<string | null>(null);
-  const [selectedColumn, setSelectedColumn] = useState<string | null>('marketCap');
-  
-  // Debounced search term for performance
-  const debouncedSearchTerm = useDebounce(searchTerm, 300);
-  
-  
-  // Memoized callbacks for performance
-  const handleColumnClick = useCallback((field: string) => {
-    if (sortField === field) {
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('desc');
-    }
-    setSelectedColumn(field);
-    trackTableSort(field, sortField === field ? (sortDirection === 'asc' ? 'desc' : 'asc') : 'desc');
-  }, [sortField, sortDirection]);
-  
-  const handleColumnHover = useCallback((field: string | null) => {
-    setHoveredColumn(field);
-  }, []);
-
-  // Helper functions
-  const formatCurrency = (value: string | bigint | null) => {
-    if (!value) return '-';
-    const num = typeof value === 'string' ? Number(value) : Number(value);
-    
-    if (num >= 1e12) {
-      return `${(num / 1e12).toFixed(1)}T`;
-    } else if (num >= 1e9) {
-      return `${(num / 1e9).toFixed(1)}B`;
-    } else if (num >= 1e6) {
-      return `${(num / 1e6).toFixed(1)}M`;
-    } else if (num >= 1e3) {
-      return `${(num / 1e3).toFixed(1)}K`;
-    }
-    return num.toFixed(0);
-  };
-
-  const formatMarketCap = (value: string | bigint | number | null) => {
-    if (!value) return '-';
-    const num = typeof value === 'string' ? Number(value) : Number(value);
-    
-    if (num >= 1e12) {
-      return `$${(num / 1e12).toFixed(1)}T`;
-    } else if (num >= 1e9) {
-      return `$${(num / 1e9).toFixed(1)}B`;
-    } else if (num >= 1e6) {
-      return `$${(num / 1e6).toFixed(1)}M`;
-    } else if (num >= 1e3) {
-      return `$${(num / 1e3).toFixed(1)}K`;
-    }
-    return `$${num.toFixed(0)}`;
-  };
-
-  const formatBillions = (value: number | null | undefined) => {
-    if (value === null || value === undefined) return '-';
-    
-    // Handle zero case
-    if (value === 0) return '0.0B';
-    
-    const sign = value >= 0 ? '+' : '';
-    return `${sign}${value.toFixed(1)}B`;
-  };
-
-  const formatPercentage = (value: number | null | undefined) => {
-    if (value === null || value === undefined) return '-';
-    const sign = value >= 0 ? '+' : '';
-    return `${sign}${value.toFixed(2)}%`;
-  };
-  const toNum = (v: any): number | null => {
-    if (v === null || v === undefined) return null;
-    
-    // Handle numbers (including NaN and Infinity)
-    if (typeof v === "number") {
-      return Number.isFinite(v) ? v : null;
-    }
-    
-    // Handle strings
-    if (typeof v === "string") {
-      const s = v.replace(/[,$\s]/g, ""); // odstráni $ , medzery
-      if (s === "" || s === "null" || s === "undefined") return null;
-      const n = Number(s);
-      return Number.isFinite(n) ? n : null;
-    }
-    
-    // Handle BigInt (should be already converted but just in case)
-    if (typeof v === "bigint") {
-      return Number(v);
-    }
-    
-    // Try to convert any other type to number
-    try {
-      const n = Number(v);
-      return Number.isFinite(n) ? n : null;
-    } catch {
-      return null;
-    }
-  };
-
-  const formatEPS = (value: any): string => {
-    const n = toNum(value);
-    if (n === null) return "-";
-    return `$${n.toFixed(2)}`;
-  };
-
-  const formatRevenue = (value: any): string => {
-    const n = toNum(value);
-    if (n === null) return "-";
-    if (n >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
-    if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
-    if (n >= 1e3) return `$${(n / 1e3).toFixed(1)}K`;
-    return `$${n.toFixed(0)}`;
-  };
-
-  const formatSurprise = (value: any): string => {
-    const n = toNum(value);
-    if (n === null) return "-";
-    return `${n > 0 ? "+" : ""}${n.toFixed(1)}%`;
-  };
-
-
-  const getPriceChangeClass = (value: number | null | undefined) => {
-    if (value === null || value === undefined) return 'text-gray-500';
-    return value >= 0 ? 'text-green-600' : 'text-red-600';
-  };
-
-  const getDiffClass = (value: bigint | null | undefined) => {
-    if (value === null || value === undefined) return 'text-gray-500';
-    return value >= BigInt(0) ? 'text-green-600' : 'text-red-600';
-  };
-
-  const getSurpriseClass = (value: number | null | undefined) => {
-    if (value === null || value === undefined) return 'text-gray-500';
-    return value >= 0 ? 'text-green-600' : 'text-red-600';
-  };
-
-  // Filter and sort data
-  const filteredAndSortedData = useMemo(() => {
-    // Handle undefined or empty data
-    if (!data || data.length === 0) {
-      return [];
-    }
-    
-    let filtered = data;
-
-    // Apply search filter
-    if (debouncedSearchTerm) {
-      const searchLower = debouncedSearchTerm.toLowerCase();
-      filtered = data.filter(item => 
-        item.ticker.toLowerCase().includes(searchLower) ||
-        item.companyName.toLowerCase().includes(searchLower)
-      );
-    }
-
-    // Apply sorting
-    return filtered.sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
-
-      // Handle special cases for sorting
-      switch (sortField) {
-        case 'index':
-          aValue = filtered.indexOf(a);
-          bValue = filtered.indexOf(b);
-          break;
-        case 'ticker':
-          aValue = a.ticker;
-          bValue = b.ticker;
-          break;
-        case 'company':
-          aValue = a.companyName || a.ticker;
-          bValue = b.companyName || b.ticker;
-          break;
-        case 'size':
-          aValue = a.size;
-          bValue = b.size;
-          break;
-        case 'marketCap':
-          aValue = a.marketCap ? Number(a.marketCap) : null;
-          bValue = b.marketCap ? Number(b.marketCap) : null;
-          break;
-        case 'marketCapDiffBillions':
-          aValue = a.marketCapDiffBillions;
-          bValue = b.marketCapDiffBillions;
-          break;
-        case 'currentPrice':
-          aValue = a.currentPrice;
-          bValue = b.currentPrice;
-          break;
-        case 'priceChangePercent':
-          aValue = a.priceChangePercent;
-          bValue = b.priceChangePercent;
-          break;
-        case 'epsEstimate':
-          aValue = a.epsEstimate;
-          bValue = b.epsEstimate;
-          break;
-        case 'epsActual':
-          aValue = a.epsActual;
-          bValue = b.epsActual;
-          break;
-        case 'epsSurprise':
-          aValue = a.epsSurprise;
-          bValue = b.epsSurprise;
-          break;
-        case 'revenueEstimate':
-          aValue = a.revenueEstimate ? Number(a.revenueEstimate) : null;
-          bValue = b.revenueEstimate ? Number(b.revenueEstimate) : null;
-          break;
-        case 'revenueActual':
-          aValue = a.revenueActual ? Number(a.revenueActual) : null;
-          bValue = b.revenueActual ? Number(b.revenueActual) : null;
-          break;
-        case 'revenueSurprise':
-          aValue = a.revenueSurprise;
-          bValue = b.revenueSurprise;
-          break;
-        default:
-          aValue = a.ticker;
-          bValue = b.ticker;
+  // Processed data with filtering and sorting
+  const processedData = useMemo(() => {
+    let filtered = data.filter(item => {
+      // Search filter
+      if (filterConfig.searchTerm) {
+        const searchLower = filterConfig.searchTerm.toLowerCase();
+        const matchesSearch = 
+          item.ticker.toLowerCase().includes(searchLower) ||
+          item.companyName.toLowerCase().includes(searchLower) ||
+          (item.sector && item.sector.toLowerCase().includes(searchLower));
+        
+        if (!matchesSearch) return false;
       }
 
-      // Handle null values - null values go to the end regardless of sort direction
-      if (aValue === null && bValue === null) return 0;
-      if (aValue === null) return 1; // null values go to end
-      if (bValue === null) return -1; // null values go to end
+      // Size filter
+      if (filterConfig.sizeFilter && item.size !== filterConfig.sizeFilter) {
+        return false;
+      }
 
-      // Compare values
-      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
-      return 0;
+      return true;
     });
-  }, [data, debouncedSearchTerm, sortField, sortDirection]);
 
-  const sortedData = filteredAndSortedData;
+    // Sorting
+    if (sortConfig.field) {
+      filtered.sort((a, b) => {
+        const aValue = getNestedValue(a, sortConfig.field!);
+        const bValue = getNestedValue(b, sortConfig.field!);
 
-  // SortButton component for clickable headers
-  const SortButton = ({ field, children, align = 'left' }: { field: string; children: React.ReactNode; align?: 'left' | 'right' | 'center' }) => {
-    const isSelected = selectedColumn === field;
-    const isHovered = hoveredColumn === field;
-    
-    const alignClass = align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left';
-    
-    return (
-      <button
-        onClick={() => handleColumnClick(field)}
-        onMouseEnter={() => handleColumnHover(field)}
-        onMouseLeave={() => handleColumnHover(null)}
-        className={`w-full h-full px-2 py-3 ${alignClass} font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-          isSelected 
-            ? 'bg-blue-200 text-blue-800' 
-            : isHovered 
-              ? 'bg-blue-50 text-gray-700' 
-              : 'bg-transparent text-gray-700'
-        }`}
-        aria-sort={isSelected ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-      >
-        {children}
-      </button>
-    );
-  };
+        // Ignoruj nulové hodnoty - daj ich na koniec
+        if (aValue === null && bValue === null) return 0;
+        if (aValue === null) return 1; // null hodnoty na koniec
+        if (bValue === null) return -1; // null hodnoty na koniec
 
-  // Mobile Card Component
-  const MobileCard = ({ item, index }: { item: EarningsData; index: number }) => {
-    
-    // Debug log pre prvy ticker s dátami (rozšírené debug)
-    if (item.ticker === 'EBF' || 
-        (item.epsEstimate !== null || item.epsActual !== null || 
-         item.revenueEstimate !== null || item.revenueActual !== null)) {
-      console.log('Mobile Debug:', {
-        ticker: item.ticker,
-        epsEstimate: item.epsEstimate,
-        epsEstimateType: typeof item.epsEstimate,
-        epsActual: item.epsActual,
-        epsActualType: typeof item.epsActual,
-        revenueEstimate: item.revenueEstimate,
-        revenueEstimateType: typeof item.revenueEstimate,
-        revenueActual: item.revenueActual,
-        revenueActualType: typeof item.revenueActual,
-        epsSurprise: item.epsSurprise,
-        revenueSurprise: item.revenueSurprise,
-        toNum_epsEst: toNum(item.epsEstimate),
-        toNum_epsAct: toNum(item.epsActual),
-        toNum_revEst: toNum(item.revenueEstimate),
-        toNum_revAct: toNum(item.revenueActual),
-        formatEPS_Est: formatEPS(item.epsEstimate),
-        formatEPS_Act: formatEPS(item.epsActual),
-        formatRev_Est: formatRevenue(item.revenueEstimate),
-        formatRev_Act: formatRevenue(item.revenueActual)
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return sortConfig.direction === 'asc' 
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue);
+        }
+
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return sortConfig.direction === 'asc' 
+            ? aValue - bValue
+            : bValue - aValue;
+        }
+
+        return 0;
       });
     }
 
+    return filtered;
+  }, [data, filterConfig, sortConfig]);
+
+  const handleSort = useCallback((field: string) => {
+    setSortConfig(prev => {
+      // Ak je to ten istý stĺpec, striedaj smer
+      if (prev.field === field) {
+        return {
+          field: field,
+          direction: prev.direction === 'desc' ? 'asc' : 'desc'
+        };
+      }
+      // Ak je to nový stĺpec, začni s DESC
+      return {
+        field: field,
+        direction: 'desc'
+      };
+    });
+  }, []);
+
+  const handleFilterChange = useCallback((newFilterConfig: typeof filterConfig) => {
+    setFilterConfig(newFilterConfig);
+  }, []);
+
+  const clearFilters = useCallback(() => {
+    setFilterConfig({
+      searchTerm: '',
+      showOnlyWithActual: false,
+      sizeFilter: null,
+      sectorFilter: null
+    });
+  }, []);
+
+  const hasActiveFilters = filterConfig.searchTerm || 
+    filterConfig.sizeFilter;
+
+  // Get unique values for filters
+  const uniqueSizes = useMemo(() => {
+    const sizes = new Set(data.map(item => item.size).filter(Boolean));
+    const sortedSizes = Array.from(sizes).sort();
+    // Ensure Mega comes first, then Large, Mid, Small
+    const order = ['Mega', 'Large', 'Mid', 'Small'];
+    return sortedSizes.sort((a, b) => {
+      const aIndex = order.indexOf(a);
+      const bIndex = order.indexOf(b);
+      if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+      return aIndex - bIndex;
+    });
+  }, [data]);
+
+  if (isLoading) {
     return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center space-x-3">
-          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">{index + 1}</span>
-          <div>
-            <h3 className="font-semibold text-lg text-gray-900">{item.ticker}</h3>
-            <p className="text-sm text-gray-600 truncate max-w-[200px]" title={item.companyName}>
-              {item.companyName || item.ticker}
-            </p>
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="p-3 sm:p-4 md:p-6 border-b border-gray-200">
+          <div className="mb-4">
+            <div className="h-6 sm:h-7 md:h-8 bg-gray-200 rounded w-1/2 animate-pulse"></div>
           </div>
         </div>
-        {item.size && (
-          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-            {item.size}
-          </span>
+        
+        {/* Mobile Skeleton */}
+        <div className="block sm:hidden p-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <SkeletonLoader key={i} type="card" />
+          ))}
+        </div>
+        
+        {/* Desktop Skeleton */}
+        <div className="hidden sm:block">
+          <SkeletonLoader type="table" />
+        </div>
+        
+        {/* Footer Skeleton */}
+        <div className="bg-gray-50 px-3 sm:px-6 py-2 sm:py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 sm:gap-0">
+          <div className="w-32 h-4 bg-gray-200 rounded animate-pulse"></div>
+          <div className="w-40 h-4 bg-gray-200 rounded animate-pulse"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6 text-center">
+        <div className="text-red-600 text-lg font-semibold mb-2">
+          Error loading data
+        </div>
+        <div className="text-gray-600 mb-4">{error}</div>
+      <button
+          onClick={onRefresh}
+          className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 mx-auto"
+        >
+          <RefreshCw className="w-4 h-4" />
+          Try Again
+      </button>
+      </div>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6 text-center">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Today's Earnings</h2>
+        <p className="text-gray-600">No earnings scheduled for today.</p>
+      <button
+          onClick={onRefresh}
+          className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 mx-auto mt-4"
+        >
+          <RefreshCw className="w-4 h-4" />
+          Refresh
+      </button>
+    </div>
+  );
+    }
+
+    return (
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden transition-colors duration-300 border border-gray-300">
+      <div className="p-3 sm:p-4 md:p-6 border-b border-gray-300">
+        <div className="mb-4">
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
+            {stats?.totalCompanies || 0} companies reporting earnings today
+          </h2>
+          </div>
+        </div>
+        
+      {/* Filters */}
+      <div className="bg-white dark:bg-gray-800 p-4 border-b border-gray-300">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+          {/* Search */}
+          <div className="relative flex-1 min-w-0 sm:min-w-64">
+          <input
+            type="text"
+              placeholder="Search ticker or company name..."
+              value={filterConfig.searchTerm}
+              onChange={(e) => handleFilterChange({ ...filterConfig, searchTerm: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 dark:bg-gray-200 text-gray-900 dark:text-gray-900 placeholder-gray-500 dark:placeholder-gray-600"
+          />
+        </div>
+
+          {/* Company Size */}
+          <div className="w-full sm:w-auto sm:min-w-48">
+            <select
+              value={filterConfig.sizeFilter || ''}
+              onChange={(e) => handleFilterChange({ ...filterConfig, sizeFilter: e.target.value || null })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 dark:bg-gray-200 text-gray-900 dark:text-gray-900"
+            >
+              <option value="">All Sizes</option>
+              {uniqueSizes.map(size => (
+                <option key={size} value={size}>{size}</option>
+              ))}
+            </select>
+      </div>
+
+          {/* Reset Filters */}
+          {hasActiveFilters && (
+            <button 
+              onClick={clearFilters}
+              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              Reset
+            </button>
+          )}
+          </div>
+          
+        {/* Active Filters */}
+        {hasActiveFilters && (
+          <div className="mt-4">
+            <span className="text-sm text-gray-600">Active filters:</span>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {filterConfig.searchTerm && (
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  Search: {filterConfig.searchTerm}
+                </span>
+              )}
+              {filterConfig.sizeFilter && (
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                  Size: {filterConfig.sizeFilter}
+                </span>
+              )}
+              </div>
+            </div>
         )}
+          </div>
+
+      {/* Mobile Cards / Desktop Table */}
+      <div className="block sm:hidden">
+        {/* Mobile Card View */}
+        {processedData.map((item, index) => (
+          <div key={item.ticker} className="bg-white dark:bg-gray-200 border border-gray-200 dark:border-gray-300 rounded-lg p-3 mb-2 shadow-sm hover:shadow-md transition-all duration-200 ease-in-out animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
+            {/* Header */}
+      <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">#{index + 1}</span>
+                {item.size && (
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                    item.size === 'Mega' 
+                      ? 'bg-red-100 text-red-800 border border-red-200' 
+                      : item.size === 'Large' 
+                      ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                      : 'text-gray-600'
+                  }`}>
+                    {item.size}
+                  </span>
+                )}
+        </div>
+        <div className="text-right">
+          <div className="text-xs text-gray-500 dark:text-gray-400">Report Time</div>
+          <div className="font-medium text-sm text-gray-900 dark:text-gray-900">
+            {item.reportTime || '-'}
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mb-3">
-        <div>
-          <p className="text-xs text-gray-500 mb-1">Market Cap</p>
-          <p className="font-medium text-gray-900">
-            {item.marketCap ? formatMarketCap(item.marketCap) : '-'}
-          </p>
+            {/* Company Info */}
+            <div className="text-center mb-2">
+              <div className="font-semibold text-gray-900 dark:text-gray-900 text-base">{item.ticker}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-900">{item.companyName}</div>
+            </div>
+
+            {/* Main Metrics */}
+      <div className="grid grid-cols-2 gap-2 mb-2">
+              <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-300 rounded">
+                <div className="text-xs text-gray-500 dark:text-gray-400">Market Cap</div>
+                <div className="font-semibold text-sm">
+                  {item.marketCap ? `$${(Number(item.marketCap) / 1_000_000_000).toFixed(1)}B` : '-'}
         </div>
-        <div>
-          <p className="text-xs text-gray-500 mb-1">Cap Change</p>
-          <p className={`font-medium ${getDiffClass(item.marketCapDiffBillions !== null && item.marketCapDiffBillions !== undefined ? BigInt(Math.round(item.marketCapDiffBillions * 1e9)) : null)}`}>
-            {item.marketCapDiffBillions !== null && item.marketCapDiffBillions !== undefined ? formatBillions(item.marketCapDiffBillions) : '-'}
-          </p>
         </div>
-        <div>
-          <p className="text-xs text-gray-500 mb-1">Price</p>
-          <p className="font-medium text-gray-900">
+              <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-300 rounded">
+                <div className="text-xs text-gray-500 dark:text-gray-400">Price</div>
+                <div className="font-semibold text-sm">
             {item.currentPrice ? `$${item.currentPrice.toFixed(2)}` : '-'}
-          </p>
         </div>
-        <div>
-          <p className="text-xs text-gray-500 mb-1">Price Change</p>
-          <p className={`font-medium ${getPriceChangeClass(item.priceChangePercent)}`}>
-            {item.priceChangePercent !== null && item.priceChangePercent !== undefined ? formatPercentage(item.priceChangePercent) : '-'}
-          </p>
         </div>
       </div>
 
-      <div className="border-t border-gray-100 pt-3">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <p className="text-xs text-gray-500 mb-1">EPS</p>
-            <div className="space-y-1">
-            
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Est:</span>
-                <span className="text-gray-900">{formatEPS(item.epsEstimate)}</span>
+            {/* Changes */}
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-300 rounded">
+                <div className="text-xs text-gray-500 dark:text-gray-400">Cap Diff</div>
+                <div className={`font-semibold text-sm ${
+                  item.marketCapDiffBillions !== null 
+                    ? (item.marketCapDiffBillions >= 0 ? 'text-green-600' : 'text-red-600')
+                    : 'text-gray-900'
+                }`}>
+                  {item.marketCapDiffBillions !== null ? (
+                    `${item.marketCapDiffBillions >= 0 ? '+' : ''}${item.marketCapDiffBillions.toFixed(1)}B`
+                  ) : '-'}
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Act:</span>
-                <span className="font-medium text-gray-900">{formatEPS(item.epsActual)}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Surp:</span>
-                <span className={getSurpriseClass(item.epsSurprise)}>{formatSurprise(item.epsSurprise)}</span>
+              <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-300 rounded">
+                <div className="text-xs text-gray-500 dark:text-gray-400">Change</div>
+                <div className={`font-semibold text-sm ${
+                  item.priceChangePercent !== null 
+                    ? (item.priceChangePercent >= 0 ? 'text-green-600' : 'text-red-600')
+                    : 'text-gray-900'
+                }`}>
+                  {item.priceChangePercent !== null ? (
+                    `${item.priceChangePercent >= 0 ? '+' : ''}${item.priceChangePercent.toFixed(2)}%`
+                  ) : '-'}
               </div>
             </div>
           </div>
-          <div>
-            <p className="text-xs text-gray-500 mb-1">Revenue</p>
-            <div className="space-y-1">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Est:</span>
-                <span className="text-gray-900">{formatRevenue(item.revenueEstimate)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Act:</span>
-                <span className="font-medium text-gray-900">{formatRevenue(item.revenueActual)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Surp:</span>
-                <span className={getSurpriseClass(item.revenueSurprise)}>{formatSurprise(item.revenueSurprise)}</span>
-              </div>
-            </div>
+
+            {/* EPS & Revenue Data - Two Column Layout */}
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              {/* Left Column - EPS Data */}
+              <div className="space-y-1">
+                <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-300 rounded">
+                  <div className="text-xs text-gray-500 dark:text-gray-400">EPS Est</div>
+                  <div className="font-semibold text-sm">
+                    {item.epsEstimate ? `$${item.epsEstimate.toFixed(2)}` : '-'}
+          </div>
+        </div>
+                <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-300 rounded">
+                  <div className="text-xs text-gray-500 dark:text-gray-400">EPS Act</div>
+                  <div className="font-semibold text-sm">
+                    {item.epsActual ? `$${item.epsActual.toFixed(2)}` : '-'}
+          </div>
+        </div>
+                <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-300 rounded">
+                  <div className="text-xs text-gray-500 dark:text-gray-400">EPS Surp</div>
+                  <div className={`font-semibold text-sm ${
+                    item.epsActual && item.epsEstimate ? getSurpriseColor(item.epsActual, item.epsEstimate) : 'text-gray-900'
+                  }`}>
+                    {item.epsActual && item.epsEstimate ? getSurpriseText(item.epsActual, item.epsEstimate) : '-'}
+          </div>
+        </div>
+      </div>
+
+              {/* Right Column - Revenue Data */}
+              <div className="space-y-1">
+                <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-300 rounded">
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Rev Est</div>
+                  <div className="font-semibold text-sm whitespace-nowrap">
+                    {item.revenueEstimate ? formatRevenueValue(Number(item.revenueEstimate)) : '-'}
+          </div>
+        </div>
+                <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-300 rounded">
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Rev Act</div>
+                  <div className="font-semibold text-sm whitespace-nowrap">
+                    {item.revenueActual ? formatRevenueValue(Number(item.revenueActual)) : '-'}
+          </div>
+        </div>
+                <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-300 rounded">
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Rev Surp</div>
+                  <div className={`font-semibold text-sm ${
+                    item.revenueActual && item.revenueEstimate ? getSurpriseColor(item.revenueActual, item.revenueEstimate) : 'text-gray-900'
+                  }`}>
+                    {item.revenueActual && item.revenueEstimate ? getSurpriseText(item.revenueActual, item.revenueEstimate) : '-'}
           </div>
         </div>
       </div>
     </div>
-  );
-  };
-
-  return (
-    <div data-testid="earnings-table">
-      {/* Header - Outside of table container */}
-      <div className="py-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">Today's Earnings</h2>
-            {!data || data.length === 0 ? (
-              <p className="text-sm text-gray-600 mt-1">
-                No companies reporting earnings today
-              </p>
-            ) : (
-              <p className="text-sm text-gray-600 mt-1">
-                {data?.length || 0} companies reporting earnings today - includes actual EPS and Revenues reporting
-              </p>
-            )}
           </div>
-        </div>
-        
-        <div className="mt-4">
-          <input
-            type="text"
-            placeholder="Search tickers, companies..."
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              if (e.target.value.length > 0) {
-                trackTableFilter('search', e.target.value);
-              }
-            }}
-            className="w-full sm:w-80 px-4 py-3 text-base text-gray-900 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white placeholder-gray-500 shadow-sm transition-all duration-200 min-h-[48px] font-medium"
-            style={{
-              WebkitAppearance: 'none',
-              fontSize: '16px', // Prevents zoom on iOS
-              color: '#111827', // Force dark text
-              backgroundColor: '#ffffff', // Force white background
-              borderColor: '#d1d5db', // Force border color
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Responsive Layout: Mobile Cards + Desktop Table */}
-      {error ? (
-        <div data-testid="error-message" className="flex flex-col items-center justify-center py-12 bg-red-50 rounded-lg border border-red-200">
-          <div className="text-center">
-            <div className="w-16 h-16 mx-auto mb-4 text-red-500">
-              <svg fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-red-900 mb-2">Failed to fetch data</h3>
-            <p className="text-red-700 mb-4">{error.message}</p>
-            <button 
-              onClick={onRefresh}
-              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
-            >
-              Try Again
-            </button>
-          </div>
-        </div>
-      ) : isLoading ? (
-        <div data-testid="loading-spinner">
-          {/* Mobile Skeleton */}
-          <div className="lg:hidden space-y-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <SkeletonCard key={i} />
-            ))}
-          </div>
-          
-          {/* Desktop Skeleton */}
-          <div className="hidden lg:block">
-            <SkeletonTable />
-          </div>
-        </div>
-      ) : sortedData.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 bg-white rounded-lg shadow-sm border border-gray-300">
-          {!data || data.length === 0 ? (
-            <div className="text-center">
-              <div className="relative inline-block mb-6">
-                <svg className="w-16 h-16 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                </svg>
-                <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
-              <div className="text-xl font-semibold text-gray-700">No Earnings Scheduled</div>
-              <div className="text-sm text-gray-500 text-center max-w-md">
-                There are no earnings reports scheduled for today.<br />
-                Check back tomorrow for new earnings data.
-              </div>
-            </div>
-          ) : (
-            <div className="text-center text-gray-500">
-              No results found for your search
-            </div>
-          )}
-        </div>
-      ) : (
-        <>
-          {/* Mobile Cards View (hidden on lg+ screens) */}
-          <div className="lg:hidden space-y-4">
-            {sortedData.map((item, index) => (
-              <MobileCard key={item.ticker} item={item} index={index} />
             ))}
           </div>
 
-          {/* Desktop Table View (hidden on smaller screens) */}
-          <div className="hidden lg:block bg-white rounded-lg shadow-sm border border-gray-300 overflow-hidden">
-            <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-              <table className="w-full border-collapse table-fixed" aria-label="Earnings table">
-                <caption className="sr-only">Company earnings data with market information</caption>
-                <colgroup>
-                  {/* Sticky columns - fixed width */}
-                  <col style={{ width: '25px' }} />
-                  <col style={{ width: '42px' }} />
-                  <col style={{ width: '143px' }} />
-                  {/* Scrollable columns - uniform widths */}
-                  <col style={{ width: '70px' }} />
-                  <col style={{ width: '70px' }} />
-                  <col style={{ width: '70px' }} />
-                  <col style={{ width: '70px' }} />
-                  <col style={{ width: '70px' }} />
-                  <col style={{ width: '70px' }} />
-                  <col style={{ width: '70px' }} />
-                  <col style={{ width: '70px' }} />
-                  <col style={{ width: '70px' }} />
-                  <col style={{ width: '70px' }} />
-                  <col style={{ width: '70px' }} />
-                </colgroup>
-                <thead className="bg-blue-100 border-b border-gray-300">
+      {/* Desktop Table */}
+      <div className="hidden sm:block overflow-x-auto -mx-3 sm:mx-0">
+        <div className="relative">
+          <table className="min-w-full divide-y divide-gray-200 table-fixed border border-gray-300">
+                <thead className="sticky top-0 z-10 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-300 dark:to-gray-400 border-b-2 border-blue-200 dark:border-gray-500">
                   <tr>
-                  {/* Sticky columns */}
-                  <th 
-                    className="text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-blue-100 z-10 border-r border-gray-200" 
-                    scope="col"
-                  >
-                    <SortButton field="index" align="center">#</SortButton>
+                  <th className="w-4 sm:w-5 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold text-blue-700 dark:text-gray-800 uppercase tracking-wider">
+                #
                   </th>
                   <th 
-                    className="text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-[25px] bg-blue-100 z-10 border-r border-gray-200" 
-                    scope="col"
+                className={`w-32 sm:w-48 px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-200 ${
+                  sortConfig.field === 'ticker' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
+                }`}
+                onClick={() => handleSort('ticker')}
                   >
-                    <SortButton field="ticker" align="left">Ticker</SortButton>
+                Ticker
                   </th>
                   <th 
-                    className="text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-[67px] bg-blue-100 z-10 border-r border-gray-200" 
-                    scope="col"
+                className={`w-12 sm:w-16 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-200 ${
+                  sortConfig.field === 'reportTime' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
+                }`}
+                onClick={() => handleSort('reportTime')}
                   >
-                    <SortButton field="company" align="left">Company</SortButton>
-                  </th>
-                  {/* Scrollable columns */}
-                  <th 
-                    className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
-                    scope="col"
-                  >
-                    <SortButton field="size" align="center">Size</SortButton>
+                Time
                   </th>
                   <th 
-                    className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
-                    scope="col"
+                className={`w-10 sm:w-12 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-200 ${
+                  sortConfig.field === 'size' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
+                }`}
+                onClick={() => handleSort('size')}
                   >
-                    <SortButton field="marketCap" align="right">Market Cap</SortButton>
+                Size
                   </th>
                   <th 
-                    className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
-                    scope="col"
+                className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-200 ${
+                  sortConfig.field === 'marketCap' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
+                }`}
+                onClick={() => handleSort('marketCap')}
                   >
-                    <SortButton field="marketCapDiffBillions" align="right">Cap Diff</SortButton>
+                Market Cap
                   </th>
                   <th 
-                    className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
-                    scope="col"
+                className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-200 ${
+                  sortConfig.field === 'marketCapDiff' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
+                }`}
+                onClick={() => handleSort('marketCapDiff')}
                   >
-                    <SortButton field="currentPrice" align="right">Price</SortButton>
+                Cap Diff
                   </th>
                   <th 
-                    className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
-                    scope="col"
+                className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-200 ${
+                  sortConfig.field === 'currentPrice' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
+                }`}
+                onClick={() => handleSort('currentPrice')}
                   >
-                    <SortButton field="priceChangePercent" align="right">Change</SortButton>
+                Price
                   </th>
                   <th 
-                    className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
-                    scope="col"
+                className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-200 ${
+                  sortConfig.field === 'priceChangePercent' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
+                }`}
+                onClick={() => handleSort('priceChangePercent')}
                   >
-                    <SortButton field="epsEstimate" align="right">EPS Est</SortButton>
+                Change
                   </th>
                   <th 
-                    className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
-                    scope="col"
+                className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-200 ${
+                  sortConfig.field === 'epsEstimate' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
+                }`}
+                onClick={() => handleSort('epsEstimate')}
                   >
-                    <SortButton field="epsActual" align="right">EPS Act</SortButton>
+                EPS Est
                   </th>
                   <th 
-                    className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
-                    scope="col"
+                className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-200 ${
+                  sortConfig.field === 'epsActual' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
+                }`}
+                onClick={() => handleSort('epsActual')}
                   >
-                    <SortButton field="epsSurprise" align="right">EPS Surp</SortButton>
+                EPS Act
+              </th>
+              <th className="w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold text-blue-700 dark:text-gray-800 uppercase tracking-wider">
+                EPS Surp
                   </th>
                   <th 
-                    className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
-                    scope="col"
+                className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-200 ${
+                  sortConfig.field === 'revenueEstimate' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
+                }`}
+                onClick={() => handleSort('revenueEstimate')}
                   >
-                    <SortButton field="revenueEstimate" align="right">Rev Est</SortButton>
+                Rev Est
                   </th>
                   <th 
-                    className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
-                    scope="col"
+                className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-200 ${
+                  sortConfig.field === 'revenueActual' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
+                }`}
+                onClick={() => handleSort('revenueActual')}
                   >
-                    <SortButton field="revenueActual" align="right">Rev Act</SortButton>
+                Rev Act
                   </th>
-                  <th 
-                    className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap" 
-                    scope="col"
-                  >
-                    <SortButton field="revenueSurprise" align="right">Rev Surp</SortButton>
+              <th className="w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold text-blue-700 dark:text-gray-800 uppercase tracking-wider">
+                Rev Surp
                   </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {sortedData.map((item, index) => (
-                    <tr key={item.ticker} className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                    {/* Sticky columns */}
-                    <td className="px-2 py-3 text-sm text-gray-900 sticky left-0 bg-inherit z-10 border-r border-gray-200 text-center">
+                <tbody className="bg-white dark:bg-gray-200 divide-y divide-gray-200 dark:divide-gray-300">
+            {processedData.map((item, index) => (
+              <tr key={item.ticker} className="hover:bg-gray-50 dark:hover:bg-gray-300 transition-colors duration-200 ease-in-out animate-fade-in" style={{ animationDelay: `${index * 30}ms` }}>
+                <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-500 dark:text-gray-400 text-center">
                       {index + 1}
                     </td>
-                    <td className="px-2 py-3 text-sm font-medium text-gray-900 sticky left-[25px] bg-inherit z-10 border-r border-gray-200">
-                        {item.ticker}
+                <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-900">
+                  <div className="flex flex-col">
+                    <span className="font-semibold">{item.ticker}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-900">{item.companyName}</span>
+                  </div>
                       </td>
-                    <td className="px-2 py-3 text-sm text-gray-900 sticky left-[67px] bg-inherit z-10 border-r border-gray-200 truncate" title={item.companyName || item.ticker}>
-                        {item.companyName || item.ticker}
+                <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 dark:text-gray-900">
+                  {item.reportTime || '-'}
                       </td>
-                    {/* Scrollable columns */}
-                    <td className="px-2 py-3 text-sm text-gray-600 whitespace-nowrap text-center" style={{textAlign: 'center'}}>
-                      {item.size && item.size !== 'Unknown' ? item.size : '-'}
+                <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 dark:text-gray-900">
+                  {item.size ? (
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      item.size === 'Mega' 
+                        ? 'bg-red-100 text-red-800 border border-red-200' 
+                        : item.size === 'Large' 
+                        ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                        : 'text-gray-600'
+                    }`}>
+                      {item.size}
+                    </span>
+                  ) : '-'}
                     </td>
-                    <td className="px-2 py-3 text-sm text-gray-900 text-right whitespace-nowrap">
-                      {item.marketCap ? formatMarketCap(item.marketCap) : '-'}
+                <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 text-right">
+                  {item.marketCap ? `$${(Number(item.marketCap) / 1_000_000_000).toFixed(1)}B` : '-'}
                     </td>
-                    <td className={`px-2 py-3 text-sm text-right whitespace-nowrap ${getDiffClass(item.marketCapDiffBillions !== null && item.marketCapDiffBillions !== undefined ? BigInt(Math.round(item.marketCapDiffBillions * 1e9)) : null)}`}>
-                      {item.marketCapDiffBillions !== null && item.marketCapDiffBillions !== undefined ? formatBillions(item.marketCapDiffBillions) : '-'}
+                <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-right">
+                  {item.marketCapDiffBillions !== null ? (
+                    <span className={item.marketCapDiffBillions >= 0 ? 'text-green-600' : 'text-red-600'}>
+                      {item.marketCapDiffBillions >= 0 ? '+' : ''}${item.marketCapDiffBillions.toFixed(1)}B
+                    </span>
+                  ) : '-'}
                     </td>
-                    <td className="px-2 py-3 text-sm text-gray-900 text-right whitespace-nowrap">
+                <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 text-right">
                       {item.currentPrice ? `$${item.currentPrice.toFixed(2)}` : '-'}
                     </td>
-                    <td className={`px-2 py-3 text-sm text-right whitespace-nowrap ${getPriceChangeClass(item.priceChangePercent)}`}>
-                      {item.priceChangePercent !== null && item.priceChangePercent !== undefined ? formatPercentage(item.priceChangePercent) : '-'}
+                <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-right">
+                  {item.priceChangePercent !== null ? (
+                    <span className={item.priceChangePercent >= 0 ? 'text-green-600' : 'text-red-600'}>
+                      {item.priceChangePercent >= 0 ? '+' : ''}{item.priceChangePercent.toFixed(2)}%
+                    </span>
+                  ) : '-'}
                     </td>
-                    <td className="px-2 py-3 text-sm text-gray-600 text-right whitespace-nowrap">
-                      {formatEPS(item.epsEstimate)}
+                <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 text-right">
+                  {item.epsEstimate ? `$${item.epsEstimate.toFixed(2)}` : '-'}
                     </td>
-                    <td className="px-2 py-3 text-sm text-gray-900 text-right whitespace-nowrap">
-                      {formatEPS(item.epsActual)}
+                <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 text-right">
+                  {item.epsActual ? `$${item.epsActual.toFixed(2)}` : '-'}
                     </td>
-                    <td className={`px-2 py-3 text-sm text-right whitespace-nowrap ${getSurpriseClass(item.epsSurprise)}`}>
-                      {formatSurprise(item.epsSurprise)}
+                <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-right">
+                  {item.epsActual && item.epsEstimate ? (
+                    <span className={getSurpriseColor(item.epsActual, item.epsEstimate)}>
+                      {getSurpriseText(item.epsActual, item.epsEstimate)}
+                    </span>
+                  ) : '-'}
                     </td>
-                    <td className="px-2 py-3 text-sm text-gray-600 text-right whitespace-nowrap">
-                      {formatRevenue(item.revenueEstimate)}
+                <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 text-right whitespace-nowrap">
+                  {item.revenueEstimate ? formatRevenueValue(Number(item.revenueEstimate)) : '-'}
                     </td>
-                    <td className="px-2 py-3 text-sm text-gray-900 text-right whitespace-nowrap">
-                      {formatRevenue(item.revenueActual)}
+                <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 text-right whitespace-nowrap">
+                  {item.revenueActual ? formatRevenueValue(Number(item.revenueActual)) : '-'}
                     </td>
-                    <td className={`px-2 py-3 text-sm text-right whitespace-nowrap ${getSurpriseClass(item.revenueSurprise)}`}>
-                      {formatSurprise(item.revenueSurprise)}
+                <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-right">
+                  {item.revenueActual && item.revenueEstimate ? (
+                    <span className={getSurpriseColor(item.revenueActual, item.revenueEstimate)}>
+                      {getSurpriseText(item.revenueActual, item.revenueEstimate)}
+                    </span>
+                  ) : '-'}
                     </td>
                   </tr>
                   ))}
@@ -743,8 +607,54 @@ export const EarningsTable = memo(({ data, isLoading, error, onRefresh }: Earnin
               </table>
             </div>
           </div>
-        </>
-      )}
+
+      {/* Footer */}
+      <div className="bg-gray-50 dark:bg-gray-200 px-3 sm:px-6 py-2 sm:py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 sm:gap-0 text-xs sm:text-sm text-gray-500 dark:text-gray-700">
+        <span>Showing {processedData.length} of {data.length} companies</span>
+        <span>Last updated: {stats?.lastUpdated ? new Date(stats.lastUpdated).toLocaleString() : 'Loading...'}</span>
+          </div>
     </div>
   );
-});
+}
+
+// Helper functions
+function getNestedValue(obj: any, path: string): any {
+  return path.split('.').reduce((current, key) => current?.[key], obj);
+}
+
+function formatRevenueValue(value: number): string {
+  if (value >= 1_000_000_000) {
+    // Convert to billions
+    const billions = value / 1_000_000_000;
+    return `$ ${billions.toLocaleString('en-US', { 
+      minimumFractionDigits: 0, 
+      maximumFractionDigits: 2 
+    })} B`;
+  } else if (value >= 1_000_000) {
+    // Convert to millions
+    const millions = value / 1_000_000;
+    return `$ ${millions.toLocaleString('en-US', { 
+      minimumFractionDigits: 0, 
+      maximumFractionDigits: 2 
+    })} M`;
+  } else {
+    // Keep as is for smaller values
+    return `$ ${value.toLocaleString('en-US', { 
+      minimumFractionDigits: 0, 
+      maximumFractionDigits: 2 
+    })}`;
+  }
+}
+
+
+function getSurpriseColor(actual: number, estimate: number): string {
+  if (actual > estimate) return 'text-green-600';
+  if (actual < estimate) return 'text-red-600';
+  return 'text-gray-500 dark:text-gray-400';
+}
+
+function getSurpriseText(actual: number, estimate: number): string {
+  if (estimate === 0) return '-';
+  const surprise = ((actual - estimate) / Math.abs(estimate)) * 100;
+  return `${surprise >= 0 ? '+' : ''}${surprise.toFixed(1)}%`;
+}

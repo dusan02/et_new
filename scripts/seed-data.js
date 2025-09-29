@@ -6,10 +6,48 @@ async function seedData() {
   try {
     console.log("Seeding test data...");
 
+    // Use the same date logic as the API (from src/lib/dates.ts)
+    // This mimics getTodayStart() function
+    const getNYDate = () => {
+      const now = new Date();
+      const nyFormatter = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/New_York",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      });
+
+      const parts = nyFormatter.formatToParts(now);
+      const year = parseInt(parts.find((p) => p.type === "year").value);
+      const month = parseInt(parts.find((p) => p.type === "month").value) - 1;
+      const day = parseInt(parts.find((p) => p.type === "day").value);
+      const hour = parseInt(parts.find((p) => p.type === "hour").value);
+      const minute = parseInt(parts.find((p) => p.type === "minute").value);
+      const second = parseInt(parts.find((p) => p.type === "second").value);
+
+      return new Date(year, month, day, hour, minute, second);
+    };
+
+    const getTodayStart = () => {
+      const nyDate = getNYDate();
+      const year = nyDate.getFullYear();
+      const month = String(nyDate.getMonth() + 1).padStart(2, "0");
+      const day = String(nyDate.getDate()).padStart(2, "0");
+      const dateString = `${year}-${month}-${day}`;
+      return new Date(dateString + "T00:00:00.000Z");
+    };
+
+    const today = getTodayStart();
+    console.log("Using date:", today.toISOString());
+
     // Create test earnings data
     const testEarnings = [
       {
-        reportDate: new Date(),
+        reportDate: today,
         ticker: "AAPL",
         reportTime: "AMC",
         epsActual: 1.52,
@@ -33,7 +71,7 @@ async function seedData() {
         // revenueGuideExtreme: false,
       },
       {
-        reportDate: new Date(),
+        reportDate: today,
         ticker: "MSFT",
         reportTime: "BMO",
         epsActual: 2.35,
@@ -57,7 +95,7 @@ async function seedData() {
         // revenueGuideExtreme: false,
       },
       {
-        reportDate: new Date(),
+        reportDate: today,
         ticker: "GOOGL",
         reportTime: "AMC",
         epsActual: 1.89,
@@ -86,36 +124,39 @@ async function seedData() {
     const testMovements = [
       {
         ticker: "AAPL",
+        reportDate: today,
         companyName: "Apple Inc.",
         currentPrice: 175.5,
         previousClose: 170.25,
         marketCap: BigInt(2800000000000),
         size: "Large",
-        marketCapDiff: BigInt(50000000000),
+        marketCapDiff: 3.08,
         marketCapDiffBillions: 50.0,
         priceChangePercent: 3.08,
         sharesOutstanding: BigInt(16000000000),
       },
       {
         ticker: "MSFT",
+        reportDate: today,
         companyName: "Microsoft Corporation",
         currentPrice: 380.25,
         previousClose: 375.8,
         marketCap: BigInt(2800000000000),
         size: "Large",
-        marketCapDiff: BigInt(25000000000),
+        marketCapDiff: 1.18,
         marketCapDiffBillions: 25.0,
         priceChangePercent: 1.18,
         sharesOutstanding: BigInt(7500000000),
       },
       {
         ticker: "GOOGL",
+        reportDate: today,
         companyName: "Alphabet Inc.",
         currentPrice: 142.8,
         previousClose: 140.5,
         marketCap: BigInt(1800000000000),
         size: "Large",
-        marketCapDiff: BigInt(15000000000),
+        marketCapDiff: 1.64,
         marketCapDiffBillions: 15.0,
         priceChangePercent: 1.64,
         sharesOutstanding: BigInt(12500000000),
