@@ -21,7 +21,7 @@ function checkEnvFile() {
       const requiredVars = ["FINNHUB_API_KEY", "POLYGON_API_KEY"];
 
       for (const varName of requiredVars) {
-        if (!content.includes(varName) || content.includes(`${varName}=`)) {
+        if (!content.includes(varName) || content.includes(`${varName}="your_`)) {
           warnings.push(
             `Environment variable ${varName} might not be set in ${envFile}`
           );

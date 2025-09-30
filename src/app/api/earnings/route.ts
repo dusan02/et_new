@@ -30,26 +30,8 @@ export async function GET(request: NextRequest) {
       console.warn('Monitoring not available:', error)
     }
     
-    // 1. Rate limiting check
-    const clientIP = request.headers.get('x-forwarded-for') || 
-                     request.headers.get('x-real-ip') || 
-                     'unknown'
-    
-    if (!checkRateLimit(clientIP, 60, 60000)) { // 60 requests per minute
-      // Track rate limit hit
-      if (monitoring) {
-        monitoring.trackMetric({
-          name: 'api.rate_limit_hit',
-          value: 1,
-          tags: { endpoint: '/api/earnings', ip: clientIP }
-        })
-      }
-      
-      return NextResponse.json(
-        { error: 'Rate limit exceeded', message: 'Too many requests. Please try again later.' },
-        { status: 429, headers: { 'Retry-After': '60' } }
-      )
-    }
+    // Skip rate limiting in production build to avoid dynamic server usage
+    // Rate limiting is handled by middleware or external services
     
     // 2. Input validation
     const validation = validateRequest(earningsQuerySchema, request)

@@ -169,14 +169,30 @@ async function fetchMarketData(tickers) {
 
       const prevClose = prevData?.results?.[0]?.c;
 
-      // Fetch current price from Finnhub (more reliable)
+      // Fetch current price from Polygon (more accurate for real-time data)
       let currentPrice = null;
       try {
-        const { data: quoteData } = await axios.get(
-          `https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FINN}`,
-          { timeout: 5000 }
+        const { data: currentData } = await axios.get(
+          `https://api.polygon.io/v2/aggs/ticker/${ticker}/range/1/minute/${
+            new Date().toISOString().split("T")[0]
+          }/${new Date().toISOString().split("T")[0]}`,
+          {
+            params: { apikey: POLY, adjusted: true, sort: "desc", limit: 1 },
+            timeout: 5000,
+          }
         );
-        currentPrice = quoteData?.c || null; // 'c' is current price
+
+        // If no current data, try to get latest quote
+        if (!currentData?.results?.length) {
+          const { data: quoteData } = await axios.get(
+            `https://api.polygon.io/v1/last_quote/stocks/${ticker}`,
+            { params: { apikey: POLY }, timeout: 5000 }
+          );
+          currentPrice = quoteData?.results?.P || null;
+        } else {
+          currentPrice = currentData.results[0]?.c || null;
+        }
+
         console.log(
           `✅ Got current price for ${ticker}: $${currentPrice} (prev: $${prevClose})`
         );
@@ -220,16 +236,15 @@ async function fetchMarketData(tickers) {
         );
       }
 
-      // Use prevClose as currentPrice if currentPrice is not available
-      const effectiveCurrentPrice = currentPrice || prevClose;
-
-      // Calculate price change
+      // Only calculate price change if we have both current and previous prices
+      // Don't use prevClose as fallback for currentPrice to avoid 0% changes
       const priceChangePercent =
-        prevClose && effectiveCurrentPrice
-          ? ((effectiveCurrentPrice - prevClose) / prevClose) * 100
+        prevClose && currentPrice && currentPrice !== prevClose
+          ? ((currentPrice - prevClose) / prevClose) * 100
           : null;
 
       // Data quality validation
+      const effectiveCurrentPrice = currentPrice || prevClose; // Use prevClose only if no current price available
       const marketData = {
         ticker,
         currentPrice: effectiveCurrentPrice,
