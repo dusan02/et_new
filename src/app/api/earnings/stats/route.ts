@@ -4,10 +4,10 @@ import { prisma } from '@/lib/prisma';
 import { getTodayStart, getNYTimeString } from '@/lib/dates';
 import { validateRequest, checkRateLimit, statsQuerySchema } from '@/lib/validation';
 
-// Cache for 5 minutes
-export const revalidate = 300
 // Force dynamic rendering to avoid static generation issues with query parameters
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const fetchCache = 'force-no-store'
 
 export async function GET(request: NextRequest) {
   try {
@@ -216,7 +216,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: serializedStats,
-    });
+    }, { headers: { 'Cache-Control': 'no-store' }});
   } catch (error) {
     console.error('Error fetching earnings stats:', error);
     return NextResponse.json({

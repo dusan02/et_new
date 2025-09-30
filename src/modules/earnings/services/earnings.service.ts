@@ -18,6 +18,8 @@ import {
   hasEstimates,
   normalizeTicker 
 } from '../utils'
+import { applyEarningsFallback } from '@/src/services/earnings/fallback'
+import { nul } from '@/src/lib/db-nulls'
 
 export class EarningsService {
   private repository: EarningsRepository
@@ -116,34 +118,38 @@ export class EarningsService {
         r: String(item.revenueActual), re: String(item.revenueEstimate),
       });
 
-      let epsActual = item.epsActual || null
-      if (epsActual == null && item.epsEstimate != null) {
-        epsActual = item.epsEstimate
-        console.log(`🔄 Fallback applied for ${ticker}: using EPS estimate as actual`)
-      }
+      // 1) Aplikuj fallback na objekt, ktorý pôjde do DB
+      const { out, usedEpsFallback, usedRevenueFallback } = applyEarningsFallback({
+        epsActual: item.epsActual,
+        epsEstimate: item.epsEstimate,
+        revenueActual,
+        revenueEstimate,
+      });
 
-      if (revenueActual == null && revenueEstimate != null) {
-        revenueActual = revenueEstimate
-        console.log(`🔄 Fallback applied for ${ticker}: using revenue estimate as actual`)
+      if (usedEpsFallback || usedRevenueFallback) {
+        console.log(`🔄 Fallback applied for ${ticker} [EPS:${usedEpsFallback?'Y':'-'} | REV:${usedRevenueFallback?'Y':'-'}]`);
       }
 
       console.log(`[TRACE] ${ticker} post-fallback`, {
-        a: String(epsActual), ae: String(item.epsEstimate),
-        r: String(revenueActual), re: String(revenueEstimate),
+        a: String(out.epsActual), ae: String(out.epsEstimate),
+        r: String(out.revenueActual), re: String(out.revenueEstimate),
       });
 
-      processedData.push({
+      // 2) Normalizuj undefined → null (bez zmeny 0n!)
+      const prismaData = {
         reportDate,
         ticker,
         reportTime,
-        epsActual,
-        epsEstimate: item.epsEstimate || undefined,
-        revenueActual,
-        revenueEstimate,
+        epsActual: nul(out.epsActual),
+        epsEstimate: nul(out.epsEstimate),
+        revenueActual: nul(out.revenueActual),
+        revenueEstimate: nul(out.revenueEstimate),
         fiscalPeriod: item.quarter ? `Q${item.quarter}` : undefined,
         fiscalYear: item.year || undefined,
         dataSource: 'finnhub'
-      })
+      };
+
+      processedData.push(prismaData)
     }
 
     return await this.repository.batchUpsert(processedData)
