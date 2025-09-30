@@ -118,7 +118,7 @@ export class EarningsService {
       }
 
       if (!revenueActual && revenueEstimate) {
-        revenueActual = revenueEstimate
+        revenueActual = BigInt(revenueEstimate)
         console.log(`🔄 Fallback applied for ${ticker}: using revenue estimate as actual`)
       }
 
