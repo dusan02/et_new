@@ -1,0 +1,20 @@
+[Unit]
+Description=Earnings Table Application
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/path/to/your/app
+Environment=NODE_ENV=production
+Environment=FINNHUB_API_KEY=d28f1dhr01qjsuf342ogd28f1dhr01qjsuf342p0
+Environment=POLYGON_API_KEY=Vi_pMLcusE8RA_SUvkPAmiyziVzlmOoX
+Environment=DATABASE_URL=file:./prisma/dev.db
+Environment=NEXT_TELEMETRY_DISABLED=1
+Environment=PORT=3000
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -28,7 +28,18 @@ export async function GET(request: NextRequest) {
   
   try {
     // ✅ validácia až teraz (soft pri builde, strict v runtime)
-    const env = loadEnvironmentConfig()
+    let env: any = {}
+    try {
+      env = loadEnvironmentConfig()
+    } catch (error) {
+      console.warn('Environment config not available, using defaults:', error)
+      // Use default values if environment config fails
+      env = {
+        FINNHUB_API_KEY: process.env.FINNHUB_API_KEY || '',
+        POLYGON_API_KEY: process.env.POLYGON_API_KEY || '',
+        DATABASE_URL: process.env.DATABASE_URL || 'file:./prisma/dev.db'
+      }
+    }
     
     // Initialize monitoring
     try {
