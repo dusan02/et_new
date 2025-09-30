@@ -39,14 +39,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.production
-    command: ["node", "scripts/simple-cron.js"]
+    command: ["node", "src/queue/worker-new.js"]
     environment:
       - NODE_ENV=production
       - DATABASE_URL=${DATABASE_URL}
       - FINNHUB_API_KEY=${FINNHUB_API_KEY}
       - POLYGON_API_KEY=${POLYGON_API_KEY}
     volumes:
-      - ./scripts:/app/scripts:ro
+      - ./src:/app/src:ro
     restart: unless-stopped
     depends_on:
       - app

@@ -1,61 +1,61 @@
 @echo off
-REM Production Deployment Script for earningstable.com (Windows)
-REM Server: 89.185.250.213:3000
+REM Production Deployment Script for EarningsTable (Windows)
+REM Usage: deploy-production.bat [server_ip]
 
-echo 🚀 Starting production deployment for earningstable.com...
+setlocal enabledelayedexpansion
+
+REM Configuration
+set SERVER_IP=%1
+if "%SERVER_IP%"=="" set SERVER_IP=89.185.250.213
+set APP_NAME=earnings-table
+set DOCKER_IMAGE=earnings-table:latest
+set CONTAINER_NAME=earnings-app
+set CRON_CONTAINER_NAME=earnings-cron
+
+echo 🚀 Starting production deployment to %SERVER_IP%
 
 REM Check if we're in the right directory
 if not exist "package.json" (
-    echo ❌ package.json not found. Please run this script from the project root.
-    pause
+    echo ❌ Error: package.json not found. Please run this script from the project root.
     exit /b 1
 )
 
-echo ✅ Stopping existing application...
-taskkill /F /IM node.exe 2>nul || echo No Node.js processes to stop
+REM Build Docker image
+echo 📦 Building Docker image...
+docker build -f Dockerfile.production -t %DOCKER_IMAGE% .
 
-echo ✅ Pulling latest changes from Git...
-git pull origin main
-
-echo ✅ Installing dependencies...
-npm ci --production
-
-echo ✅ Running pre-build validation...
-npm run build
-
-if %errorlevel% neq 0 (
-    echo ❌ Build failed! Please fix the issues before deploying.
-    pause
+if errorlevel 1 (
+    echo ❌ Docker build failed
     exit /b 1
 )
 
-echo ✅ Setting up environment variables...
-if not exist ".env.production" (
-    echo ⚠️ .env.production not found. Please create it with your production settings.
-    copy env.production.example .env.production
-    echo ⚠️ Please edit .env.production with your actual values before continuing.
-    pause
+echo ✅ Docker image built successfully
+
+REM Save image to tar file
+echo 💾 Saving Docker image...
+docker save %DOCKER_IMAGE% | gzip > %APP_NAME%-image.tar.gz
+
+REM Copy files to server
+echo 📤 Copying files to server...
+scp %APP_NAME%-image.tar.gz root@%SERVER_IP%:/tmp/
+scp docker-compose.production.yml root@%SERVER_IP%:/tmp/
+scp production.env root@%SERVER_IP%:/tmp/.env.production
+
+REM Deploy on server
+echo 🚀 Deploying on server...
+ssh root@%SERVER_IP% "set -e && echo '📥 Loading Docker image...' && docker load < /tmp/%APP_NAME%-image.tar.gz && echo '🛑 Stopping existing containers...' && docker stop %CONTAINER_NAME% %CRON_CONTAINER_NAME% 2>/dev/null || true && docker rm %CONTAINER_NAME% %CRON_CONTAINER_NAME% 2>/dev/null || true && echo '📁 Setting up directories...' && mkdir -p /opt/%APP_NAME% && cd /opt/%APP_NAME% && echo '📋 Copying configuration files...' && cp /tmp/docker-compose.production.yml ./docker-compose.yml && cp /tmp/.env.production ./.env.production && echo '🔧 Setting environment variables...' && export DATABASE_URL='postgresql://earnings_user:earnings_password@localhost:5432/earnings_table' && export FINNHUB_API_KEY='d28f1dhr01qjsuf342ogd28f1dhr01qjsuf342p0' && export POLYGON_API_KEY='Vi_pMLcusE8RA_SUvkPAmiyziVzlmOoX' && echo '🚀 Starting containers...' && docker-compose up -d && echo '⏳ Waiting for application to start...' && sleep 10 && echo '🔍 Checking application health...' && curl -f http://localhost:3000/api/monitoring/health || echo 'Health check failed, but continuing...' && echo '🧹 Cleaning up...' && rm -f /tmp/%APP_NAME%-image.tar.gz && rm -f /tmp/docker-compose.production.yml && rm -f /tmp/.env.production && echo '✅ Deployment completed!' && echo '🌐 Application should be available at:' && echo '   - http://%SERVER_IP%:3000' && echo '   - https://earningstable.com'"
+
+if errorlevel 1 (
+    echo ❌ Deployment failed
     exit /b 1
+) else (
+    echo 🎉 Deployment completed successfully!
+    echo 🌐 Application URLs:
+    echo    - http://%SERVER_IP%:3000
+    echo    - https://earningstable.com
 )
 
-echo ✅ Starting application...
-start /B npm start
+REM Clean up local files
+del %APP_NAME%-image.tar.gz
 
-echo ✅ Running initial data fetch...
-npm run fetch
-
-echo ✅ Starting cron jobs...
-start /B npm run cron
-
-echo ✅ Checking application health...
-timeout /t 5 /nobreak >nul
-curl -f http://localhost:3000/api/monitoring/health || echo ⚠️ Health check failed
-
-echo ✅ Production deployment completed!
-echo 🌐 Application URL: https://earningstable.com
-echo 📊 Health Check: http://89.185.250.213:3000/api/monitoring/health
-echo 📈 Data will be refreshed every 30 minutes
-
-echo.
-echo Press any key to continue...
-pause >nul
+echo ✨ All done!
