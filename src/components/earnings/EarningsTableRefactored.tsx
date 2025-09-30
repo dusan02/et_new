@@ -62,7 +62,7 @@ export const EarningsTableRefactored = memo(function EarningsTableRefactored() {
 
   // Event handlers
   const handleSort = useCallback((field: string) => {
-    setSortConfig(prev => ({
+    setSortConfig((prev: SortConfig) => ({
       field: field as any,
       direction: prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc'
     }));

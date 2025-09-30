@@ -15,7 +15,7 @@ interface UsePerformanceOptimizationReturn {
   debouncedCallback: (callback: () => void, delay?: number) => void;
   throttledCallback: (callback: () => void, delay?: number) => void;
   isVisible: boolean;
-  intersectionRef: React.RefObject<HTMLElement>;
+  intersectionRef: React.RefObject<HTMLDivElement>;
 }
 
 export function usePerformanceOptimization({
@@ -23,7 +23,7 @@ export function usePerformanceOptimization({
   dependencies = []
 }: UsePerformanceOptimizationOptions): UsePerformanceOptimizationReturn {
   const [isVisible, setIsVisible] = useState(false);
-  const intersectionRef = useRef<HTMLElement>(null);
+  const intersectionRef = useRef<HTMLDivElement>(null);
   const debounceTimeoutRef = useRef<NodeJS.Timeout>();
   const throttleTimeoutRef = useRef<NodeJS.Timeout>();
 

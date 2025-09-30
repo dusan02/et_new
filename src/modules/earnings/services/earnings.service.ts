@@ -258,4 +258,13 @@ export class EarningsService {
       errors
     }
   }
+
+  /**
+   * Create or update earnings data
+   * @param data - CreateEarningsInput data
+   * @returns Created/updated earnings data
+   */
+  async createOrUpdate(data: CreateEarningsInput): Promise<EarningsData> {
+    return await this.repository.upsert(data)
+  }
 }

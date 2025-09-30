@@ -321,11 +321,9 @@ export class UnifiedDataFetcher {
           revenueActual: earning.revenueActual,
           revenueEstimate: earning.revenueEstimate,
           sector: earning.sector,
-          companyType: earning.companyType,
           dataSource: earning.dataSource,
           fiscalPeriod: earning.fiscalPeriod,
           fiscalYear: earning.fiscalYear,
-          primaryExchange: earning.primaryExchange
         })
         savedCount++
       } catch (error) {

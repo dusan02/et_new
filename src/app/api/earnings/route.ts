@@ -85,16 +85,18 @@ export async function GET(request: NextRequest) {
     const cached = getCachedData(cacheKey)
     
     if (cached) {
-      console.log(`[CACHE] HIT - returning cached data (age: ${getCacheAge(cached.timestamp)}s)`)
+      const cacheAge = getCacheAge(cached)
+      const cachedData = cached.data as any[]
+      console.log(`[CACHE] HIT - returning cached data (age: ${cacheAge}s)`)
       return NextResponse.json({
         success: true,
-        data: cached.data,
+        data: cachedData,
         meta: {
-          total: cached.data.length,
+          total: cachedData.length,
           duration: `${Date.now() - startTime}ms`,
           date: todayString,
           cached: true,
-          cacheAge: getCacheAge(cached.timestamp)
+          cacheAge: cacheAge
         }
       }, {
         headers: {

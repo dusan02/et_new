@@ -58,6 +58,7 @@ export type SortField =
   | 'index'
   | 'ticker' 
   | 'companyName' 
+  | 'reportTime'
   | 'size' 
   | 'marketCap' 
   | 'marketCapDiff' 
@@ -65,8 +66,10 @@ export type SortField =
   | 'priceChangePercent' 
   | 'epsEstimate' 
   | 'epsActual' 
+  | 'epsSurprise'
   | 'revenueEstimate' 
-  | 'revenueActual';
+  | 'revenueActual'
+  | 'revenueSurprise';
 
 export type SortDirection = 'asc' | 'desc';
 

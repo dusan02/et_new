@@ -21,7 +21,7 @@ interface UseEarningsDataReturn {
   processedData: EarningsData[];
   sortConfig: SortConfig;
   filterConfig: FilterConfig;
-  setSortConfig: (config: SortConfig) => void;
+  setSortConfig: (config: SortConfig | ((prev: SortConfig) => SortConfig)) => void;
   setFilterConfig: (config: FilterConfig) => void;
   refresh: () => void;
 }

@@ -5,9 +5,11 @@
     "private": true,
     "scripts": {
         "dev": "next dev -p 3000",
-        "build": "next build",
+        "build": "node scripts/build-check.js && next build",
+        "build:production": "NODE_ENV=production node scripts/build-check.js && next build",
         "start": "next start",
         "lint": "next lint",
+        "lint:fix": "next lint --fix",
         "db:generate": "prisma generate",
         "db:push": "prisma db push",
         "db:migrate": "prisma migrate dev",

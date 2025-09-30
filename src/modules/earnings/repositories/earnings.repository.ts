@@ -15,15 +15,23 @@ import { calculateEarningsSurprise } from '../utils'
 
 export class EarningsRepository {
   /**
+   * Helper function to transform Prisma data to EarningsData
+   */
+  private transformToEarningsData(data: any[]): EarningsData[] {
+    return this.transformToEarningsData(data)
+  }
+  /**
    * Find earnings by date
    * @param reportDate - Report date
    * @returns Array of earnings data
    */
   async findByDate(reportDate: Date): Promise<EarningsData[]> {
-    return await prisma.earningsTickersToday.findMany({
+    const data = await prisma.earningsTickersToday.findMany({
       where: { reportDate },
       orderBy: { ticker: 'asc' }
     })
+    
+    return this.transformToEarningsData(data)
   }
 
   /**
@@ -32,10 +40,12 @@ export class EarningsRepository {
    * @returns Array of earnings data
    */
   async findByTicker(ticker: string): Promise<EarningsData[]> {
-    return await prisma.earningsTickersToday.findMany({
+    const data = await prisma.earningsTickersToday.findMany({
       where: { ticker },
       orderBy: { reportDate: 'desc' }
     })
+    
+    return this.transformToEarningsData(data)
   }
 
   /**
