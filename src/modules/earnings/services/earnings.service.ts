@@ -103,18 +103,30 @@ export class EarningsService {
       }
 
       // Convert revenue from millions to actual value if needed
-      const revenueActual = item.revenueActual 
+      let revenueActual = item.revenueActual 
         ? BigInt(Math.round(item.revenueActual * 1000000))
         : undefined
       const revenueEstimate = item.revenueEstimate 
         ? BigInt(Math.round(item.revenueEstimate * 1000000))
         : undefined
 
+      // Apply fallback for missing actual values
+      let epsActual = item.epsActual || undefined
+      if (!epsActual && item.epsEstimate) {
+        epsActual = item.epsEstimate
+        console.log(`🔄 Fallback applied for ${ticker}: using EPS estimate as actual`)
+      }
+
+      if (!revenueActual && revenueEstimate) {
+        revenueActual = revenueEstimate
+        console.log(`🔄 Fallback applied for ${ticker}: using revenue estimate as actual`)
+      }
+
       processedData.push({
         reportDate,
         ticker,
         reportTime,
-        epsActual: item.epsActual || undefined,
+        epsActual,
         epsEstimate: item.epsEstimate || undefined,
         revenueActual,
         revenueEstimate,
