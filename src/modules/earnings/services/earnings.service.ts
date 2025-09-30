@@ -116,7 +116,7 @@ export class EarningsService {
         r: String(item.revenueActual), re: String(item.revenueEstimate),
       });
 
-      let epsActual = item.epsActual || undefined
+      let epsActual = item.epsActual || null
       if (epsActual == null && item.epsEstimate != null) {
         epsActual = item.epsEstimate
         console.log(`🔄 Fallback applied for ${ticker}: using EPS estimate as actual`)
