@@ -6,6 +6,8 @@ import { validateRequest, checkRateLimit, statsQuerySchema } from '@/lib/validat
 
 // Cache for 5 minutes
 export const revalidate = 300
+// Force dynamic rendering to avoid static generation issues with query parameters
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {

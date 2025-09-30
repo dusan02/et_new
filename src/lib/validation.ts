@@ -52,10 +52,10 @@ export function validateQuery<T>(schema: z.ZodSchema<T>, searchParams: URLSearch
   }
 }
 
-// Validate request with better error formatting
+// Validate request with better error formatting (without using request.url to avoid dynamic server usage)
 export function validateRequest<T>(schema: z.ZodSchema<T>, request: NextRequest) {
-  const url = new URL(request.url)
-  const validation = validateQuery(schema, url.searchParams)
+  // Use request.nextUrl.searchParams instead of new URL(request.url) to avoid dynamic server usage
+  const validation = validateQuery(schema, request.nextUrl.searchParams)
   
   if (!validation.success) {
     const formattedErrors = Array.isArray(validation.error) 

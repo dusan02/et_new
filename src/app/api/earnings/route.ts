@@ -17,6 +17,8 @@ import {
 
 // Cache for 5 minutes for better performance
 export const revalidate = 300
+// Force dynamic rendering to avoid static generation issues with query parameters
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now()

@@ -6,9 +6,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { DataQualityMonitor } from '@/modules/shared/monitoring/data-quality-monitor'
 
+// Force dynamic rendering to avoid static generation issues with query parameters
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = request.nextUrl
     const action = searchParams.get('action') || 'metrics'
     
     switch (action) {
