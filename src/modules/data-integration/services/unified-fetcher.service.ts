@@ -361,30 +361,9 @@ export class UnifiedDataFetcher {
    * Ulož earnings dáta do databázy
    */
   private async saveEarningsData(earningsData: any[]): Promise<number> {
-    let savedCount = 0
-
-    for (const earning of earningsData) {
-      try {
-        await this.earningsService.createOrUpdate({
-          reportDate: new Date(earning.reportDate || isoDate()),
-          ticker: earning.ticker,
-          reportTime: earning.reportTime,
-          epsActual: earning.epsActual,
-          epsEstimate: earning.epsEstimate,
-          revenueActual: earning.revenueActual,
-          revenueEstimate: earning.revenueEstimate,
-          sector: earning.sector,
-          dataSource: earning.dataSource,
-          fiscalPeriod: earning.fiscalPeriod,
-          fiscalYear: earning.fiscalYear,
-        })
-        savedCount++
-      } catch (error) {
-        console.error(`Error saving earnings data for ${earning.ticker}:`, error)
-      }
-    }
-
-    return savedCount
+    // Použi processEarningsData ktorá má fallback logiku
+    const reportDate = new Date(earningsData[0]?.reportDate || isoDate())
+    return await this.earningsService.processEarningsData(earningsData, reportDate)
   }
 
   /**
