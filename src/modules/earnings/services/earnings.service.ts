@@ -111,8 +111,13 @@ export class EarningsService {
         : undefined
 
       // Apply fallback for missing actual values
+      console.log(`[TRACE] ${ticker} pre-fallback`, {
+        a: String(item.epsActual), ae: String(item.epsEstimate),
+        r: String(item.revenueActual), re: String(item.revenueEstimate),
+      });
+
       let epsActual = item.epsActual || undefined
-      if (!epsActual && item.epsEstimate) {
+      if (epsActual == null && item.epsEstimate != null) {
         epsActual = item.epsEstimate
         console.log(`🔄 Fallback applied for ${ticker}: using EPS estimate as actual`)
       }
@@ -121,6 +126,11 @@ export class EarningsService {
         revenueActual = revenueEstimate
         console.log(`🔄 Fallback applied for ${ticker}: using revenue estimate as actual`)
       }
+
+      console.log(`[TRACE] ${ticker} post-fallback`, {
+        a: String(epsActual), ae: String(item.epsEstimate),
+        r: String(revenueActual), re: String(revenueEstimate),
+      });
 
       processedData.push({
         reportDate,
