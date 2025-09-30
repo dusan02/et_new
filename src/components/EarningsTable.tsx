@@ -341,13 +341,13 @@ export default function EarningsTable({
       <div className="grid grid-cols-2 gap-2 mb-2">
               <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
                 <div className="text-xs text-gray-500 dark:text-gray-300">Market Cap</div>
-                <div className="font-semibold text-sm text-gray-900 dark:text-white">
+                <div className="font-semibold text-sm text-gray-900 dark:text-black">
                   {item.marketCap ? `$${(Number(item.marketCap) / 1_000_000_000).toFixed(1)}B` : '-'}
         </div>
         </div>
               <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
                 <div className="text-xs text-gray-500 dark:text-gray-300">Price</div>
-                <div className="font-semibold text-sm text-gray-900 dark:text-white">
+                <div className="font-semibold text-sm text-gray-900 dark:text-black">
             {item.currentPrice ? `$${item.currentPrice.toFixed(2)}` : '-'}
         </div>
         </div>
@@ -387,13 +387,13 @@ export default function EarningsTable({
               <div className="space-y-1">
                 <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
                   <div className="text-xs text-gray-500 dark:text-gray-300">EPS Est</div>
-                  <div className="font-semibold text-sm text-gray-900 dark:text-white">
+                  <div className="font-semibold text-sm text-gray-900 dark:text-black">
                     {item.epsEstimate ? `$${item.epsEstimate.toFixed(2)}` : '-'}
           </div>
         </div>
                 <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
                   <div className="text-xs text-gray-500 dark:text-gray-300">EPS Act</div>
-                  <div className="font-semibold text-sm text-gray-900 dark:text-white">
+                  <div className="font-semibold text-sm text-gray-900 dark:text-black">
                     {item.epsActual ? `$${item.epsActual.toFixed(2)}` : '-'}
           </div>
         </div>
@@ -411,13 +411,13 @@ export default function EarningsTable({
               <div className="space-y-1">
                 <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
                   <div className="text-xs text-gray-500 dark:text-gray-300">Rev Est</div>
-                  <div className="font-semibold text-sm whitespace-nowrap text-gray-900 dark:text-white">
+                  <div className="font-semibold text-sm whitespace-nowrap text-gray-900 dark:text-black">
                     {item.revenueEstimate ? formatRevenueValue(Number(item.revenueEstimate)) : '-'}
           </div>
         </div>
                 <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
                   <div className="text-xs text-gray-500 dark:text-gray-300">Rev Act</div>
-                  <div className="font-semibold text-sm whitespace-nowrap text-gray-900 dark:text-white">
+                  <div className="font-semibold text-sm whitespace-nowrap text-gray-900 dark:text-black">
                     {item.revenueActual ? formatRevenueValue(Number(item.revenueActual)) : '-'}
           </div>
         </div>
