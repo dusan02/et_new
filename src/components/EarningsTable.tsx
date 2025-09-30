@@ -306,7 +306,7 @@ export default function EarningsTable({
       <div className="block sm:hidden">
         {/* Mobile Card View */}
         {processedData.map((item, index) => (
-          <div key={item.ticker} className="bg-white dark:bg-gray-200 border border-gray-200 dark:border-gray-300 rounded-lg p-3 mb-2 shadow-sm hover:shadow-md transition-all duration-200 ease-in-out animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
+          <div key={item.ticker} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-3 mb-2 shadow-sm hover:shadow-md transition-all duration-200 ease-in-out animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
             {/* Header */}
       <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
@@ -325,7 +325,7 @@ export default function EarningsTable({
         </div>
         <div className="text-right">
           <div className="text-xs text-gray-500 dark:text-gray-400">Report Time</div>
-          <div className="font-medium text-sm text-gray-900 dark:text-gray-900">
+          <div className="font-medium text-sm text-gray-900 dark:text-white">
             {item.reportTime || '-'}
           </div>
         </div>
@@ -333,21 +333,21 @@ export default function EarningsTable({
 
             {/* Company Info */}
             <div className="text-center mb-2">
-              <div className="font-semibold text-gray-900 dark:text-gray-900 text-base">{item.ticker}</div>
-              <div className="text-xs text-gray-500 dark:text-gray-900">{item.companyName}</div>
+              <div className="font-semibold text-gray-900 dark:text-white text-base">{item.ticker}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-300">{item.companyName}</div>
             </div>
 
             {/* Main Metrics */}
       <div className="grid grid-cols-2 gap-2 mb-2">
-              <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-300 rounded">
-                <div className="text-xs text-gray-500 dark:text-gray-400">Market Cap</div>
-                <div className="font-semibold text-sm">
+              <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
+                <div className="text-xs text-gray-500 dark:text-gray-300">Market Cap</div>
+                <div className="font-semibold text-sm text-gray-900 dark:text-white">
                   {item.marketCap ? `$${(Number(item.marketCap) / 1_000_000_000).toFixed(1)}B` : '-'}
         </div>
         </div>
-              <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-300 rounded">
-                <div className="text-xs text-gray-500 dark:text-gray-400">Price</div>
-                <div className="font-semibold text-sm">
+              <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
+                <div className="text-xs text-gray-500 dark:text-gray-300">Price</div>
+                <div className="font-semibold text-sm text-gray-900 dark:text-white">
             {item.currentPrice ? `$${item.currentPrice.toFixed(2)}` : '-'}
         </div>
         </div>
@@ -355,24 +355,24 @@ export default function EarningsTable({
 
             {/* Changes */}
             <div className="grid grid-cols-2 gap-2 mb-2">
-              <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-300 rounded">
-                <div className="text-xs text-gray-500 dark:text-gray-400">Cap Diff</div>
+              <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
+                <div className="text-xs text-gray-500 dark:text-gray-300">Cap Diff</div>
                 <div className={`font-semibold text-sm ${
                   item.marketCapDiffBillions !== null 
-                    ? (item.marketCapDiffBillions >= 0 ? 'text-green-600' : 'text-red-600')
-                    : 'text-gray-900'
+                    ? (item.marketCapDiffBillions >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')
+                    : 'text-gray-900 dark:text-white'
                 }`}>
                   {item.marketCapDiffBillions !== null ? (
                     `${item.marketCapDiffBillions >= 0 ? '+' : ''}${item.marketCapDiffBillions.toFixed(1)}B`
                   ) : '-'}
               </div>
               </div>
-              <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-300 rounded">
-                <div className="text-xs text-gray-500 dark:text-gray-400">Change</div>
+              <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
+                <div className="text-xs text-gray-500 dark:text-gray-300">Change</div>
                 <div className={`font-semibold text-sm ${
                   item.priceChangePercent !== null 
-                    ? (item.priceChangePercent >= 0 ? 'text-green-600' : 'text-red-600')
-                    : 'text-gray-900'
+                    ? (item.priceChangePercent >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')
+                    : 'text-gray-900 dark:text-white'
                 }`}>
                   {item.priceChangePercent !== null ? (
                     `${item.priceChangePercent >= 0 ? '+' : ''}${item.priceChangePercent.toFixed(2)}%`
@@ -385,22 +385,22 @@ export default function EarningsTable({
             <div className="grid grid-cols-2 gap-2 mb-2">
               {/* Left Column - EPS Data */}
               <div className="space-y-1">
-                <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-300 rounded">
-                  <div className="text-xs text-gray-500 dark:text-gray-400">EPS Est</div>
-                  <div className="font-semibold text-sm">
+                <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
+                  <div className="text-xs text-gray-500 dark:text-gray-300">EPS Est</div>
+                  <div className="font-semibold text-sm text-gray-900 dark:text-white">
                     {item.epsEstimate ? `$${item.epsEstimate.toFixed(2)}` : '-'}
           </div>
         </div>
-                <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-300 rounded">
-                  <div className="text-xs text-gray-500 dark:text-gray-400">EPS Act</div>
-                  <div className="font-semibold text-sm">
+                <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
+                  <div className="text-xs text-gray-500 dark:text-gray-300">EPS Act</div>
+                  <div className="font-semibold text-sm text-gray-900 dark:text-white">
                     {item.epsActual ? `$${item.epsActual.toFixed(2)}` : '-'}
           </div>
         </div>
-                <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-300 rounded">
-                  <div className="text-xs text-gray-500 dark:text-gray-400">EPS Surp</div>
+                <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
+                  <div className="text-xs text-gray-500 dark:text-gray-300">EPS Surp</div>
                   <div className={`font-semibold text-sm ${
-                    item.epsActual && item.epsEstimate ? getSurpriseColor(item.epsActual, item.epsEstimate) : 'text-gray-900'
+                    item.epsActual && item.epsEstimate ? getSurpriseColor(item.epsActual, item.epsEstimate) : 'text-gray-900 dark:text-white'
                   }`}>
                     {item.epsActual && item.epsEstimate ? getSurpriseText(item.epsActual, item.epsEstimate) : '-'}
           </div>
@@ -409,22 +409,22 @@ export default function EarningsTable({
 
               {/* Right Column - Revenue Data */}
               <div className="space-y-1">
-                <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-300 rounded">
-                  <div className="text-xs text-gray-500 dark:text-gray-400">Rev Est</div>
-                  <div className="font-semibold text-sm whitespace-nowrap">
+                <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
+                  <div className="text-xs text-gray-500 dark:text-gray-300">Rev Est</div>
+                  <div className="font-semibold text-sm whitespace-nowrap text-gray-900 dark:text-white">
                     {item.revenueEstimate ? formatRevenueValue(Number(item.revenueEstimate)) : '-'}
           </div>
         </div>
-                <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-300 rounded">
-                  <div className="text-xs text-gray-500 dark:text-gray-400">Rev Act</div>
-                  <div className="font-semibold text-sm whitespace-nowrap">
+                <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
+                  <div className="text-xs text-gray-500 dark:text-gray-300">Rev Act</div>
+                  <div className="font-semibold text-sm whitespace-nowrap text-gray-900 dark:text-white">
                     {item.revenueActual ? formatRevenueValue(Number(item.revenueActual)) : '-'}
           </div>
         </div>
-                <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-300 rounded">
-                  <div className="text-xs text-gray-500 dark:text-gray-400">Rev Surp</div>
+                <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
+                  <div className="text-xs text-gray-500 dark:text-gray-300">Rev Surp</div>
                   <div className={`font-semibold text-sm ${
-                    item.revenueActual && item.revenueEstimate ? getSurpriseColor(item.revenueActual, item.revenueEstimate) : 'text-gray-900'
+                    item.revenueActual && item.revenueEstimate ? getSurpriseColor(item.revenueActual, item.revenueEstimate) : 'text-gray-900 dark:text-white'
                   }`}>
                     {item.revenueActual && item.revenueEstimate ? getSurpriseText(item.revenueActual, item.revenueEstimate) : '-'}
           </div>
@@ -661,8 +661,8 @@ function formatRevenueValue(value: number): string {
 
 
 function getSurpriseColor(actual: number, estimate: number): string {
-  if (actual > estimate) return 'text-green-600';
-  if (actual < estimate) return 'text-red-600';
+  if (actual > estimate) return 'text-green-600 dark:text-green-400';
+  if (actual < estimate) return 'text-red-600 dark:text-red-400';
   return 'text-gray-500 dark:text-gray-400';
 }
 
