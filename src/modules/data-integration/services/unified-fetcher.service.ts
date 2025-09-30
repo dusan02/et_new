@@ -363,7 +363,7 @@ export class UnifiedDataFetcher {
    */
   private async saveEarningsData(earningsData: any[]): Promise<number> {
     // Použi processEarningsData ktorá má fallback logiku
-    const reportDate = new Date(earningsData[0]?.reportDate || isoDate())
+    const reportDate = new Date(isoDate())
     return await this.earningsService.processEarningsData(earningsData, reportDate)
   }
 
