@@ -4,6 +4,7 @@ import { getTodayStart, getNYTimeString, serializeBigInts, isoDate } from '@/mod
 import { calculateSurprise } from '@/modules/earnings'
 import { validateRequest, checkRateLimit, earningsQuerySchema, type EarningsQuery } from '@/lib/validation'
 import { getMonitoring } from '@/lib/monitoring'
+import { loadEnvironmentConfig } from '../../../modules/shared/config/env.config'
 // 🚫 GUIDANCE DISABLED FOR PRODUCTION - Import commented out
 // import { 
 //   isGuidanceCompatible, 
@@ -19,12 +20,16 @@ import {
 export const revalidate = 300
 // Force dynamic rendering to avoid static generation issues with query parameters
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now()
   let monitoring: any = null
   
   try {
+    // ✅ validácia až teraz (soft pri builde, strict v runtime)
+    const env = loadEnvironmentConfig()
+    
     // Initialize monitoring
     try {
       monitoring = getMonitoring()

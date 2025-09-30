@@ -103,6 +103,7 @@ export function EarningsDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [isClient, setIsClient] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -138,8 +139,18 @@ export function EarningsDashboard() {
   };
 
   useEffect(() => {
+    setIsClient(true);
     fetchData();
   }, []);
+
+  // Prevent hydration mismatch by showing consistent content on server and client
+  if (!isClient) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
 
   // Don't show full screen loader if we have some data
   const showFullScreenLoader = isLoading && !earningsData.length && !stats;

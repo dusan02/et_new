@@ -3,71 +3,44 @@
  * Centralized environment variable management
  */
 
-export interface EnvironmentConfig {
-  // Database
-  DATABASE_URL: string
-  
-  // API Keys
-  POLYGON_API_KEY: string
-  FINNHUB_API_KEY: string
-  
-  // Redis
-  REDIS_URL?: string
-  
-  // Application
-  NODE_ENV: 'development' | 'production' | 'test'
+import { parseEnvSoft, parseEnvStrict, type Env } from '../../../lib/env-validation'
+
+export interface EnvironmentConfig extends Env {
+  // Additional fields
   PORT: number
-  
-  // External URLs
   BASE_URL?: string
-  
-  // Features
   ENABLE_CACHING: boolean
   ENABLE_MONITORING: boolean
   ENABLE_GUIDANCE: boolean
-  
-  // Timeouts and Limits
   API_TIMEOUT: number
   BATCH_SIZE: number
   MAX_RETRIES: number
 }
 
+const isBuildPhase =
+  process.env.NEXT_PHASE === 'phase-production-build' ||
+  process.env.NODE_ENV === 'test'
+
 /**
  * Load and validate environment configuration
  * @returns Validated environment config
  */
-export function loadEnvironmentConfig(): EnvironmentConfig {
+export function loadEnvironmentConfig(): EnvironmentConfig | Partial<EnvironmentConfig> {
+  // ✅ volaj len v RUNTIME (v handleroch / serverových funkciách)
+  const baseEnv = isBuildPhase ? parseEnvSoft(process.env) : parseEnvStrict(process.env)
+  
   const config: EnvironmentConfig = {
-    // Database
-    DATABASE_URL: process.env.DATABASE_URL || 'file:./dev.db',
-    
-    // API Keys
-    POLYGON_API_KEY: process.env.POLYGON_API_KEY || '',
-    FINNHUB_API_KEY: process.env.FINNHUB_API_KEY || '',
-    
-    // Redis
-    REDIS_URL: process.env.REDIS_URL,
-    
-    // Application
-    NODE_ENV: (process.env.NODE_ENV as any) || 'development',
+    ...baseEnv,
+    // Additional fields
     PORT: parseInt(process.env.PORT || '3000', 10),
-    
-    // External URLs
     BASE_URL: process.env.BASE_URL,
-    
-    // Features
     ENABLE_CACHING: process.env.ENABLE_CACHING === 'true',
     ENABLE_MONITORING: process.env.ENABLE_MONITORING === 'true',
     ENABLE_GUIDANCE: process.env.ENABLE_GUIDANCE === 'true',
-    
-    // Timeouts and Limits
     API_TIMEOUT: parseInt(process.env.API_TIMEOUT || '10000', 10),
     BATCH_SIZE: parseInt(process.env.BATCH_SIZE || '50', 10),
     MAX_RETRIES: parseInt(process.env.MAX_RETRIES || '3', 10)
-  }
-  
-  // Validate required environment variables
-  validateEnvironmentConfig(config)
+  } as EnvironmentConfig
   
   return config
 }
@@ -80,8 +53,8 @@ export function loadEnvironmentConfig(): EnvironmentConfig {
 function validateEnvironmentConfig(config: EnvironmentConfig): void {
   const errors: string[] = []
   
-  // Required in production
-  if (config.NODE_ENV === 'production') {
+  // Required in production (skip during build process)
+  if (config.NODE_ENV === 'production' && !process.env.NEXT_PHASE) {
     if (!config.POLYGON_API_KEY) {
       errors.push('POLYGON_API_KEY is required in production')
     }
@@ -161,7 +134,13 @@ export function getDatabaseUrl(): string {
  * @returns API configuration object
  */
 export function getApiConfig() {
-  const config = loadEnvironmentConfig()
+  // Skip validation during build process
+  const config = {
+    POLYGON_API_KEY: process.env.POLYGON_API_KEY || '',
+    FINNHUB_API_KEY: process.env.FINNHUB_API_KEY || '',
+    API_TIMEOUT: parseInt(process.env.API_TIMEOUT || '10000', 10),
+    MAX_RETRIES: parseInt(process.env.MAX_RETRIES || '3', 10)
+  }
   
   return {
     polygon: {
@@ -206,5 +185,5 @@ export function getFeatureFlags() {
   }
 }
 
-// Export singleton instance
-export const ENV_CONFIG = loadEnvironmentConfig()
+// ⚠️ NEexportuj žiadnu top-level konštantu, ktorá by validovala už pri importe!
+// Používaj loadEnvironmentConfig() vo vnútri funkcií
