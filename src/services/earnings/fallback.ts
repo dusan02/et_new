@@ -4,13 +4,11 @@ export function applyEarningsFallback<T extends {
   epsActual: BigN; epsEstimate: BigN;
   revenueActual: BigN; revenueEstimate: BigN;
 }>(row: T) {
-  // Pracuj na kópii, nie na pôvodnom objekte
   const out: T = { ...row };
 
   let usedEpsFallback = false;
   let usedRevenueFallback = false;
 
-  // 🟢 Fallback len ak je "neprítomná" hodnota, NIE falsy (0n je validné)
   if (out.epsActual == null && out.epsEstimate != null) {
     out.epsActual = out.epsEstimate;
     usedEpsFallback = true;
