@@ -104,10 +104,10 @@ export class EarningsService {
 
       // Convert revenue from millions to actual value if needed
       let revenueActual = item.revenueActual 
-        ? BigInt(Math.round(item.revenueActual * 1000000))
+        ? BigInt(Math.round(Number(item.revenueActual) * 1000000))
         : undefined
       const revenueEstimate = item.revenueEstimate 
-        ? BigInt(Math.round(item.revenueEstimate * 1000000))
+        ? BigInt(Math.round(Number(item.revenueEstimate) * 1000000))
         : undefined
 
       // Apply fallback for missing actual values
