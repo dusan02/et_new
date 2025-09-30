@@ -7,6 +7,7 @@
 import axios from 'axios'
 import { DataFallbackService } from '../../shared/fallback/data-fallback.service'
 import { DataQualityValidator } from '../../shared/validation/data-quality.validator'
+import { toBigIntOrNull } from '../../../lib/num'
 
 // Normalizovaný error handling
 type HttpErrorInfo = {
@@ -155,8 +156,8 @@ export class UnifiedDataFetcher {
         reportTime: earning.hour === 'bmo' ? 'BMO' : earning.hour === 'amc' ? 'AMC' : 'TNS',
         epsActual: earning.epsActual || null,
         epsEstimate: earning.epsEstimate || null,
-        revenueActual: earning.revenueActual ? BigInt(Math.round(Number(earning.revenueActual))) : null,
-        revenueEstimate: earning.revenueEstimate ? BigInt(Math.round(Number(earning.revenueEstimate))) : null,
+        revenueActual: toBigIntOrNull(earning.revenueActual),
+        revenueEstimate: toBigIntOrNull(earning.revenueEstimate),
         sector: earning.sector || null,
         companyType: 'Public',
         dataSource: 'Finnhub-Earnings',
