@@ -425,17 +425,24 @@ async function main() {
     console.log(`Starting unified data fetch for ${date} (NY time: ${getNYTimeString()})`)
     
     // Použi nový UnifiedDataFetcher
-    const fetcher = new UnifiedDataFetcher()
-    const result = await fetcher.fetchAllData({
-      date,
-      maxRetries: 3,
-      batchSize: 10,
-      delayBetweenBatches: 1000
-    })
+    let result
+    try {
+      const fetcher = new UnifiedDataFetcher()
+      result = await fetcher.fetchAllData({
+        date,
+        maxRetries: 3,
+        batchSize: 10,
+        delayBetweenBatches: 1000
+      })
+    } catch (error) {
+      console.error('Error creating or calling UnifiedDataFetcher:', error)
+      throw new Error(`UnifiedDataFetcher error: ${error}`)
+    }
     
-    if (!result.success) {
-      console.error('Unified fetch failed:', result.errors)
-      throw new Error(`Fetch failed: ${result.errors.join(', ')}`)
+    if (!result || !result.success) {
+      const errors = result?.errors || ['Unknown error occurred']
+      console.error('Unified fetch failed:', errors)
+      throw new Error(`Fetch failed: ${errors.join(', ')}`)
     }
     
     console.log('Unified data fetch completed successfully!')
