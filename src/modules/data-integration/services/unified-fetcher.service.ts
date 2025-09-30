@@ -5,6 +5,31 @@
  */
 
 import axios from 'axios'
+
+// Normalizovaný error handling
+type HttpErrorInfo = {
+  name: 'HttpError';
+  status: number;
+  url: string;
+  body?: unknown;
+  message: string;
+};
+
+const toErrorMessage = (e: unknown): string =>
+  e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e);
+
+export class HttpError extends Error {
+  status: number;
+  url: string;
+  body?: unknown;
+  constructor(info: HttpErrorInfo) {
+    super(info.message);
+    this.name = info.name;
+    this.status = info.status;
+    this.url = info.url;
+    this.body = info.body;
+  }
+}
 import { 
   MarketDataService,
   CreateMarketDataInput,
@@ -174,7 +199,13 @@ export class UnifiedDataFetcher {
         if (result.success && result.data) {
           marketData[ticker] = result.data
         } else {
-          console.warn(`❌ Failed to fetch market data for ${ticker}: ${result.error}`)
+          const errorMsg = result.error || 'No error message available'
+          // Rozlišuj medzi "očakávanými" a "skutočnými" chybami
+          if (errorMsg.includes('[MARKET:fail]')) {
+            console.warn(`❌ ${errorMsg}`)
+          } else {
+            console.debug(`[MARKET:partial] ${ticker}: ${errorMsg}`)
+          }
         }
       })
 
@@ -299,8 +330,11 @@ export class UnifiedDataFetcher {
       }
 
     } catch (error) {
-      console.warn(`Failed to fetch market data for ${ticker}:`, error)
-      return null
+      // Normalizuj error message
+      const msg = toErrorMessage(error);
+      const status = (error as any)?.response?.status;
+      const errorMsg = `[MARKET:fail] ${ticker}${status ? ` [${status}]` : ''}: ${msg}`;
+      throw new Error(errorMsg);
     }
   }
 

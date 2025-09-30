@@ -161,7 +161,7 @@ export class EarningsRepository {
         revenueActual: data.revenueActual || undefined,
         revenueEstimate: data.revenueEstimate || undefined,
         sector: data.sector || undefined,
-        fiscalPeriod: data.fiscalPeriod || undefined,
+        fiscalPeriod: data.fiscalPeriod ? String(data.fiscalPeriod) : undefined,
         fiscalYear: data.fiscalYear || undefined,
         dataSource: data.dataSource || undefined,
         updatedAt: new Date()
@@ -175,7 +175,7 @@ export class EarningsRepository {
         revenueActual: data.revenueActual || undefined,
         revenueEstimate: data.revenueEstimate || undefined,
         sector: data.sector || undefined,
-        fiscalPeriod: data.fiscalPeriod || undefined,
+        fiscalPeriod: data.fiscalPeriod ? String(data.fiscalPeriod) : undefined,
         fiscalYear: data.fiscalYear || undefined,
         dataSource: data.dataSource || undefined,
         companyType: 'Public',

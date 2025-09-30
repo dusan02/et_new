@@ -4,7 +4,7 @@
  * Nahradzuje duplicitný kód v rôznych častiach aplikácie
  */
 
-import { BigInt } from '@/modules/shared/utils/bigint.utils'
+// import { BigInt } from '@/modules/shared/utils/bigint.utils' // Removed - using native BigInt
 
 export interface PriceCalculationInput {
   currentPrice: number | null
@@ -219,24 +219,24 @@ export class PriceCalculator {
     }
 
     // Validuj hodnoty
-    if (input.currentPrice! <= 0) {
+    if (input.currentPrice && input.currentPrice <= 0) {
       errors.push(`Invalid current price for ${input.ticker}: ${input.currentPrice}`)
     }
-    if (input.previousClose! <= 0) {
+    if (input.previousClose && input.previousClose <= 0) {
       errors.push(`Invalid previous close for ${input.ticker}: ${input.previousClose}`)
     }
-    if (input.sharesOutstanding! <= BigInt(0)) {
+    if (input.sharesOutstanding && input.sharesOutstanding <= BigInt(0)) {
       errors.push(`Invalid shares outstanding for ${input.ticker}: ${input.sharesOutstanding}`)
     }
 
     // Validuj extreme hodnoty
-    if (input.currentPrice! > this.VALIDATION_THRESHOLDS.MAX_PRICE) {
+    if (input.currentPrice && input.currentPrice > this.VALIDATION_THRESHOLDS.MAX_PRICE) {
       errors.push(`Suspicious current price for ${input.ticker}: $${input.currentPrice}`)
     }
-    if (input.previousClose! > this.VALIDATION_THRESHOLDS.MAX_PRICE) {
+    if (input.previousClose && input.previousClose > this.VALIDATION_THRESHOLDS.MAX_PRICE) {
       errors.push(`Suspicious previous close for ${input.ticker}: $${input.previousClose}`)
     }
-    if (input.sharesOutstanding! > this.VALIDATION_THRESHOLDS.MAX_SHARES) {
+    if (input.sharesOutstanding && input.sharesOutstanding > this.VALIDATION_THRESHOLDS.MAX_SHARES) {
       errors.push(`Suspicious shares outstanding for ${input.ticker}: ${input.sharesOutstanding}`)
     }
 

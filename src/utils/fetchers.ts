@@ -96,9 +96,13 @@ export async function batchFetch<T>(
       if (result.status === 'fulfilled') {
         results.push(result.value);
       } else {
+        // Normalizuj error message
+        const errorMsg = result.reason?.message || 
+                        result.reason?.toString() || 
+                        (result.reason?.response?.status ? `HTTP ${result.reason.response.status}` : 'Unknown error');
         results.push({
           success: false,
-          error: result.reason?.message || 'Promise rejected',
+          error: errorMsg,
           retryCount: 0
         });
       }
