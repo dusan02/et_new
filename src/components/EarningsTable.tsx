@@ -3,14 +3,15 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 import { SkeletonLoader, SkeletonCard } from './ui/SkeletonLoader';
+import { formatRevenueSmart } from '../lib/formatMoney';
 // Define EarningsData interface locally since we removed the types file
 interface EarningsData {
   ticker: string;
   reportTime: string | null;
   epsEstimate: number | null;
   epsActual: number | null;
-  revenueEstimate: number | null;
-  revenueActual: number | null;
+  revenueEstimate: number | bigint | null;
+  revenueActual: number | bigint | null;
   sector: string | null;
   companyType: string | null;
   dataSource: string | null;
@@ -412,13 +413,13 @@ export default function EarningsTable({
                 <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
                   <div className="text-xs text-gray-500 dark:text-gray-300">Rev Est</div>
                   <div className="font-semibold text-sm whitespace-nowrap text-gray-900 dark:text-white">
-                    {item.revenueEstimate ? formatRevenueValue(Number(item.revenueEstimate)) : '-'}
+                    {formatRevenueSmart(item.revenueEstimate)}
           </div>
         </div>
                 <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
                   <div className="text-xs text-gray-500 dark:text-gray-300">Rev Act</div>
                   <div className="font-semibold text-sm whitespace-nowrap text-gray-900 dark:text-white">
-                    {item.revenueActual ? formatRevenueValue(Number(item.revenueActual)) : '-'}
+                    {formatRevenueSmart(item.revenueActual)}
           </div>
         </div>
                 <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
@@ -602,10 +603,10 @@ export default function EarningsTable({
                   ) : '-'}
                     </td>
                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 text-right whitespace-nowrap">
-                  {item.revenueEstimate ? formatRevenueValue(Number(item.revenueEstimate)) : '-'}
+                  {formatRevenueSmart(item.revenueEstimate)}
                     </td>
                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 text-right whitespace-nowrap">
-                  {item.revenueActual ? formatRevenueValue(Number(item.revenueActual)) : '-'}
+                  {formatRevenueSmart(item.revenueActual)}
                     </td>
                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-right">
                   {item.revenueActual && item.revenueEstimate ? (
@@ -635,29 +636,6 @@ function getNestedValue(obj: any, path: string): any {
   return path.split('.').reduce((current, key) => current?.[key], obj);
 }
 
-function formatRevenueValue(value: number): string {
-  if (value >= 1_000_000_000) {
-    // Convert to billions
-    const billions = value / 1_000_000_000;
-    return `$ ${billions.toLocaleString('en-US', { 
-      minimumFractionDigits: 0, 
-      maximumFractionDigits: 2 
-    })} B`;
-  } else if (value >= 1_000_000) {
-    // Convert to millions
-    const millions = value / 1_000_000;
-    return `$ ${millions.toLocaleString('en-US', { 
-      minimumFractionDigits: 0, 
-      maximumFractionDigits: 2 
-    })} M`;
-  } else {
-    // Keep as is for smaller values
-    return `$ ${value.toLocaleString('en-US', { 
-      minimumFractionDigits: 0, 
-      maximumFractionDigits: 2 
-    })}`;
-  }
-}
 
 
 function getSurpriseColor(actual: number, estimate: number): string {
