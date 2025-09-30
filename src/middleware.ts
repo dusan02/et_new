@@ -24,7 +24,7 @@ export function middleware(request: NextRequest) {
 // Configure which paths to run middleware on
 export const config = {
   matcher: [
-    '/api/:path*',
-    '/',
-  ]
+    // vylúč statiky, obrázky a API/Next vnútorné cesty
+    '/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|assets|api/health).*)',
+  ],
 }
