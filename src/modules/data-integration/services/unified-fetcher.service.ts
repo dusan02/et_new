@@ -5,6 +5,8 @@
  */
 
 import axios from 'axios'
+import { DataFallbackService } from '../../shared/fallback/data-fallback.service'
+import { DataQualityValidator } from '../../shared/validation/data-quality.validator'
 
 // Normalizovaný error handling
 type HttpErrorInfo = {
@@ -147,20 +149,37 @@ export class UnifiedDataFetcher {
       throw new Error('No earnings calendar data received from Finnhub')
     }
 
-    return data.earningsCalendar.map((earning: any) => ({
-      ticker: earning.symbol,
-      reportTime: earning.hour === 'bmo' ? 'BMO' : earning.hour === 'amc' ? 'AMC' : 'TNS',
-      epsActual: earning.epsActual || null,
-      epsEstimate: earning.epsEstimate || null,
-      revenueActual: earning.revenueActual ? BigInt(Math.round(earning.revenueActual)) : null,
-      revenueEstimate: earning.revenueEstimate ? BigInt(Math.round(earning.revenueEstimate)) : null,
-      sector: earning.sector || null,
-      companyType: 'Public',
-      dataSource: 'Finnhub-Earnings',
-      fiscalPeriod: earning.quarter || null,
-      fiscalYear: earning.year || null,
-      primaryExchange: earning.exchange || null
-    }))
+    return data.earningsCalendar.map((earning: any) => {
+      const baseData = {
+        ticker: earning.symbol,
+        reportTime: earning.hour === 'bmo' ? 'BMO' : earning.hour === 'amc' ? 'AMC' : 'TNS',
+        epsActual: earning.epsActual || null,
+        epsEstimate: earning.epsEstimate || null,
+        revenueActual: earning.revenueActual ? BigInt(Math.round(earning.revenueActual)) : null,
+        revenueEstimate: earning.revenueEstimate ? BigInt(Math.round(earning.revenueEstimate)) : null,
+        sector: earning.sector || null,
+        companyType: 'Public',
+        dataSource: 'Finnhub-Earnings',
+        fiscalPeriod: earning.quarter || null,
+        fiscalYear: earning.year || null,
+        primaryExchange: earning.exchange || null
+      }
+
+      // Apply fallback for missing actual values
+      if (!baseData.epsActual && baseData.epsEstimate) {
+        baseData.epsActual = baseData.epsEstimate
+        baseData._fallback_applied = 'use_estimate_as_actual_eps'
+      }
+
+      if (!baseData.revenueActual && baseData.revenueEstimate) {
+        baseData.revenueActual = baseData.revenueEstimate
+        baseData._fallback_applied = baseData._fallback_applied 
+          ? `${baseData._fallback_applied},use_estimate_as_actual_revenue`
+          : 'use_estimate_as_actual_revenue'
+      }
+
+      return baseData
+    })
   }
 
   /**
