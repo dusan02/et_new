@@ -94,7 +94,12 @@ export async function batchFetch<T>(
     // Process results
     batchResults.forEach((result, index) => {
       if (result.status === 'fulfilled') {
-        results.push(result.value);
+        // Zabaliť úspešný výsledok do FetchResult formátu
+        results.push({
+          success: true,
+          data: result.value,
+          retryCount: 0
+        });
       } else {
         // Normalizuj error message
         const errorMsg = result.reason?.message || 

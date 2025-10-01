@@ -100,7 +100,7 @@ export class MarketDataService {
         size: calculation.size || undefined,
         marketCapDiff: calculation.marketCapDiff || undefined,
         marketCapDiffBillions: calculation.marketCapDiffBillions || undefined,
-        priceChangePercent: calculation.priceChangePercent || undefined,
+        priceChangePercent: calculation.priceChangePercent !== null && calculation.priceChangePercent !== undefined ? calculation.priceChangePercent : undefined,
         sharesOutstanding: marketInfo.sharesOutstanding || undefined,
         companyType: marketInfo.companyType || 'Public',
         primaryExchange: marketInfo.primaryExchange || undefined

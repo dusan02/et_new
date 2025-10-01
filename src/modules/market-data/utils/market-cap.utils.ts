@@ -29,9 +29,10 @@ export function validateMarketCapInputs(
   if (!previousClose) {
     errors.push(`Missing previous close for ${ticker}`)
   }
-  if (!sharesOutstanding) {
-    errors.push(`Missing shares outstanding for ${ticker}`)
-  }
+  // sharesOutstanding is optional - we can calculate market cap without it
+  // if (!sharesOutstanding) {
+  //   errors.push(`Missing shares outstanding for ${ticker}`)
+  // }
 
   if (errors.length > 0) {
     return { isValid: false, errors }

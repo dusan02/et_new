@@ -80,41 +80,48 @@ export class PriceCalculator {
         }
       }
 
-      // 4. Vypočítaj market cap
-      const marketCap = this.calculateMarketCap(
-        input.currentPrice!,
-        input.sharesOutstanding!
-      )
+      // 4. Vypočítaj market cap (len ak existuje sharesOutstanding)
+      let marketCap = null
+      let marketCapDiff = null
+      let marketCapDiffBillions = null
+      let size = null
 
-      // 5. Vypočítaj market cap difference
-      const marketCapDiff = this.calculateMarketCapDiff(
-        input.currentPrice!,
-        input.previousClose!,
-        input.sharesOutstanding!
-      )
+      if (input.sharesOutstanding) {
+        marketCap = this.calculateMarketCap(
+          input.currentPrice!,
+          input.sharesOutstanding!
+        )
 
-      // 6. Validuj market cap change
-      if (!this.validateMarketCapChange(marketCapDiff, input.ticker)) {
-        return {
-          priceChangePercent,
-          marketCap,
-          marketCapDiff: null,
-          marketCapDiffBillions: null,
-          size: this.determineCompanySize(marketCap),
-          isValid: false,
-          validationErrors: [`Extreme market cap change: ${marketCapDiff.toFixed(2)}%`]
+        // 5. Vypočítaj market cap difference
+        marketCapDiff = this.calculateMarketCapDiff(
+          input.currentPrice!,
+          input.previousClose!,
+          input.sharesOutstanding!
+        )
+
+        // 6. Validuj market cap change
+        if (!this.validateMarketCapChange(marketCapDiff, input.ticker)) {
+          return {
+            priceChangePercent,
+            marketCap,
+            marketCapDiff: null,
+            marketCapDiffBillions: null,
+            size: this.determineCompanySize(marketCap),
+            isValid: false,
+            validationErrors: [`Extreme market cap change: ${marketCapDiff.toFixed(2)}%`]
+          }
         }
+
+        // 7. Vypočítaj market cap diff v miliardách
+        marketCapDiffBillions = this.calculateMarketCapDiffBillions(
+          input.currentPrice!,
+          input.previousClose!,
+          input.sharesOutstanding!
+        )
+
+        // 8. Určite company size
+        size = this.determineCompanySize(marketCap)
       }
-
-      // 7. Vypočítaj market cap diff v miliardách
-      const marketCapDiffBillions = this.calculateMarketCapDiffBillions(
-        input.currentPrice!,
-        input.previousClose!,
-        input.sharesOutstanding!
-      )
-
-      // 8. Určite company size
-      const size = this.determineCompanySize(marketCap)
 
       return {
         priceChangePercent,
@@ -210,9 +217,10 @@ export class PriceCalculator {
     if (!input.previousClose) {
       errors.push(`Missing previous close for ${input.ticker}`)
     }
-    if (!input.sharesOutstanding) {
-      errors.push(`Missing shares outstanding for ${input.ticker}`)
-    }
+    // sharesOutstanding is optional - we can calculate price change without it
+    // if (!input.sharesOutstanding) {
+    //   errors.push(`Missing shares outstanding for ${input.ticker}`)
+    // }
 
     if (errors.length > 0) {
       return { isValid: false, errors }

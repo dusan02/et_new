@@ -338,7 +338,7 @@ export class UnifiedDataFetcher {
         ticker,
         currentPrice: current || prevClose,
         previousClose: prevClose,
-        priceChangePercent,
+        priceChangePercent: calculationResult.priceChangePercent || priceChangePercent,
         companyName: companyName || ticker,
         size,
         marketCap: calculationResult.marketCap,

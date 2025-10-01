@@ -18,8 +18,8 @@ import {
   hasEstimates,
   normalizeTicker 
 } from '../utils'
-import { applyEarningsFallback } from '@/src/services/earnings/fallback'
-import { nul } from '@/src/lib/db-nulls'
+import { applyEarningsFallback } from '../../../services/earnings/fallback'
+import { nul } from '../../../lib/db-nulls'
 
 export class EarningsService {
   private repository: EarningsRepository
