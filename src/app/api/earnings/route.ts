@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
     console.log(`[API] Fetching combined data from database with optimized JOIN...`)
     
     // Use optimized Prisma query - fallback to separate queries for now
-    const combinedRows = await prisma.earningsTickersToday.findMany({
+    let combinedRows = await prisma.earningsTickersToday.findMany({
       where: { reportDate: today },
       select: {
         ticker: true,
@@ -132,9 +132,47 @@ export async function GET(request: NextRequest) {
       take: 500,
     })
     
-    // Get market data separately (optimized query)
+    // 🔑 FALLBACK: If no data for today, get the latest available data
+    let actualDate = today
+    if (combinedRows.length === 0) {
+      console.log(`[API] No data for ${todayString}, looking for latest available data...`)
+      
+      const latestRecord = await prisma.earningsTickersToday.findFirst({
+        orderBy: { reportDate: 'desc' },
+        select: { reportDate: true }
+      })
+      
+      if (latestRecord) {
+        actualDate = latestRecord.reportDate
+        console.log(`[API] Found latest data for: ${actualDate.toISOString().split('T')[0]}`)
+        
+        combinedRows = await prisma.earningsTickersToday.findMany({
+          where: { reportDate: actualDate },
+          select: {
+            ticker: true,
+            reportTime: true,
+            epsActual: true,
+            epsEstimate: true,
+            revenueActual: true,
+            revenueEstimate: true,
+            sector: true,
+            companyType: true,
+            dataSource: true,
+            fiscalPeriod: true,
+            fiscalYear: true,
+            primaryExchange: true,
+          },
+          orderBy: { ticker: 'asc' },
+          take: 500,
+        })
+      } else {
+        console.log(`[API] No earnings data found in database`)
+      }
+    }
+    
+    // Get market data separately (optimized query) - use actualDate
     const marketData = await prisma.todayEarningsMovements.findMany({
-      where: { reportDate: today },
+      where: { reportDate: actualDate },
       select: {
         ticker: true,
         companyName: true,
@@ -364,7 +402,9 @@ export async function GET(request: NextRequest) {
       meta: {
         total: combinedData.length,
         duration: `${duration}ms`,
-        date: today.toISOString().split('T')[0],
+        date: actualDate.toISOString().split('T')[0],
+        requestedDate: today.toISOString().split('T')[0],
+        fallbackUsed: actualDate.getTime() !== today.getTime(),
         cached: false
       }
     }, {

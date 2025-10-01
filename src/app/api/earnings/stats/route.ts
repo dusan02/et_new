@@ -33,7 +33,29 @@ export async function GET(request: NextRequest) {
     
     console.log(`[STATS] Fetching stats for date: ${today.toISOString().split('T')[0]} (NY time: ${getNYTimeString()})`);
 
-    // Fetch real stats from database
+    // 🔑 FALLBACK: Check if we have data for today, if not get latest available
+    let actualDate = today
+    const todayCount = await prisma.earningsTickersToday.count({
+      where: { reportDate: today }
+    })
+    
+    if (todayCount === 0) {
+      console.log(`[STATS] No data for ${today.toISOString().split('T')[0]}, looking for latest available data...`)
+      
+      const latestRecord = await prisma.earningsTickersToday.findFirst({
+        orderBy: { reportDate: 'desc' },
+        select: { reportDate: true }
+      })
+      
+      if (latestRecord) {
+        actualDate = latestRecord.reportDate
+        console.log(`[STATS] Found latest data for: ${actualDate.toISOString().split('T')[0]}`)
+      } else {
+        console.log(`[STATS] No earnings data found in database`)
+      }
+    }
+
+    // Fetch real stats from database using actualDate
     const [
       totalEarnings,
       withEps,
@@ -45,13 +67,13 @@ export async function GET(request: NextRequest) {
     ] = await Promise.all([
       // Total earnings count
       prisma.earningsTickersToday.count({
-        where: { reportDate: today }
+        where: { reportDate: actualDate }
       }),
       
       // Count with EPS data
       prisma.earningsTickersToday.count({
         where: { 
-          reportDate: today,
+          reportDate: actualDate,
           epsActual: { not: null }
         }
       }),
@@ -59,14 +81,14 @@ export async function GET(request: NextRequest) {
       // Count with revenue data
       prisma.earningsTickersToday.count({
         where: { 
-          reportDate: today,
+          reportDate: actualDate,
           revenueActual: { not: null }
         }
       }),
       
       // Size distribution - simplified approach
       prisma.todayEarningsMovements.findMany({
-        where: { reportDate: today },
+        where: { reportDate: actualDate },
         select: {
           size: true,
           marketCap: true
@@ -76,7 +98,7 @@ export async function GET(request: NextRequest) {
       // Top gainers
       prisma.todayEarningsMovements.findMany({
         where: { 
-          reportDate: today,
+          reportDate: actualDate,
           priceChangePercent: { not: null }
         },
         orderBy: { priceChangePercent: 'desc' },
@@ -93,7 +115,7 @@ export async function GET(request: NextRequest) {
       // Top losers
       prisma.todayEarningsMovements.findMany({
         where: { 
-          reportDate: today,
+          reportDate: actualDate,
           priceChangePercent: { not: null }
         },
         orderBy: { priceChangePercent: 'asc' },
@@ -110,7 +132,7 @@ export async function GET(request: NextRequest) {
       // All earnings with actual and estimate data
       prisma.earningsTickersToday.findMany({
         where: { 
-          reportDate: today,
+          reportDate: actualDate,
           epsActual: { not: null },
           epsEstimate: { not: null }
         },
@@ -197,6 +219,10 @@ export async function GET(request: NextRequest) {
       withBothActual: earningsWithActuals.filter(e => e.epsActual && e.revenueActual).length,
       withoutAnyActual: totalEarnings - earningsWithActuals.length,
       lastUpdated: lastUpdated.toISOString(),
+      // Fallback information
+      requestedDate: today.toISOString().split('T')[0],
+      actualDate: actualDate.toISOString().split('T')[0],
+      fallbackUsed: actualDate.getTime() !== today.getTime(),
       // Legacy fields for compatibility
       totalEarnings,
       withEps,
