@@ -149,11 +149,11 @@ export class PriceCalculator {
   /**
    * Vypočítaj percentuálnu zmenu ceny
    */
-  static calculatePriceChange(currentPrice: number, previousClose: number): number {
-    if (!currentPrice || !previousClose || previousClose <= 0) {
-      return 0
+  static calculatePriceChange(currentPrice?: number | null, previousClose?: number | null): number | null {
+    if (currentPrice == null || previousClose == null || !Number.isFinite(currentPrice) || !Number.isFinite(previousClose) || previousClose <= 0) {
+      return null; // 🔑 FE potom nezobrazí „+0.00%", ale „—"
     }
-    return ((currentPrice - previousClose) / previousClose) * 100
+    return ((currentPrice - previousClose) / previousClose) * 100;
   }
 
   /**

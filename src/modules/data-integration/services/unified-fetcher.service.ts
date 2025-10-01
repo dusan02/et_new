@@ -270,7 +270,8 @@ export class UnifiedDataFetcher {
           { maxRetries: 2, baseDelay: 1000, maxDelay: 5000 }
         )
 
-        current = snapshotData?.ticker?.lastTrade?.p || prevClose
+        // Use day.c (today's close) as current price, fallback to lastTrade.p, then prevClose
+        current = snapshotData?.ticker?.day?.c || snapshotData?.ticker?.lastTrade?.p || prevClose
         todaysChangePerc = snapshotData?.ticker?.todaysChangePerc || null
       } catch (error) {
         console.warn(`Failed to fetch snapshot for ${ticker}, using prev close:`, (error as Error).message)
@@ -307,13 +308,17 @@ export class UnifiedDataFetcher {
       }
 
       // 5. Vypočítaj price change percent
-      const priceChangePercent = current ? 
-        (todaysChangePerc !== null ? todaysChangePerc : ((current - prevClose) / prevClose) * 100) : 0
+      let priceChangePercent: number | null = null;
+      if (todaysChangePerc != null) { // ak je 0, stále je to validná hodnota
+        priceChangePercent = Number(todaysChangePerc);
+      } else if (current != null && prevClose != null && Number.isFinite(current) && Number.isFinite(prevClose) && prevClose > 0) {
+        priceChangePercent = ((Number(current) - Number(prevClose)) / Number(prevClose)) * 100;
+      }
 
       // 6. Validuj extreme price changes
-      if (Math.abs(priceChangePercent) > 50) {
+      if (priceChangePercent != null && Math.abs(priceChangePercent) > 50) {
         console.warn(`Extreme price change detected for ${ticker}: ${priceChangePercent.toFixed(2)}% (${prevClose} -> ${current}). Setting to null.`)
-        return null
+        priceChangePercent = null; // nezastavuj celý záznam, len zneplatni change
       }
 
       // 7. Vypočítaj market cap a cap diff pomocou centralizovanej logiky
@@ -323,6 +328,9 @@ export class UnifiedDataFetcher {
         sharesOutstanding: sharesOutstanding ? BigInt(sharesOutstanding) : null,
         ticker
       })
+
+      // 8. Použi vypočítaný priceChangePercent
+      const finalPriceChangePercent = priceChangePercent;
 
       // 8. Určite company size
       let size = null
@@ -338,7 +346,7 @@ export class UnifiedDataFetcher {
         ticker,
         currentPrice: current || prevClose,
         previousClose: prevClose,
-        priceChangePercent: calculationResult.priceChangePercent || priceChangePercent,
+        priceChangePercent: finalPriceChangePercent,
         companyName: companyName || ticker,
         size,
         marketCap: calculationResult.marketCap,

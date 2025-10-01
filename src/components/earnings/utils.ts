@@ -9,8 +9,9 @@ import { EarningsData, SortConfig, FilterConfig } from './types';
  * Formátuje číslo na percentá
  */
 export function formatPercent(value: number | null, decimals: number = 2): string {
-  if (value === null || value === undefined) return 'N/A';
-  return `${value.toFixed(decimals)}%`;
+  if (value === null || value === undefined || !Number.isFinite(value)) return '—';
+  const sign = value >= 0 ? '+' : '';
+  return `${sign}${value.toFixed(decimals)}%`;
 }
 
 /**

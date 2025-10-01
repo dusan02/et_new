@@ -587,7 +587,7 @@ export default function EarningsTable({
                     <span className={item.priceChangePercent >= 0 ? 'text-green-600' : 'text-red-600'}>
                       {item.priceChangePercent >= 0 ? '+' : ''}{item.priceChangePercent.toFixed(2)}%
                     </span>
-                  ) : '-'}
+                  ) : '—'}
                     </td>
                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 text-right">
                   {item.epsEstimate ? `$${item.epsEstimate.toFixed(2)}` : '-'}
@@ -638,14 +638,18 @@ function getNestedValue(obj: any, path: string): any {
 
 
 
-function getSurpriseColor(actual: number, estimate: number): string {
-  if (actual > estimate) return 'text-green-600 dark:text-green-400';
-  if (actual < estimate) return 'text-red-600 dark:text-red-400';
+function getSurpriseColor(actual: number | bigint, estimate: number | bigint): string {
+  const actualNum = Number(actual);
+  const estimateNum = Number(estimate);
+  if (actualNum > estimateNum) return 'text-green-600 dark:text-green-400';
+  if (actualNum < estimateNum) return 'text-red-600 dark:text-red-400';
   return 'text-gray-500 dark:text-gray-400';
 }
 
-function getSurpriseText(actual: number, estimate: number): string {
-  if (estimate === 0) return '-';
-  const surprise = ((actual - estimate) / Math.abs(estimate)) * 100;
+function getSurpriseText(actual: number | bigint, estimate: number | bigint): string {
+  const actualNum = Number(actual);
+  const estimateNum = Number(estimate);
+  if (estimateNum === 0) return '-';
+  const surprise = ((actualNum - estimateNum) / Math.abs(estimateNum)) * 100;
   return `${surprise >= 0 ? '+' : ''}${surprise.toFixed(1)}%`;
 }

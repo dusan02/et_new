@@ -319,9 +319,9 @@ export async function GET(request: NextRequest) {
         marketCap: marketInfo?.marketCap && marketInfo.marketCap > 0 ? marketInfo.marketCap : null,
         size: marketInfo?.marketCap && marketInfo.marketCap > 0 ? marketInfo.size : null,
         marketCapDiff: marketInfo?.marketCapDiff ?? null,
-        currentPrice: marketInfo?.currentPrice ?? null,
-        previousClose: marketInfo?.previousClose ?? null,
-        priceChangePercent: marketInfo?.priceChangePercent ?? null,
+        currentPrice: marketInfo?.currentPrice != null ? Number(marketInfo.currentPrice) : null,
+        previousClose: marketInfo?.previousClose != null ? Number(marketInfo.previousClose) : null,
+        priceChangePercent: marketInfo?.priceChangePercent != null ? Number(marketInfo.priceChangePercent) : null,
         marketCapDiffBillions: marketInfo?.marketCapDiffBillions ?? null,
         sharesOutstanding: marketInfo?.sharesOutstanding || null,
         // Guidance calculations
