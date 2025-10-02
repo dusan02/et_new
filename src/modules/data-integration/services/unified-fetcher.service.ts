@@ -270,8 +270,18 @@ export class UnifiedDataFetcher {
           { maxRetries: 2, baseDelay: 1000, maxDelay: 5000 }
         )
 
-        // Use day.c (today's close) as current price, fallback to lastTrade.p, then prevClose
-        current = snapshotData?.ticker?.day?.c || snapshotData?.ticker?.lastTrade?.p || prevClose
+        // Use lastTrade.p as current price (realtime), fallback to day.c only if different from prevClose
+        const dayClose = snapshotData?.ticker?.day?.c
+        const lastTrade = snapshotData?.ticker?.lastTrade?.p
+        
+        if (lastTrade && lastTrade !== prevClose) {
+          current = lastTrade
+        } else if (dayClose && dayClose !== prevClose) {
+          current = dayClose
+        } else {
+          // No reliable current price available - will set priceChangePercent to null
+          current = prevClose
+        }
         todaysChangePerc = snapshotData?.ticker?.todaysChangePerc || null
       } catch (error) {
         console.warn(`Failed to fetch snapshot for ${ticker}, using prev close:`, (error as Error).message)
@@ -311,8 +321,18 @@ export class UnifiedDataFetcher {
       let priceChangePercent: number | null = null;
       if (todaysChangePerc != null) { // ak je 0, stále je to validná hodnota
         priceChangePercent = Number(todaysChangePerc);
+        console.log(`[DEBUG] ${ticker}: Using todaysChangePerc = ${todaysChangePerc}`);
       } else if (current != null && prevClose != null && Number.isFinite(current) && Number.isFinite(prevClose) && prevClose > 0) {
-        priceChangePercent = ((Number(current) - Number(prevClose)) / Number(prevClose)) * 100;
+        // Ak current === prevClose (fallback), nepočítaj percento - nastav na null
+        if (current === prevClose) {
+          priceChangePercent = null;
+          console.log(`[DEBUG] ${ticker}: current === prevClose (${current}), setting priceChangePercent = null`);
+        } else {
+          priceChangePercent = ((Number(current) - Number(prevClose)) / Number(prevClose)) * 100;
+          console.log(`[DEBUG] ${ticker}: current=${current}, prevClose=${prevClose}, calculated=${priceChangePercent}%`);
+        }
+      } else {
+        console.log(`[DEBUG] ${ticker}: Invalid data - current=${current}, prevClose=${prevClose}`);
       }
 
       // 6. Validuj extreme price changes

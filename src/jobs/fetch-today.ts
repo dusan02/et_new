@@ -205,13 +205,21 @@ async function fetchPolygonMarketData(tickers: string[]) {
           return null
         }
         
-        // Only calculate price change if we have current price, otherwise set to 0
-        const priceChangePercent = current ? (todaysChangePerc !== null ? todaysChangePerc : ((current - prevClose) / prevClose) * 100) : 0
+        // Only calculate price change if we have current price, otherwise set to null
+        let priceChangePercent: number | null = null
+        if (current && prevClose) {
+          if (todaysChangePerc !== null) {
+            priceChangePercent = todaysChangePerc
+          } else if (current !== prevClose) {
+            priceChangePercent = ((current - prevClose) / prevClose) * 100
+          }
+          // If current === prevClose, keep priceChangePercent as null
+        }
         
         // Check for extreme price changes (more than 50% in either direction)
-        if (Math.abs(priceChangePercent) > 50) {
+        if (priceChangePercent !== null && Math.abs(priceChangePercent) > 50) {
           console.warn(`Extreme price change detected for ${ticker}: ${priceChangePercent.toFixed(2)}% (${prevClose} -> ${current}). Setting to null.`)
-          return null
+          priceChangePercent = null
         }
         
         // Get shares outstanding from company details

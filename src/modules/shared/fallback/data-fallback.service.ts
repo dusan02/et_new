@@ -31,7 +31,7 @@ export class DataFallbackService {
       action: (data) => ({
         ...data,
         currentPrice: data.previousClose,
-        priceChangePercent: 0,
+        priceChangePercent: null, // Nezobrazuj 0% keď current = prevClose
         _fallback_applied: 'use_previous_close_as_current'
       })
     },
@@ -45,7 +45,7 @@ export class DataFallbackService {
       action: (data) => ({
         ...data,
         previousClose: data.currentPrice,
-        priceChangePercent: 0,
+        priceChangePercent: null, // Nezobrazuj 0% keď current = prevClose
         _fallback_applied: 'use_current_as_previous'
       })
     },
