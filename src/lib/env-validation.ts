@@ -1,7 +1,16 @@
 import { z } from 'zod'
 
+// Mikro-stráž pre NODE_ENV
+const RAW_NODE_ENV = String(process.env.NODE_ENV ?? "").trim().toLowerCase();
+if (!["development","test","production"].includes(RAW_NODE_ENV)) {
+  console.warn(`[env] Non-standard NODE_ENV='${process.env.NODE_ENV}', defaulting to 'production'`);
+}
+
 export const EnvSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  NODE_ENV: z.preprocess(
+    (v) => String(v ?? "").trim().toLowerCase(),
+    z.enum(['development', 'test', 'production'])
+  ).default('development'),
   FINNHUB_API_KEY: z.string().min(1, 'FINNHUB_API_KEY is required'),
   POLYGON_API_KEY: z.string().min(1, 'POLYGON_API_KEY is required'),
   // Ak používaš SQLite, povoľ aj file:
