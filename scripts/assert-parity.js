@@ -13,15 +13,31 @@ const path = require('path');
 console.log('🔍 Kontrola parity localhost ↔ production...\n');
 
 // 1. Kontrola NODE_ENV
-const nodeEnv = process.env.NODE_ENV;
-if (nodeEnv === 'production') {
-  console.log('✅ NODE_ENV=production (správne pre produkciu)');
-} else if (nodeEnv === 'development') {
-  console.log('✅ NODE_ENV=development (správne pre localhost)');
-} else {
-  console.error('❌ NODE_ENV nie je nastavené správne:', nodeEnv);
+const allowed = ['development', 'test', 'production'];
+
+// umožni dočasne vypnúť parity (napr. pri hotfixe)
+if (process.env.PARITY_SKIP === '1') {
+  console.log('[parity] SKIPPED via PARITY_SKIP=1');
+  process.exit(0);
+}
+
+const raw = String(process.env.NODE_ENV ?? '').trim().toLowerCase();
+
+if (!allowed.includes(raw)) {
+  console.error(
+    `[parity] ❌ NODE_ENV má neplatnú hodnotu: '${process.env.NODE_ENV}'. ` +
+    `Povolené: ${allowed.join(', ')}`
+  );
   process.exit(1);
 }
+
+// Voliteľný "prod guard" – len ak chceš striktne vyžadovať production pri builde na serveri
+if (process.env.FORCE_PROD === '1' && raw !== 'production') {
+  console.error(`[parity] ❌ Očakávam NODE_ENV=production, ale je '${raw}'.`);
+  process.exit(1);
+}
+
+console.log(`[parity] ✅ NODE_ENV='${raw}' vyzerá OK.`);
 
 // 2. Kontrola DATABASE_URL
 const dbUrl = process.env.DATABASE_URL;
@@ -45,9 +61,9 @@ if (!appUrl) {
   process.exit(1);
 }
 
-if (nodeEnv === 'development' && appUrl.includes('localhost:3000')) {
+if (raw === 'development' && appUrl.includes('localhost:3000')) {
   console.log('✅ NEXT_PUBLIC_APP_URL správne pre localhost:', appUrl);
-} else if (nodeEnv === 'production' && !appUrl.includes('localhost')) {
+} else if (raw === 'production' && !appUrl.includes('localhost')) {
   console.log('✅ NEXT_PUBLIC_APP_URL správne pre produkciu:', appUrl);
 } else {
   console.error('❌ NEXT_PUBLIC_APP_URL nesedí s NODE_ENV:', appUrl);
