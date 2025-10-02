@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { serializeBigInts } from '@/lib/bigint-utils';
+import { toJSONSafe } from '@/modules/shared';
 import { prisma } from '@/lib/prisma';
-import { getTodayStart, getNYTimeString } from '@/lib/dates';
+import { getTodayStart, getNYTimeString } from '@/modules/shared';
 import { validateRequest, checkRateLimit, statsQuerySchema } from '@/lib/validation';
 
 // Force dynamic rendering to avoid static generation issues with query parameters
@@ -237,7 +237,7 @@ export async function GET(request: NextRequest) {
     };
 
     // Serialize BigInt values before sending
-    const serializedStats = serializeBigInts(stats);
+    const serializedStats = toJSONSafe(stats);
 
     return NextResponse.json({
       success: true,

@@ -4,6 +4,24 @@
 
 Implementoval som komplexné refaktorovanie aplikácie s dôrazom na modularitu, testovateľnosť a performance optimalizáciu.
 
+## 🧹 **Cleanup Summary (October 2025)**
+
+### **Major Cleanup Actions**
+
+1. **Removed duplicate `et_new/` directory** - Eliminated complete project duplication
+2. **Unified utilities** - Consolidated `src/lib/` utilities into `src/modules/shared/utils/`
+3. **Fixed import conventions** - All imports now use unified `@/modules/shared` pattern
+4. **Cleaned deployment scripts** - Removed duplicate `.bat` and `.sh` files
+5. **Updated documentation** - Created comprehensive project structure guide
+
+### **Benefits Achieved**
+
+- ✅ **Better maintainability** - Single source of truth for utilities
+- ✅ **Improved readability** - Clear separation of concerns
+- ✅ **Type safety** - Centralized type definitions
+- ✅ **Consistent imports** - Unified import conventions
+- ✅ **Reduced duplication** - No more duplicate files or directories
+
 ## ✅ Implementované zmeny
 
 ### 1. Refaktorovanie komponentov - lepšia modularita

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getTodayStart, getNYTimeString, serializeBigInts, isoDate } from '@/modules/shared'
+import { getTodayStart, getNYTimeString, isoDate } from '@/modules/shared'
+import { toJSONSafe } from '@/modules/shared'
 import { calculateSurprise } from '@/modules/earnings'
 import { validateRequest, checkRateLimit, earningsQuerySchema, type EarningsQuery } from '@/lib/validation'
 import { getMonitoring } from '@/lib/monitoring'
@@ -393,7 +394,7 @@ export async function GET(request: NextRequest) {
     console.log(`[API] Request completed in ${duration}ms`)
     
     // Cache the result
-    const serializedData = serializeBigInts(combinedData)
+    const serializedData = toJSONSafe(combinedData)
     setCachedData(cacheKey, serializedData)
     
     return NextResponse.json({

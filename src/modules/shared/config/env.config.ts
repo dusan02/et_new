@@ -27,6 +27,11 @@ const isBuildPhase =
  */
 export function loadEnvironmentConfig(): EnvironmentConfig | Partial<EnvironmentConfig> {
   // ✅ volaj len v RUNTIME (v handleroch / serverových funkciách)
+  // Skip validation in browser environment
+  if (typeof window !== 'undefined') {
+    return {} as EnvironmentConfig
+  }
+  
   const baseEnv = isBuildPhase ? parseEnvSoft(process.env) : parseEnvStrict(process.env)
   
   const config: EnvironmentConfig = {

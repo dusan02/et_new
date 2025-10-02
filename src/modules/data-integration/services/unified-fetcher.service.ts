@@ -7,7 +7,7 @@
 import axios from 'axios'
 import { DataFallbackService } from '../../shared/fallback/data-fallback.service'
 import { DataQualityValidator } from '../../shared/validation/data-quality.validator'
-import { toBigIntOrNull } from '../../../lib/num'
+import { toBigIntOrNull } from '@/modules/shared'
 
 // Normalizovaný error handling
 type HttpErrorInfo = {

@@ -51,4 +51,5 @@ export function validateEnv() {
 export type ValidatedEnv = Env
 
 // Export validated env (call this in app startup)
-export const env = validateEnv()
+// Only validate on server side, not in browser
+export const env = typeof window === 'undefined' ? validateEnv() : {} as Env

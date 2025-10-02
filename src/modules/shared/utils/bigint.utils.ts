@@ -74,6 +74,56 @@ export function formatBigInt(value: bigint | null | undefined): string {
 }
 
 /**
+ * Format BigInt currency value
+ * @param value - BigInt value to format
+ * @returns Formatted currency string
+ */
+export function formatBigIntCurrency(value: bigint | number | null): string {
+  if (!value) return '-';
+  const num = typeof value === 'bigint' ? Number(value) : value;
+  
+  if (num >= 1e12) {
+    return `${(num / 1e12).toFixed(1)}T`;
+  } else if (num >= 1e9) {
+    return `${(num / 1e9).toFixed(1)}B`;
+  } else if (num >= 1e6) {
+    return `${(num / 1e6).toFixed(1)}M`;
+  } else if (num >= 1e3) {
+    return `${(num / 1e3).toFixed(1)}K`;
+  } else {
+    return `${num.toFixed(0)}`;
+  }
+}
+
+/**
+ * Format market cap difference with sign
+ * @param value - Market cap difference value
+ * @returns Formatted difference string with sign
+ */
+export function formatMarketCapDiff(value: bigint | number | null): string {
+  if (value === null || value === undefined) return '-';
+  const num = typeof value === 'bigint' ? Number(value) : value;
+  
+  // Handle zero case
+  if (num === 0) return '0B';
+  
+  const absNum = Math.abs(num);
+  const sign = num >= 0 ? '+' : '-';
+  
+  if (absNum >= 1e12) {
+    return `${sign}${(absNum / 1e12).toFixed(1)}T`;
+  } else if (absNum >= 1e9) {
+    return `${sign}${(absNum / 1e9).toFixed(1)}B`;
+  } else if (absNum >= 1e6) {
+    return `${sign}${(absNum / 1e6).toFixed(1)}M`;
+  } else if (absNum >= 1e3) {
+    return `${sign}${(absNum / 1e3).toFixed(1)}K`;
+  } else {
+    return `${sign}${absNum.toFixed(0)}`;
+  }
+}
+
+/**
  * Compare BigInt values safely
  * @param a - First BigInt value
  * @param b - Second BigInt value

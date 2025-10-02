@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 import { SkeletonLoader, SkeletonCard } from './ui/SkeletonLoader';
-import { formatRevenueSmart } from '../lib/formatMoney';
+import { formatRevenueSmart } from '@/modules/shared';
 // Define EarningsData interface locally since we removed the types file
 interface EarningsData {
   ticker: string;
