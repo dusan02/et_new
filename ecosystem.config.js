@@ -1,39 +1,23 @@
+/**
+ * 🔒 PM2 ECOSYSTEM CONFIG - 1:1 PARITY S LOCALHOST
+ * 
+ * Tento config zabezpečuje identické správanie localhost ↔ production
+ * Žiadne "vylepšenia" - presne to isté ako lokálne
+ */
+
 module.exports = {
   apps: [
     {
-      name: "earningstable",
+      name: "earnings-table",
       script: "npm",
       args: "start",
-      cwd: "/opt/earnings-table",
       instances: 1,
       autorestart: true,
       watch: false,
       max_memory_restart: "1G",
       env: {
         NODE_ENV: "production",
-        PORT: 3001,
-        HOST: "0.0.0.0",
-        DATABASE_URL: "file:/opt/earnings-table/prisma/dev.db",
-        FINNHUB_API_KEY: "YOUR_FINNHUB_API_KEY_HERE",
-        POLYGON_API_KEY: "YOUR_POLYGON_API_KEY_HERE",
-        NEXT_PUBLIC_APP_URL: "https://earnings-table.com",
-        NEXTAUTH_SECRET: "YOUR_NEXTAUTH_SECRET_HERE",
-        NEXTAUTH_URL: "https://earnings-table.com",
-        CRON_ENABLED: "true",
-        CRON_TIMEZONE: "America/New_York",
-      },
-      env_production: {
-        NODE_ENV: "production",
-        PORT: 3001,
-        HOST: "0.0.0.0",
-        DATABASE_URL: "file:/opt/earnings-table/prisma/dev.db",
-        FINNHUB_API_KEY: "YOUR_FINNHUB_API_KEY_HERE",
-        POLYGON_API_KEY: "YOUR_POLYGON_API_KEY_HERE",
-        NEXT_PUBLIC_APP_URL: "https://earnings-table.com",
-        NEXTAUTH_SECRET: "YOUR_NEXTAUTH_SECRET_HERE",
-        NEXTAUTH_URL: "https://earnings-table.com",
-        CRON_ENABLED: "true",
-        CRON_TIMEZONE: "America/New_York",
+        PORT: 3000
       },
       error_file: "./logs/err.log",
       out_file: "./logs/out.log",
@@ -42,22 +26,21 @@ module.exports = {
       log_date_format: "YYYY-MM-DD HH:mm:ss Z",
     },
     {
-      name: "earningstable-cron",
+      name: "earnings-cron",
       script: "npm",
       args: "run cron",
-      cwd: process.cwd(),
       instances: 1,
       autorestart: true,
       watch: false,
       max_memory_restart: "512M",
       env: {
-        NODE_ENV: "production",
+        NODE_ENV: "production"
       },
       error_file: "./logs/cron-err.log",
       out_file: "./logs/cron-out.log",
       log_file: "./logs/cron-combined.log",
       time: true,
       log_date_format: "YYYY-MM-DD HH:mm:ss Z",
-    },
-  ],
+    }
+  ]
 };
