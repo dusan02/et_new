@@ -9,6 +9,7 @@ module.exports = {
   apps: [
     {
       name: "earnings-table",
+      cwd: "/var/www/earnings-table",
       script: "npm",
       args: "start",
       instances: 1,
@@ -27,6 +28,7 @@ module.exports = {
     },
     {
       name: "earnings-cron",
+      cwd: "/var/www/earnings-table",
       script: "npm",
       args: "run cron",
       instances: 1,
