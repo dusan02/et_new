@@ -143,7 +143,13 @@ export class EarningsService {
       };
 
       // 🛡️ FINAL GUARD: Sanitize to prevent any duplicates
-      const sanitized = sanitizeEarningsData(out);
+      const sanitized = sanitizeEarningsData({
+        ticker,
+        epsActual: out.epsActual,
+        epsEstimate: out.epsEstimate,
+        revenueActual: out.revenueActual,
+        revenueEstimate: out.revenueEstimate
+      });
       console.log(`[GUARD] ${ticker} sanitized: epsA=${sanitized.epsActual} epsE=${sanitized.epsEstimate} revA=${sanitized.revenueActual} revE=${sanitized.revenueEstimate}`);
 
       console.log(`[TRACE] ${ticker} post-fallback`, {
