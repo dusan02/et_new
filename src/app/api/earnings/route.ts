@@ -339,7 +339,7 @@ export async function GET(request: NextRequest) {
         )
       const compatibleGuidance = null
       
-      return {
+      const result = {
         // Base earnings data
         ticker: row.ticker,
         reportTime: row.reportTime,
@@ -360,7 +360,7 @@ export async function GET(request: NextRequest) {
         marketCapDiff: marketInfo?.marketCapDiff ?? null,
         currentPrice: marketInfo?.currentPrice != null ? Number(marketInfo.currentPrice) : null,
         previousClose: marketInfo?.previousClose != null ? Number(marketInfo.previousClose) : null,
-        priceChangePercent: marketInfo?.priceChangePercent != null ? Number(marketInfo.priceChangePercent) : null,
+        priceChangePercent: marketInfo?.priceChangePercent ?? null,
         marketCapDiffBillions: marketInfo?.marketCapDiffBillions ?? null,
         sharesOutstanding: marketInfo?.sharesOutstanding || null,
         // Guidance calculations
@@ -386,6 +386,12 @@ export async function GET(request: NextRequest) {
         epsSurprise,
         revenueSurprise
       }
+
+      // Debug logovanie pre sanity check
+      console.log('[API OUT] %s | priceChangePercent=%s (type=%s)', 
+        result.ticker, result.priceChangePercent, typeof result.priceChangePercent);
+
+      return result;
     })
     
     const endTime = Date.now()

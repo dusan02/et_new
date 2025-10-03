@@ -1,217 +1,187 @@
 # 🚀 Production Deployment Guide
 
-## Server Information
-- **IP Address**: 89.185.250.213
-- **Domain**: earningstable.com
-- **Port**: 3000
-- **Application**: Live Earnings Table
-
 ## 📋 Pre-Deployment Checklist
 
-### 1. Server Requirements
-- [ ] Ubuntu/CentOS server with root access
-- [ ] Node.js 18+ installed
-- [ ] PostgreSQL database configured
-- [ ] Nginx installed and configured
-- [ ] PM2 installed globally
-- [ ] SSL certificate (Let's Encrypt)
+### ✅ Completed Changes:
+- [x] **Cron jobs cleaned up** - Removed duplicate `simple-cron.js`
+- [x] **Worker integration** - Using `worker-new.js` as single cron manager
+- [x] **Cleanup integration** - Automatic old data cleanup (7+ days)
+- [x] **Package.json updated** - `npm run cron` now uses `worker-new.js`
+- [x] **Ecosystem.config.js updated** - Production PM2 config ready
+- [x] **Git committed** - All changes pushed to repository
 
-### 2. Environment Setup
+## 🏭 Production Server Details
+
+- **Server IP:** 89.185.250.213
+- **App Directory:** /var/www/earnings-table
+- **User:** root
+- **URLs:** 
+  - https://earningstable.com
+  - http://89.185.250.213:3000
+
+## 🚀 Deployment Steps
+
+### 1. SSH to Server
 ```bash
-# Install Node.js
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt-get install -y nodejs
-
-# Install PM2
-sudo npm install -g pm2
-
-# Install PostgreSQL
-sudo apt-get install postgresql postgresql-contrib
-
-# Install Nginx
-sudo apt-get install nginx
+ssh root@89.185.250.213
 ```
 
-### 3. Application Deployment
-
-#### Step 1: Clone and Setup
+### 2. Stop Existing Processes
 ```bash
-git clone https://github.com/dusan02/et_new.git
-cd et_new
-npm ci --production
+pm2 stop all
+pm2 delete all
 ```
 
-#### Step 2: Environment Configuration
+### 3. Navigate to App Directory
 ```bash
-# Copy and edit production environment
-cp env.production.example .env.production
-nano .env.production
+cd /var/www/earnings-table
 ```
 
-#### Step 3: Build and Deploy
+### 4. Pull Latest Changes
 ```bash
-# Make deployment script executable
-chmod +x deploy-production.sh
-
-# Run deployment
-./deploy-production.sh
-```
-
-### 4. Nginx Configuration
-
-#### Copy Nginx Config
-```bash
-sudo cp nginx-production.conf /etc/nginx/sites-available/earningstable
-sudo ln -s /etc/nginx/sites-available/earningstable /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl restart nginx
-```
-
-#### SSL Certificate
-```bash
-sudo apt-get install certbot python3-certbot-nginx
-sudo certbot --nginx -d earningstable.com -d www.earningstable.com
-```
-
-### 5. PM2 Process Management
-
-#### Start Application
-```bash
-pm2 start ecosystem.config.js --env production
-pm2 startup
-pm2 save
-```
-
-#### Monitor Application
-```bash
-# Check status
-pm2 status
-
-# View logs
-pm2 logs earningstable
-
-# Monitor resources
-./monitor-production.sh
-```
-
-## 🔧 Maintenance Commands
-
-### Application Management
-```bash
-# Restart application
-pm2 restart earningstable
-
-# Stop application
-pm2 stop earningstable
-
-# Update application
 git pull origin main
-npm ci --production
+```
+
+### 5. Install Dependencies
+```bash
+npm install
+```
+
+### 6. Build Application
+```bash
 npm run build
-pm2 restart earningstable
 ```
 
-### Data Management
+### 7. Setup Environment
 ```bash
-# Fetch fresh data
-npm run fetch
-
-# Clear cache
-curl -X POST http://localhost:3000/api/earnings/clear-cache
-
-# Run cron jobs
-npm run cron
+cp production.env .env.local
 ```
 
-### Monitoring
+### 8. Create Logs Directory
 ```bash
-# Health check
-curl http://localhost:3000/api/monitoring/health
-
-# Application status
-./monitor-production.sh
-
-# Backup data
-./backup-production.sh
+mkdir -p logs
 ```
 
-## 📊 Monitoring Endpoints
+### 9. Start with PM2
+```bash
+pm2 start ecosystem.config.js
+```
 
-- **Health Check**: http://89.185.250.213:3000/api/monitoring/health
-- **Metrics**: http://89.185.250.213:3000/api/monitoring/metrics
-- **Data Quality**: http://89.185.250.213:3000/api/data-quality
+### 10. Save PM2 Configuration
+```bash
+pm2 save
+pm2 startup
+```
 
-## 🔒 Security Considerations
+### 11. Verify Deployment
+```bash
+pm2 status
+pm2 logs
+```
 
-1. **Firewall**: Configure UFW to allow only necessary ports
-2. **SSL**: Ensure HTTPS is properly configured
-3. **Rate Limiting**: Nginx rate limiting is configured
-4. **Environment Variables**: Keep API keys secure
-5. **Regular Updates**: Keep system and dependencies updated
+## 📊 Monitoring Commands
+
+### Real-time Monitoring
+```bash
+pm2 monit
+```
+
+### View Logs
+```bash
+pm2 logs
+pm2 logs earnings-table
+pm2 logs earnings-cron
+```
+
+### Restart if Needed
+```bash
+pm2 restart all
+pm2 restart earnings-table
+pm2 restart earnings-cron
+```
+
+## 🔧 PM2 Process Configuration
+
+### earnings-table (Next.js App)
+- **Script:** npm start
+- **Port:** 3000
+- **Memory Limit:** 1GB
+- **Auto Restart:** Yes
+
+### earnings-cron (Cron Worker)
+- **Script:** node src/queue/worker-new.js
+- **Memory Limit:** 512MB
+- **Auto Restart:** Yes
+
+## 📅 Cron Job Schedule
+
+| Time (NY) | Job | Frequency | Description |
+|-----------|-----|-----------|-------------|
+| 02:00 AM | Main Fetch | Daily | Cleanup + new earnings data |
+| 04:00-09:30 AM | Pre-market | Every 5 min | Pre-market updates |
+| 09:30-16:00 PM | Market Hours | Every 2 min | Market data updates |
+| 16:00-20:00 PM | After-hours | Every 10 min | After-hours updates |
+| Weekends | Weekend | Every hour | Weekend earnings check |
+
+## 🧹 Data Cleanup
+
+- **Automatic cleanup** of data older than 7 days
+- **Runs daily** at 2:00 AM NY time
+- **Runs on startup** of cron worker
+- **Cleans both** earnings and market data tables
+
+## 🌐 Verification URLs
+
+After deployment, verify these URLs are working:
+
+- **Main Site:** https://earningstable.com
+- **Direct IP:** http://89.185.250.213:3000
+- **API Health:** http://89.185.250.213:3000/api/monitoring/health
 
 ## 🚨 Troubleshooting
 
-### Common Issues
-
-#### Application Won't Start
+### If PM2 processes fail to start:
 ```bash
-# Check PM2 logs
-pm2 logs earningstable
-
-# Check system resources
-./monitor-production.sh
-
-# Restart application
-pm2 restart earningstable
+pm2 logs
+pm2 restart all
 ```
 
-#### Database Connection Issues
+### If cron jobs aren't running:
 ```bash
-# Check PostgreSQL status
-sudo systemctl status postgresql
-
-# Test database connection
-psql -h localhost -U username -d earnings_table_prod
+pm2 logs earnings-cron
+pm2 restart earnings-cron
 ```
 
-#### Nginx Issues
+### If web app isn't accessible:
 ```bash
-# Test Nginx configuration
-sudo nginx -t
-
-# Check Nginx logs
-sudo tail -f /var/log/nginx/error.log
-
-# Restart Nginx
-sudo systemctl restart nginx
+pm2 logs earnings-table
+pm2 restart earnings-table
 ```
 
-## 📈 Performance Optimization
+### Check server resources:
+```bash
+pm2 monit
+htop
+df -h
+```
 
-1. **Caching**: Redis caching is configured
-2. **Compression**: Gzip compression enabled
-3. **CDN**: Consider CloudFlare for static assets
-4. **Database**: Optimize queries and add indexes
-5. **Monitoring**: Set up alerts for critical metrics
+## 📝 Post-Deployment
 
-## 🔄 Backup Strategy
+1. **Monitor logs** for first few hours
+2. **Verify cron jobs** are running on schedule
+3. **Check data updates** are working
+4. **Test web application** functionality
+5. **Monitor server resources** (CPU, memory, disk)
 
-- **Daily Backups**: Automated via cron job
-- **Database Backups**: PostgreSQL dumps
-- **Application Backups**: Source code and configuration
-- **Retention**: 7 days of backups
+## ✅ Success Indicators
 
-## 📞 Support
-
-For production issues:
-1. Check application logs: `pm2 logs earningstable`
-2. Monitor system resources: `./monitor-production.sh`
-3. Verify API endpoints are responding
-4. Check database connectivity
-5. Review Nginx access/error logs
+- [ ] PM2 processes running (earnings-table, earnings-cron)
+- [ ] Web application accessible at both URLs
+- [ ] Cron jobs executing on schedule
+- [ ] Data cleanup working (check logs)
+- [ ] New earnings data being fetched
+- [ ] No error logs in PM2
 
 ---
 
-**Last Updated**: $(date)
-**Version**: Latest from main branch
-**Status**: Production Ready ✅
+**Deployment completed successfully!** 🎉

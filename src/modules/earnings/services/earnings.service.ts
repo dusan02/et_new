@@ -20,6 +20,7 @@ import {
 } from '../utils'
 import { applyEarningsFallback } from '../../../services/earnings/fallback'
 import { nul } from '../../../lib/db-nulls'
+import { sanitizeEarningsData } from '../../../utils/sanitize-earnings'
 
 export class EarningsService {
   private repository: EarningsRepository
@@ -63,10 +64,10 @@ export class EarningsService {
       ticker: earning.ticker,
       reportDate: earning.reportDate,
       reportTime: earning.reportTime as 'BMO' | 'AMC' | 'TNS' | null,
-      fiscalPeriod: earning.fiscalPeriod,
-      fiscalYear: earning.fiscalYear,
-      hasEstimates: hasEstimates(earning.epsEstimate, earning.revenueEstimate),
-      hasActuals: hasActuals(earning.epsActual, earning.revenueActual)
+      fiscalPeriod: earning.fiscalPeriod ?? null,
+      fiscalYear: earning.fiscalYear ?? null,
+      hasEstimates: hasEstimates(earning.epsEstimate ?? null, earning.revenueEstimate ?? null),
+      hasActuals: hasActuals(earning.epsActual ?? null, earning.revenueActual ?? null)
     }))
   }
 
@@ -118,7 +119,9 @@ export class EarningsService {
         r: String(item.revenueActual), re: String(item.revenueEstimate),
       });
 
-      // 1) Aplikuj fallback na objekt, ktorý pôjde do DB
+      // 🚫 DISABLED: Don't create duplicates - if actual values are not available, keep them as null
+      // This was causing EPS Act = EPS Est and Rev Act = Rev Est when actual values weren't released yet
+      /*
       const { out, usedEpsFallback, usedRevenueFallback } = applyEarningsFallback({
         epsActual: item.epsActual,
         epsEstimate: item.epsEstimate,
@@ -129,10 +132,23 @@ export class EarningsService {
       if (usedEpsFallback || usedRevenueFallback) {
         console.log(`🔄 Fallback applied for ${ticker} [EPS:${usedEpsFallback?'Y':'-'} | REV:${usedRevenueFallback?'Y':'-'}]`);
       }
+      */
+      
+      // Use original values without fallback
+      const out = {
+        epsActual: item.epsActual,
+        epsEstimate: item.epsEstimate,
+        revenueActual: revenueActual ? Number(revenueActual) : undefined,
+        revenueEstimate: revenueEstimate ? Number(revenueEstimate) : undefined,
+      };
+
+      // 🛡️ FINAL GUARD: Sanitize to prevent any duplicates
+      const sanitized = sanitizeEarningsData(out);
+      console.log(`[GUARD] ${ticker} sanitized: epsA=${sanitized.epsActual} epsE=${sanitized.epsEstimate} revA=${sanitized.revenueActual} revE=${sanitized.revenueEstimate}`);
 
       console.log(`[TRACE] ${ticker} post-fallback`, {
-        a: String(out.epsActual), ae: String(out.epsEstimate),
-        r: String(out.revenueActual), re: String(out.revenueEstimate),
+        a: String(sanitized.epsActual), ae: String(sanitized.epsEstimate),
+        r: String(sanitized.revenueActual), re: String(sanitized.revenueEstimate),
       });
 
       // 2) Normalizuj undefined → null (bez zmeny 0n!)
@@ -140,10 +156,10 @@ export class EarningsService {
         reportDate,
         ticker,
         reportTime,
-        epsActual: nul(out.epsActual),
-        epsEstimate: nul(out.epsEstimate),
-        revenueActual: nul(out.revenueActual),
-        revenueEstimate: nul(out.revenueEstimate),
+        epsActual: sanitized.epsActual ?? undefined,
+        epsEstimate: sanitized.epsEstimate ?? undefined,
+        revenueActual: sanitized.revenueActual ? BigInt(sanitized.revenueActual) : undefined,
+        revenueEstimate: sanitized.revenueEstimate ? BigInt(sanitized.revenueEstimate) : undefined,
         fiscalPeriod: item.quarter ? `Q${item.quarter}` : undefined,
         fiscalYear: item.year || undefined,
         dataSource: 'finnhub'

@@ -9,6 +9,9 @@ export function applyEarningsFallback<T extends {
   let usedEpsFallback = false;
   let usedRevenueFallback = false;
 
+  // 🚫 DISABLED: Don't create duplicates - if actual values are not available, keep them as null
+  // This was causing EPS Act = EPS Est and Rev Act = Rev Est when actual values weren't released yet
+  /*
   if (out.epsActual == null && out.epsEstimate != null) {
     out.epsActual = out.epsEstimate;
     usedEpsFallback = true;
@@ -17,6 +20,7 @@ export function applyEarningsFallback<T extends {
     out.revenueActual = out.revenueEstimate;
     usedRevenueFallback = true;
   }
+  */
 
   return { out, usedEpsFallback, usedRevenueFallback };
 }

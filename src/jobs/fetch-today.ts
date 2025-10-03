@@ -381,6 +381,15 @@ async function upsertMarketData(marketData: Record<string, any>, reportDate: Dat
   
   for (const [ticker, data] of Object.entries(marketData)) {
     try {
+      // Explicit guard pre priceChangePercent - zachová 0, pošle null pre null/undefined
+      const priceChangePercent = 
+        data.priceChangePercent === null || data.priceChangePercent === undefined
+          ? null
+          : data.priceChangePercent;
+
+      console.log('[UPSERT] %s | current=%s prev=%s todaysChangePerc=%s -> priceChangePercent=%s',
+        data.ticker, data.currentPrice, data.previousClose, data.todaysChangePerc, priceChangePercent);
+
       await prisma.todayEarningsMovements.upsert({
         where: {
           ticker_reportDate: {
@@ -391,7 +400,7 @@ async function upsertMarketData(marketData: Record<string, any>, reportDate: Dat
         update: {
           currentPrice: data.currentPrice,
           previousClose: data.previousClose,
-          priceChangePercent: data.priceChangePercent,
+          priceChangePercent: priceChangePercent,
           companyName: data.companyName,
           size: data.size,
           marketCap: data.marketCap ? BigInt(Math.round(data.marketCap)) : null,
@@ -407,7 +416,7 @@ async function upsertMarketData(marketData: Record<string, any>, reportDate: Dat
           reportDate,
           currentPrice: data.currentPrice,
           previousClose: data.previousClose,
-          priceChangePercent: data.priceChangePercent,
+          priceChangePercent: priceChangePercent,
           companyName: data.companyName,
           size: data.size,
           marketCap: data.marketCap ? BigInt(Math.round(data.marketCap)) : null,

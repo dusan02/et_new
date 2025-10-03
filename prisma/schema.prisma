@@ -7,29 +7,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// ENUMY - SQLite nepodporuje enums, používame String
-
 /// Základná tabuľka s dnešnými earnings (kalendár)
 model EarningsTickersToday {
-  reportDate        DateTime
-  ticker            String
-  reportTime        String?    // BMO, AMC, TNS
-  epsActual         Float?
-  epsEstimate       Float?
-  revenueActual     BigInt?
-  revenueEstimate   BigInt?
-  sector            String?
-  companyType       String?
-  dataSource        String?
-  sourcePriority    Int?
-  fiscalPeriod      String?    // Q1, Q2, Q3, Q4, FY, H1, H2
-  fiscalYear        Int?
-  primaryExchange   String?
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
-
-  // Relácie
-  marketData        TodayEarningsMovements?
+  reportDate      DateTime
+  ticker          String
+  reportTime      String?
+  epsActual       Float?
+  epsEstimate     Float?
+  revenueActual   BigInt?
+  revenueEstimate BigInt?
+  sector          String?
+  companyType     String?
+  dataSource      String?
+  sourcePriority  Int?
+  fiscalPeriod    String?
+  fiscalYear      Int?
+  primaryExchange String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@id([reportDate, ticker])
   @@index([reportDate])
@@ -47,24 +42,21 @@ model EarningsTickersToday {
 
 /// Pohyb/market data v deň reportu
 model TodayEarningsMovements {
-  ticker                   String
-  reportDate               DateTime
-  companyName              String
-  currentPrice             Float?
-  previousClose            Float?
-  marketCap                BigInt?
-  size                     String?    // Large, Mid, Small
-  marketCapDiff            Float?
-  marketCapDiffBillions    Float?
-  priceChangePercent       Float?
-  sharesOutstanding        BigInt?
-  updatedAt                DateTime? @default(now())
-  companyType              String?
-  primaryExchange          String?
-  reportTime               String?    // BMO, AMC, TNS
-
-  // Relácie
-  earningsData      EarningsTickersToday? @relation(fields: [ticker, reportDate], references: [ticker, reportDate])
+  ticker                String
+  reportDate            DateTime
+  companyName           String
+  currentPrice          Float?
+  previousClose         Float?
+  marketCap             BigInt?
+  size                  String?
+  marketCapDiff         Float?
+  marketCapDiffBillions Float?
+  priceChangePercent    Float?
+  sharesOutstanding     BigInt?
+  updatedAt             DateTime? @default(now())
+  companyType           String?
+  primaryExchange       String?
+  reportTime            String?
 
   @@id([ticker, reportDate])
   @@index([reportDate])
@@ -81,22 +73,22 @@ model TodayEarningsMovements {
 
 /// Guidance od Benzinga/Polygon Benzinga
 model BenzingaGuidance {
-  id                           Int         @id @default(autoincrement())
-  ticker                       String
-  estimatedEpsGuidance         Float?
-  estimatedRevenueGuidance     BigInt?
-  epsGuideVsConsensusPct       Float?
-  revenueGuideVsConsensusPct   Float?
-  previousMinEpsGuidance       Float?
-  previousMaxEpsGuidance       Float?
-  previousMinRevenueGuidance   BigInt?
-  previousMaxRevenueGuidance   BigInt?
-  fiscalPeriod                 String?    // Q1, Q2, Q3, Q4, FY, H1, H2
-  fiscalYear                   Int?
-  releaseType                  String?
-  notes                        String?     // Notes/comments from Benzinga
-  lastUpdated                  DateTime?   @default(now())
-  createdAt                    DateTime    @default(now())
+  id                         Int       @id @default(autoincrement())
+  ticker                     String
+  estimatedEpsGuidance       Float?
+  estimatedRevenueGuidance   BigInt?
+  epsGuideVsConsensusPct     Float?
+  revenueGuideVsConsensusPct Float?
+  previousMinEpsGuidance     Float?
+  previousMaxEpsGuidance     Float?
+  previousMinRevenueGuidance BigInt?
+  previousMaxRevenueGuidance BigInt?
+  fiscalPeriod               String?
+  fiscalYear                 Int?
+  releaseType                String?
+  lastUpdated                DateTime? @default(now())
+  createdAt                  DateTime  @default(now())
+  notes                      String?
 
   @@unique([ticker, fiscalPeriod, fiscalYear])
   @@index([ticker])
@@ -108,9 +100,9 @@ model BenzingaGuidance {
 
 /// Log odmietnutých záznamov guidance (na debug)
 model GuidanceImportFailures {
-  id          Int       @id @default(autoincrement())
-  ticker      String
-  reason      String
-  payload     String    // JSON string
-  createdAt   DateTime  @default(now())
+  id        Int      @id @default(autoincrement())
+  ticker    String
+  reason    String
+  payload   String
+  createdAt DateTime @default(now())
 }

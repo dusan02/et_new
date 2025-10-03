@@ -8,6 +8,9 @@ import axios from 'axios'
 import { DataFallbackService } from '../../shared/fallback/data-fallback.service'
 import { DataQualityValidator } from '../../shared/validation/data-quality.validator'
 import { toBigIntOrNull } from '@/modules/shared'
+import { getMarketStatus, getLastTrade, getOpenClose } from '../../market-data/providers/polygon'
+import { format } from 'date-fns'
+import { zonedTimeToUtc, utcToZonedTime } from 'date-fns-tz'
 
 // Normalizovaný error handling
 type HttpErrorInfo = {
@@ -59,6 +62,43 @@ export interface UnifiedFetchOptions {
   maxRetries?: number
   batchSize?: number
   delayBetweenBatches?: number
+}
+
+// Helper: vráti YYYY-MM-DD v ET (pre open-close)
+const todayET = () => {
+  const now = new Date();
+  const et = utcToZonedTime(now, "America/New_York");
+  return format(et, "yyyy-MM-dd", { timeZone: "America/New_York" });
+};
+
+function pctChange(a: number, b: number): number | null {
+  if (!Number.isFinite(a) || !Number.isFinite(b) || b <= 0) return null;
+  return ((a - b) / b) * 100;
+}
+
+async function computeRealtimeChangeForPremarket(ticker: string, prevClose: number): Promise<{ currentPrice: number | null; priceChangePercent: number | null; source: string }> {
+  // 1) skúsiť last trade (extended hours) - môže byť 403 Forbidden
+  try {
+    const { price: ltPrice } = await getLastTrade(ticker);
+    if (Number.isFinite(ltPrice) && Number.isFinite(prevClose) && ltPrice !== prevClose) {
+      return { currentPrice: ltPrice!, priceChangePercent: pctChange(ltPrice!, prevClose)!, source: "last_trade" };
+    }
+  } catch (error) {
+    console.warn(`[PREMARKET] ${ticker}: Last trade not available (403/plan limit), trying fallback`);
+  }
+
+  // 2) fallback: open-close pre dnešný deň (premarket field)
+  try {
+    const oc = await getOpenClose(ticker, todayET());
+    if (Number.isFinite(oc.preMarket) && Number.isFinite(prevClose) && oc.preMarket !== prevClose) {
+      return { currentPrice: oc.preMarket!, priceChangePercent: pctChange(oc.preMarket!, prevClose)!, source: "open_close.premarket" };
+    }
+  } catch (error) {
+    console.warn(`[PREMARKET] ${ticker}: Open-close not available, using snapshot fallback`);
+  }
+
+  // 3) nič (zatiaľ) → vráť null a nechaj FE zobraziť "—"
+  return { currentPrice: null, priceChangePercent: null, source: "none" };
 }
 
 export class UnifiedDataFetcher {
@@ -166,7 +206,9 @@ export class UnifiedDataFetcher {
         primaryExchange: earning.exchange || null
       }
 
-      // Apply fallback for missing actual values
+      // 🚫 DISABLED: Don't create duplicates - if actual values are not available, keep them as null
+      // This was causing EPS Act = EPS Est and Rev Act = Rev Est when actual values weren't released yet
+      /*
       if (!baseData.epsActual && baseData.epsEstimate) {
         baseData.epsActual = baseData.epsEstimate
         baseData._fallback_applied = 'use_estimate_as_actual_eps'
@@ -178,6 +220,9 @@ export class UnifiedDataFetcher {
           ? `${baseData._fallback_applied},use_estimate_as_actual_revenue`
           : 'use_estimate_as_actual_revenue'
       }
+      */
+
+      console.log(`[UPSERT EARN] ${earning.ticker} epsA:${baseData.epsActual} epsE:${baseData.epsEstimate} revA:${baseData.revenueActual} revE:${baseData.revenueEstimate} -> NO FALLBACK APPLIED`)
 
       return baseData
     })
@@ -260,27 +305,38 @@ export class UnifiedDataFetcher {
       // 2. Získaj current price (s fallback na snapshot)
       let current = prevClose
       let todaysChangePerc = null
+      let snapshotData: any = null
 
       try {
-        const { data: snapshotData } = await retryWithBackoff(
+        const { data } = await retryWithBackoff(
           () => axios.get(
             `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers/${ticker}`,
             { params: { apikey: this.polygonApiKey }, timeout: 10000 }
           ),
           { maxRetries: 2, baseDelay: 1000, maxDelay: 5000 }
         )
+        snapshotData = data
 
-        // Use lastTrade.p as current price (realtime), fallback to day.c only if different from prevClose
+        // Use minute data (min.c) as current price (realtime) - available with basic plan
         const dayClose = snapshotData?.ticker?.day?.c
-        const lastTrade = snapshotData?.ticker?.lastTrade?.p
+        const minClose = snapshotData?.ticker?.min?.c  // Minute data - available with basic plan
+        const todaysChange = snapshotData?.ticker?.todaysChange
+        const prevDayClose = snapshotData?.ticker?.prevDay?.c ?? prevClose
         
-        if (lastTrade && lastTrade !== prevClose) {
-          current = lastTrade
+        if (minClose && minClose !== prevClose) {
+          current = minClose
+          console.log(`[SNAPSHOT] ${ticker} using min.c: ${current}`)
         } else if (dayClose && dayClose !== prevClose) {
           current = dayClose
+          console.log(`[SNAPSHOT] ${ticker} using day.c: ${current}`)
+        } else if (todaysChange !== null && todaysChange !== undefined && Number.isFinite(prevDayClose)) {
+          // Calculate current price from todaysChange
+          current = prevDayClose + todaysChange
+          console.log(`[SNAPSHOT] ${ticker} using todaysChange: ${prevDayClose} + ${todaysChange} = ${current}`)
         } else {
           // No reliable current price available - will set priceChangePercent to null
           current = prevClose
+          console.log(`[SNAPSHOT] ${ticker} using prevClose fallback: ${current}`)
         }
         todaysChangePerc = snapshotData?.ticker?.todaysChangePerc || null
       } catch (error) {
@@ -317,22 +373,76 @@ export class UnifiedDataFetcher {
         console.warn(`Failed to fetch shares outstanding for ${ticker}:`, error)
       }
 
-      // 5. Vypočítaj price change percent
+      // 5. Vypočítaj price change percent s premarket logikou
       let priceChangePercent: number | null = null;
-      if (todaysChangePerc != null) { // ak je 0, stále je to validná hodnota
-        priceChangePercent = Number(todaysChangePerc);
-        console.log(`[DEBUG] ${ticker}: Using todaysChangePerc = ${todaysChangePerc}`);
-      } else if (current != null && prevClose != null && Number.isFinite(current) && Number.isFinite(prevClose) && prevClose > 0) {
-        // Ak current === prevClose (fallback), nepočítaj percento - nastav na null
-        if (current === prevClose) {
-          priceChangePercent = null;
-          console.log(`[DEBUG] ${ticker}: current === prevClose (${current}), setting priceChangePercent = null`);
+      
+      // Detekcia obchodnej seansy
+      const status = await getMarketStatus();
+      const isPremarket = !!status?.earlyHours;
+      
+      if (isPremarket) {
+        // PREMARKET: skús najprv realtime sources, potom snapshot fallback
+        const pre = await computeRealtimeChangeForPremarket(ticker, prevClose);
+        if (pre.priceChangePercent !== null) {
+          current = pre.currentPrice ?? prevClose;
+          priceChangePercent = pre.priceChangePercent;
+          console.log(`[PREMARKET] ${ticker} prevClose=${prevClose} using=${pre.source} -> current=${current} chg%=${priceChangePercent}`);
         } else {
-          priceChangePercent = ((Number(current) - Number(prevClose)) / Number(prevClose)) * 100;
-          console.log(`[DEBUG] ${ticker}: current=${current}, prevClose=${prevClose}, calculated=${priceChangePercent}%`);
+          // Fallback na snapshot dáta ak realtime sources nefungujú
+          if (snapshotData?.ticker) {
+            const todaysChangePerc = snapshotData.ticker.todaysChangePerc;
+            const todaysChange = snapshotData.ticker.todaysChange;
+            const prevDayClose = snapshotData.ticker.prevDay?.c ?? prevClose;
+            
+            if (todaysChangePerc !== null && todaysChangePerc !== undefined) {
+              // Použi snapshot todaysChangePerc
+              priceChangePercent = todaysChangePerc;
+              if (todaysChange !== null && todaysChange !== undefined && Number.isFinite(prevDayClose)) {
+                current = prevDayClose + todaysChange;
+              } else {
+                current = prevClose;
+              }
+              console.log(`[PREMARKET] ${ticker} using snapshot fallback -> current=${current} chg%=${priceChangePercent}`);
+            } else {
+              // ak naozaj nebol žiaden premarket trade: null, nie 0
+              current = prevClose;
+              priceChangePercent = null;
+              console.log(`[PREMARKET] ${ticker} no premarket data -> chg% = null`);
+            }
+          } else {
+            // snapshot sa nepodarilo načítať
+            current = prevClose;
+            priceChangePercent = null;
+            console.log(`[PREMARKET] ${ticker} snapshot failed -> chg% = null`);
+          }
         }
       } else {
-        console.log(`[DEBUG] ${ticker}: Invalid data - current=${current}, prevClose=${prevClose}`);
+        // REGULAR/AFTER-HOURS: doterajšia logika, ale s override heuristikou
+        if (snapshotData?.ticker) {
+          const todaysChangePerc = snapshotData.ticker.todaysChangePerc;
+          const todaysChange = snapshotData.ticker.todaysChange;
+          const dayClose = snapshotData.ticker.day?.c;
+          const prevDayClose = snapshotData.ticker.prevDay?.c ?? prevClose;
+
+          if (Number.isFinite(dayClose) && dayClose > 0) {
+            current = dayClose;
+            priceChangePercent = pctChange(dayClose, prevDayClose);
+          } else if (todaysChange != null && Number.isFinite(prevDayClose)) {
+            current = prevDayClose + todaysChange;
+            priceChangePercent = pctChange(current, prevDayClose);
+          }
+        }
+
+        // Override: ak percento vyšlo 0 alebo null, porovnaj s last trade
+        if ((priceChangePercent === 0 || priceChangePercent === null) && Number.isFinite(prevDayClose)) {
+          const { price: ltPrice } = await getLastTrade(ticker);
+          const overridePct = (Number.isFinite(ltPrice) ? pctChange(ltPrice!, prevDayClose) : null);
+          if (overridePct !== null && Math.abs(overridePct) >= 0.01) { // > 0.01 % threshold
+            current = ltPrice!;
+            priceChangePercent = overridePct;
+            console.log(`[OVERRIDE] ${ticker} snapshot chg%=${todaysChangePerc} -> last_trade chg%=${overridePct}`);
+          }
+        }
       }
 
       // 6. Validuj extreme price changes
