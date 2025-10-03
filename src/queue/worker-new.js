@@ -12,6 +12,33 @@ function getNYTime() {
   );
 }
 
+// Helper function to run cleanup script
+function runCleanupScript(description) {
+  console.log(`🧹 Running ${description}...`);
+
+  const cleanupScript = path.join(__dirname, "jobs", "clearOldData.ts");
+  const child = spawn("npx", ["tsx", cleanupScript], {
+    cwd: path.join(__dirname, "../.."),
+    env: {
+      ...process.env,
+      DATABASE_URL: process.env.DATABASE_URL,
+    },
+    shell: true,
+  });
+
+  child.stdout.on("data", (data) => {
+    console.log(`🧹 ${description} output: ${data}`);
+  });
+
+  child.stderr.on("data", (data) => {
+    console.error(`❌ ${description} error: ${data}`);
+  });
+
+  child.on("close", (code) => {
+    console.log(`✅ ${description} completed with code ${code}`);
+  });
+}
+
 // Helper function to run fetch script
 function runFetchScript(scriptName, description) {
   console.log(`🔄 Running ${description}...`);
@@ -50,7 +77,11 @@ cron.schedule(
     console.log(
       `⏰ 2:00 AM NY time reached (${nyTime.toLocaleString()}) - Running main earnings fetch`
     );
-    runFetchScript("fetch-today.ts", "Main earnings calendar fetch");
+    // First cleanup old data, then fetch new data
+    runCleanupScript("Daily cleanup of old data");
+    setTimeout(() => {
+      runFetchScript("fetch-today.ts", "Main earnings calendar fetch");
+    }, 5000); // Wait 5 seconds for cleanup to complete
   },
   {
     timezone: "America/New_York",
@@ -130,17 +161,22 @@ cron.schedule(
   }
 );
 
-// Run initial fetch on startup
-console.log("🔄 Running initial data fetch...");
-runFetchScript("fetch-today.ts", "Initial startup fetch");
+// Run initial cleanup and fetch on startup
+console.log("🧹 Running initial cleanup...");
+runCleanupScript("Initial startup cleanup");
+setTimeout(() => {
+  console.log("🔄 Running initial data fetch...");
+  runFetchScript("fetch-today.ts", "Initial startup fetch");
+}, 5000); // Wait 5 seconds for cleanup to complete
 
 console.log("✅ Queue worker started successfully!");
 console.log("📅 Schedule:");
-console.log("  - Main fetch: Daily at 2:00 AM NY time");
+console.log("  - Main fetch: Daily at 2:00 AM NY time (with cleanup)");
 console.log(
   "  - Market updates: Every 2 minutes during market hours (9:30 AM - 4:00 PM ET)"
 );
 console.log("  - Pre-market: Every 5 minutes (4:00 AM - 9:30 AM ET)");
 console.log("  - After-hours: Every 10 minutes (4:00 PM - 8:00 PM ET)");
 console.log("  - Weekend: Every hour");
+console.log("  - Cleanup: Before main fetch and on startup");
 console.log(`🕐 Current NY time: ${getNYTime().toLocaleString()}`);
