@@ -307,7 +307,7 @@ export default function EarningsTable({
       <div className="block sm:hidden">
         {/* Mobile Card View */}
         {processedData.map((item, index) => (
-          <div key={item.ticker} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-3 mb-2 shadow-sm hover:shadow-md transition-all duration-200 ease-in-out animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
+          <div key={item.ticker} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-3 mb-2 shadow-sm hover:shadow-md transition-all duration-300 ease-in-out animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
             {/* Header */}
       <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
@@ -446,7 +446,7 @@ export default function EarningsTable({
                 #
                   </th>
                   <th 
-                className={`w-32 sm:w-48 px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-200 ${
+                className={`w-32 sm:w-48 px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-300 ${
                   sortConfig.field === 'ticker' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
                 }`}
                 onClick={() => handleSort('ticker')}
@@ -454,7 +454,7 @@ export default function EarningsTable({
                 Ticker
                   </th>
                   <th 
-                className={`w-12 sm:w-16 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-200 ${
+                className={`w-12 sm:w-16 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-300 ${
                   sortConfig.field === 'reportTime' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
                 }`}
                 onClick={() => handleSort('reportTime')}
@@ -462,7 +462,7 @@ export default function EarningsTable({
                 Time
                   </th>
                   <th 
-                className={`w-10 sm:w-12 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-200 ${
+                className={`w-10 sm:w-12 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-300 ${
                   sortConfig.field === 'size' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
                 }`}
                 onClick={() => handleSort('size')}
@@ -470,7 +470,7 @@ export default function EarningsTable({
                 Size
                   </th>
                   <th 
-                className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-200 ${
+                className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-300 ${
                   sortConfig.field === 'marketCap' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
                 }`}
                 onClick={() => handleSort('marketCap')}
@@ -478,7 +478,7 @@ export default function EarningsTable({
                 Market Cap
                   </th>
                   <th 
-                className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-200 ${
+                className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-300 ${
                   sortConfig.field === 'marketCapDiff' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
                 }`}
                 onClick={() => handleSort('marketCapDiff')}
@@ -486,7 +486,7 @@ export default function EarningsTable({
                 Cap Diff
                   </th>
                   <th 
-                className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-200 ${
+                className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-300 ${
                   sortConfig.field === 'currentPrice' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
                 }`}
                 onClick={() => handleSort('currentPrice')}
@@ -494,7 +494,7 @@ export default function EarningsTable({
                 Price
                   </th>
                   <th 
-                className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-200 ${
+                className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-300 ${
                   sortConfig.field === 'priceChangePercent' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
                 }`}
                 onClick={() => handleSort('priceChangePercent')}
@@ -502,7 +502,7 @@ export default function EarningsTable({
                 Change
                   </th>
                   <th 
-                className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-200 ${
+                className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-300 ${
                   sortConfig.field === 'epsEstimate' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
                 }`}
                 onClick={() => handleSort('epsEstimate')}
@@ -510,7 +510,7 @@ export default function EarningsTable({
                 EPS Est
                   </th>
                   <th 
-                className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-200 ${
+                className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-300 ${
                   sortConfig.field === 'epsActual' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
                 }`}
                 onClick={() => handleSort('epsActual')}
@@ -521,7 +521,7 @@ export default function EarningsTable({
                 EPS Surp
                   </th>
                   <th 
-                className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-200 ${
+                className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-300 ${
                   sortConfig.field === 'revenueEstimate' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
                 }`}
                 onClick={() => handleSort('revenueEstimate')}
@@ -529,7 +529,7 @@ export default function EarningsTable({
                 Rev Est
                   </th>
                   <th 
-                className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-200 ${
+                className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-300 ${
                   sortConfig.field === 'revenueActual' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
                 }`}
                 onClick={() => handleSort('revenueActual')}
@@ -543,7 +543,7 @@ export default function EarningsTable({
                 </thead>
                 <tbody className="bg-white dark:bg-gray-200 divide-y divide-gray-200 dark:divide-gray-300">
             {processedData.map((item, index) => (
-              <tr key={item.ticker} className="hover:bg-gray-50 dark:hover:bg-gray-300 transition-colors duration-200 ease-in-out animate-fade-in" style={{ animationDelay: `${index * 30}ms` }}>
+              <tr key={item.ticker} className="hover:bg-gray-50 dark:hover:bg-gray-300 transition-colors duration-300 ease-in-out animate-fade-in" style={{ animationDelay: `${index * 30}ms` }}>
                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-500 dark:text-gray-400 text-center">
                       {index + 1}
                     </td>
