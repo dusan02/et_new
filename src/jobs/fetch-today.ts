@@ -14,6 +14,7 @@ import {
   validateMarketCapInputs 
 } from '@/modules/market-data'
 import { UnifiedDataFetcher } from '@/modules/data-integration/services/unified-fetcher.service'
+import { setDailyResetState, isDailyResetCompleted } from '@/lib/daily-reset-state'
 import axios from 'axios'
 
 console.log('Environment variables:', {
@@ -441,6 +442,23 @@ async function main() {
     const date = process.env.DATE || isoDate()
     console.log(`Starting unified data fetch for ${date} (NY time: ${getNYTimeString()})`)
     
+    // Check if daily reset is completed (unless skipped for main fetch)
+    const skipResetCheck = process.env.SKIP_RESET_CHECK === 'true'
+    if (!skipResetCheck) {
+      const resetCompleted = await isDailyResetCompleted()
+      if (!resetCompleted) {
+        console.log('⚠️ Daily reset not completed - skipping fetch to avoid race conditions')
+        return {
+          date,
+          earningsCount: 0,
+          marketCount: 0,
+          totalTickers: 0,
+          skipped: true,
+          reason: 'Daily reset not completed'
+        }
+      }
+    }
+    
     // Použi nový UnifiedDataFetcher
     let result
     try {
@@ -463,6 +481,9 @@ async function main() {
     }
     
     console.log('Unified data fetch completed successfully!')
+    
+    // Set daily fetch state
+    await setDailyResetState('FETCH_DONE')
     
     return {
       date,

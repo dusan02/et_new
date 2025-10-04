@@ -40,6 +40,36 @@ model EarningsTickersToday {
   @@index([dataSource])
 }
 
+/// Daily reset state tracking
+model DailyResetState {
+  date        DateTime @id
+  state       String   // INIT | RESET_DONE | FETCH_DONE
+  resetAt     DateTime @default(now())
+  fetchAt     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([date])
+  @@index([state])
+}
+
+/// Cron job execution audit
+model CronRun {
+  id          String    @id @default(cuid())
+  name        String
+  status      String    // RUNNING | OK | ERROR | SKIPPED
+  startedAt   DateTime  @default(now())
+  finishedAt  DateTime?
+  message     String?
+  meta        String?   // JSON string for additional data
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([name, startedAt])
+  @@index([status])
+  @@index([startedAt])
+}
+
 /// Pohyb/market data v deň reportu
 model TodayEarningsMovements {
   ticker                String

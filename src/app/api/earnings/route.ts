@@ -90,12 +90,14 @@ export async function GET(request: NextRequest) {
       const cachedData = cached.data as any[]
       console.log(`[CACHE] HIT - returning cached data (age: ${cacheAge}s)`)
       return NextResponse.json({
-        success: true,
+        status: cachedData.length > 0 ? 'ok' : 'no-data',
         data: cachedData,
         meta: {
           total: cachedData.length,
           duration: `${Date.now() - startTime}ms`,
           date: todayString,
+          requestedDate: todayString,
+          fallbackUsed: false,
           cached: true,
           cacheAge: cacheAge
         }
@@ -133,47 +135,18 @@ export async function GET(request: NextRequest) {
       take: 500,
     })
     
-    // 🔑 FALLBACK: If no data for today, get the latest available data
+    // ✅ NO FALLBACK: If no data for today, return explicit no-data status
     let actualDate = today
+    let responseStatus = 'ok'
     if (combinedRows.length === 0) {
-      console.log(`[API] No data for ${todayString}, looking for latest available data...`)
-      
-      const latestRecord = await prisma.earningsTickersToday.findFirst({
-        orderBy: { reportDate: 'desc' },
-        select: { reportDate: true }
-      })
-      
-      if (latestRecord) {
-        actualDate = latestRecord.reportDate
-        console.log(`[API] Found latest data for: ${actualDate.toISOString().split('T')[0]}`)
-        
-        combinedRows = await prisma.earningsTickersToday.findMany({
-          where: { reportDate: actualDate },
-          select: {
-            ticker: true,
-            reportTime: true,
-            epsActual: true,
-            epsEstimate: true,
-            revenueActual: true,
-            revenueEstimate: true,
-            sector: true,
-            companyType: true,
-            dataSource: true,
-            fiscalPeriod: true,
-            fiscalYear: true,
-            primaryExchange: true,
-          },
-          orderBy: { ticker: 'asc' },
-          take: 500,
-        })
-      } else {
-        console.log(`[API] No earnings data found in database`)
-      }
+      console.log(`[API] No data for ${todayString} - returning no-data status (no fallback to old data)`)
+      responseStatus = 'no-data'
+      // Keep combinedRows as empty array - no fallback to old data
     }
     
-    // Get market data separately (optimized query) - use actualDate
+    // Get market data separately (optimized query) - use today (no fallback)
     const marketData = await prisma.todayEarningsMovements.findMany({
-      where: { reportDate: actualDate },
+      where: { reportDate: today },
       select: {
         ticker: true,
         companyName: true,
@@ -404,14 +377,14 @@ export async function GET(request: NextRequest) {
     setCachedData(cacheKey, serializedData)
     
     return NextResponse.json({
-      success: true,
+      status: responseStatus,
       data: serializedData,
       meta: {
         total: combinedData.length,
         duration: `${duration}ms`,
         date: actualDate.toISOString().split('T')[0],
         requestedDate: today.toISOString().split('T')[0],
-        fallbackUsed: actualDate.getTime() !== today.getTime(),
+        fallbackUsed: false, // Never use fallback anymore
         cached: false
       }
     }, {

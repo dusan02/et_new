@@ -39,8 +39,82 @@ function runCleanupScript(description) {
   });
 }
 
-// Helper function to run fetch script
-function runFetchScript(scriptName, description) {
+// Helper function to run current day reset script
+function runCurrentDayReset(description) {
+  console.log(`🔄 Running ${description}...`);
+
+  const resetScript = path.join(__dirname, "jobs", "clearOldData.ts");
+  const child = spawn(
+    "npx",
+    [
+      "tsx",
+      "-e",
+      `
+        import('./src/queue/jobs/clearOldData.js').then(async (module) => {
+          try {
+            const result = await module.resetCurrentDayData();
+            console.log('✅ Reset completed successfully:', result);
+            process.exit(0);
+          } catch (error) {
+            console.error('❌ Reset failed:', error);
+            process.exit(1);
+          }
+        }).catch(error => {
+          console.error('❌ Import failed:', error);
+          process.exit(1);
+        });
+      `,
+    ],
+    {
+      cwd: path.join(__dirname, "../.."),
+      env: {
+        ...process.env,
+        DATABASE_URL: process.env.DATABASE_URL,
+      },
+      shell: true,
+    }
+  );
+
+  child.stdout.on("data", (data) => {
+    console.log(`🔄 ${description} output: ${data}`);
+  });
+
+  child.stderr.on("data", (data) => {
+    console.error(`❌ ${description} error: ${data}`);
+  });
+
+  child.on("close", (code) => {
+    console.log(`✅ ${description} completed with code ${code}`);
+  });
+}
+
+// Helper function to clear application cache
+function clearApplicationCache(description) {
+  console.log(`🧹 Running ${description}...`);
+
+  const child = spawn(
+    "curl",
+    ["-X", "POST", "http://localhost:3000/api/earnings/clear-cache"],
+    {
+      shell: true,
+    }
+  );
+
+  child.stdout.on("data", (data) => {
+    console.log(`🧹 ${description} output: ${data}`);
+  });
+
+  child.stderr.on("data", (data) => {
+    console.error(`❌ ${description} error: ${data}`);
+  });
+
+  child.on("close", (code) => {
+    console.log(`✅ ${description} completed with code ${code}`);
+  });
+}
+
+// Helper function to run fetch script with daily reset check
+function runFetchScript(scriptName, description, skipResetCheck = false) {
   console.log(`🔄 Running ${description}...`);
 
   const fetchScript = path.join(__dirname, "../jobs", scriptName);
@@ -51,6 +125,7 @@ function runFetchScript(scriptName, description) {
       FINNHUB_API_KEY: process.env.FINNHUB_API_KEY,
       POLYGON_API_KEY: process.env.POLYGON_API_KEY,
       DATABASE_URL: process.env.DATABASE_URL,
+      SKIP_RESET_CHECK: skipResetCheck ? "true" : "false",
     },
     shell: true,
   });
@@ -77,16 +152,83 @@ cron.schedule(
     console.log(
       `⏰ 2:00 AM NY time reached (${nyTime.toLocaleString()}) - Running main earnings fetch`
     );
-    // First cleanup old data, then fetch new data
-    runCleanupScript("Daily cleanup of old data");
-    setTimeout(() => {
-      runFetchScript("fetch-today.ts", "Main earnings calendar fetch");
-    }, 5000); // Wait 5 seconds for cleanup to complete
+
+    // Wrap main cron job in audit wrapper
+    runMainCronJob();
   },
   {
     timezone: "America/New_York",
   }
 );
+
+// Main cron job function with audit wrapper
+async function runMainCronJob() {
+  try {
+    // First clear cache, then cleanup old data, then reset current day, then fetch new data
+    clearApplicationCache("Clear cache before daily reset");
+    setTimeout(() => {
+      runCleanupScript("Daily cleanup of old data");
+      setTimeout(() => {
+        runCurrentDayReset("Reset current day data for fresh start");
+        setTimeout(() => {
+          runFetchScript(
+            "fetch-today.ts",
+            "Main earnings calendar fetch",
+            true
+          ); // Skip reset check for main fetch
+        }, 3000); // Wait 3 seconds for reset to complete
+      }, 5000); // Wait 5 seconds for cleanup to complete
+    }, 2000); // Wait 2 seconds for cache clear to complete
+  } catch (error) {
+    console.error("❌ Main cron job failed:", error);
+  }
+}
+
+// Auto-repair job function
+async function runAutoRepairJob() {
+  try {
+    console.log("🔧 Checking if auto-repair is needed...");
+
+    // Check daily reset state using a simple script
+    const checkScript = path.join(__dirname, "jobs", "checkDailyState.ts");
+    const child = spawn("npx", ["tsx", checkScript], {
+      cwd: path.join(__dirname, "../.."),
+      env: {
+        ...process.env,
+        DATABASE_URL: process.env.DATABASE_URL,
+      },
+      shell: true,
+    });
+
+    let output = "";
+    child.stdout.on("data", (data) => {
+      output += data.toString();
+    });
+
+    child.stderr.on("data", (data) => {
+      console.error(`❌ Auto-repair check error: ${data}`);
+    });
+
+    child.on("close", (code) => {
+      if (code === 0) {
+        console.log("🔧 Auto-repair check completed");
+        console.log("Output:", output);
+
+        // If state is RESET_DONE but not FETCH_DONE, retry fetch
+        if (output.includes("RESET_DONE") && !output.includes("FETCH_DONE")) {
+          console.log("🔧 Auto-repair needed - retrying fetch...");
+          runFetchScript("fetch-today.ts", "Auto-repair fetch retry", true);
+        } else {
+          console.log("✅ Auto-repair not needed - system is healthy");
+        }
+      } else {
+        console.error(`❌ Auto-repair check failed with code ${code}`);
+      }
+    });
+  } catch (error) {
+    console.error("❌ Auto-repair job failed:", error);
+  }
+}
 
 // 2. MARKET DATA UPDATES - Every 2 minutes during market hours (9:30 AM - 4:00 PM ET)
 // This updates market data (prices, market cap, etc.)
@@ -161,12 +303,32 @@ cron.schedule(
   }
 );
 
+// 6. AUTO-REPAIR MICRO-JOBS - Retry failed fetches
+// Runs at 2:05, 2:10, 2:15 AM to retry if initial fetch failed
+cron.schedule(
+  "5,10,15 7 * * *",
+  () => {
+    const nyTime = getNYTime();
+    console.log(
+      `🔧 Auto-repair check - Retrying failed fetch if needed (${nyTime.toLocaleString()})`
+    );
+    runAutoRepairJob();
+  },
+  {
+    timezone: "America/New_York",
+  }
+);
+
 // Run initial cleanup and fetch on startup
 console.log("🧹 Running initial cleanup...");
 runCleanupScript("Initial startup cleanup");
 setTimeout(() => {
-  console.log("🔄 Running initial data fetch...");
-  runFetchScript("fetch-today.ts", "Initial startup fetch");
+  console.log("🔄 Running initial current day reset...");
+  runCurrentDayReset("Initial startup reset");
+  setTimeout(() => {
+    console.log("🔄 Running initial data fetch...");
+    runFetchScript("fetch-today.ts", "Initial startup fetch");
+  }, 3000); // Wait 3 seconds for reset to complete
 }, 5000); // Wait 5 seconds for cleanup to complete
 
 console.log("✅ Queue worker started successfully!");

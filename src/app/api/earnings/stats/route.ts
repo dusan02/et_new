@@ -33,26 +33,15 @@ export async function GET(request: NextRequest) {
     
     console.log(`[STATS] Fetching stats for date: ${today.toISOString().split('T')[0]} (NY time: ${getNYTimeString()})`);
 
-    // 🔑 FALLBACK: Check if we have data for today, if not get latest available
+    // ✅ NO FALLBACK: Use today's date only (no fallback to old data)
     let actualDate = today
     const todayCount = await prisma.earningsTickersToday.count({
       where: { reportDate: today }
     })
     
     if (todayCount === 0) {
-      console.log(`[STATS] No data for ${today.toISOString().split('T')[0]}, looking for latest available data...`)
-      
-      const latestRecord = await prisma.earningsTickersToday.findFirst({
-        orderBy: { reportDate: 'desc' },
-        select: { reportDate: true }
-      })
-      
-      if (latestRecord) {
-        actualDate = latestRecord.reportDate
-        console.log(`[STATS] Found latest data for: ${actualDate.toISOString().split('T')[0]}`)
-      } else {
-        console.log(`[STATS] No earnings data found in database`)
-      }
+      console.log(`[STATS] No data for ${today.toISOString().split('T')[0]} - returning empty stats (no fallback to old data)`)
+      // Keep actualDate as today - no fallback to old data
     }
 
     // Fetch real stats from database using actualDate
