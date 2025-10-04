@@ -197,11 +197,11 @@ export function EarningsDashboard() {
             </div>
             
             {/* No Earnings Message */}
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">No Earnings Scheduled</h2>
-            <p className="text-gray-600 text-lg">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-300 mb-4">No Earnings Scheduled</h2>
+            <p className="text-gray-600 dark:text-gray-400 text-lg">
               There are no earnings reports scheduled for today.
             </p>
-            <p className="text-gray-600 text-lg">
+            <p className="text-gray-600 dark:text-gray-400 text-lg">
               Check back tomorrow for new earnings data.
             </p>
           </div>
