@@ -10,6 +10,9 @@
 const fs = require('fs');
 const path = require('path');
 
+// Load .env.production if exists
+require('dotenv').config({ path: '.env.production' });
+
 console.log('🔍 Kontrola parity localhost ↔ production...\n');
 
 // 1. Kontrola NODE_ENV
