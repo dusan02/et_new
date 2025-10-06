@@ -1,0 +1,61 @@
+🚀 PRODUCTION DEPLOYMENT COMMANDS
+=====================================
+
+Execute these commands on production server via SSH:
+
+1. Navigate to project directory:
+   cd /var/www/earnings-table
+
+2. Stop PM2 processes:
+   pm2 stop all
+
+3. Pull latest changes from git:
+   git pull origin main
+
+4. Copy production environment file:
+   cp production.env .env.production
+
+5. Install dependencies (if needed):
+   npm install
+
+6. Generate Prisma client:
+   npx prisma generate
+
+7. Build the application:
+   npm run build
+
+8. Restart PM2 with new ecosystem config:
+   pm2 start ecosystem.config.js --env production
+
+9. Save PM2 configuration:
+   pm2 save
+
+10. Check PM2 status:
+    pm2 status
+
+11. Check logs:
+    pm2 logs --lines 20
+
+12. Test health endpoint:
+    curl -s http://localhost:3001/api/health | jq .
+
+13. Test cron status:
+    pm2 describe earnings-cron
+
+14. Test website:
+    curl -s https://earningstable.com/api/health
+
+✅ DEPLOYMENT COMPLETE!
+
+🔍 VERIFICATION STEPS:
+- Check website: https://earningstable.com
+- Monitor logs: pm2 logs
+- Check health: curl -s https://earningstable.com/api/health
+- Verify tomorrow's reset at 2:00 AM NY time
+
+🚨 CRITICAL FIXES DEPLOYED:
+✅ Fixed UnifiedFetcherService export
+✅ Fixed clearOldData import path  
+✅ Fixed environment variables
+✅ Fixed absolute DATABASE_URL path
+✅ All cron import errors resolved

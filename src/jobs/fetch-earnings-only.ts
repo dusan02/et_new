@@ -9,7 +9,7 @@
  */
 
 import { PrismaClient } from '@prisma/client'
-import { UnifiedFetcherService } from '../modules/data-integration/services/unified-fetcher.service.js'
+import { UnifiedDataFetcher } from '../modules/data-integration/services/unified-fetcher.service.js'
 import { toReportDateUTC } from '../modules/shared/utils/date.utils.js'
 
 const prisma = new PrismaClient()
@@ -24,7 +24,7 @@ async function main() {
     console.log(`📅 Fetching earnings for date: ${reportDate.toISOString()}`)
     
     // Initialize the unified fetcher
-    const fetcher = new UnifiedFetcherService()
+    const fetcher = new UnifiedDataFetcher()
     
     // Fetch ONLY earnings data (no market data)
     const result = await fetcher.fetchEarningsOnly(date)
