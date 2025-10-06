@@ -9,8 +9,8 @@
  */
 
 import { PrismaClient } from '@prisma/client'
-import { UnifiedFetcherService } from '../modules/data-integration/services/unified-fetcher.service'
-import { toReportDateUTC } from '../modules/shared/utils/date.utils'
+import { UnifiedFetcherService } from '../modules/data-integration/services/unified-fetcher.service.js'
+import { toReportDateUTC } from '../modules/shared/utils/date.utils.js'
 
 const prisma = new PrismaClient()
 

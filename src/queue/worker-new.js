@@ -44,7 +44,7 @@ function runCurrentDayReset(description) {
   console.log(`🔄 Running ${description}...`);
 
   const resetScript = path.join(__dirname, "jobs", "clearOldData.ts");
-  const resetCode = `import('./src/queue/jobs/clearOldData.js').then(async (module) => { try { const result = await module.resetCurrentDayData(); console.log('✅ Reset completed successfully:', result); process.exit(0); } catch (error) { console.error('❌ Reset failed:', error); process.exit(1); } }).catch(error => { console.error('❌ Import failed:', error); process.exit(1); });`;
+  const resetCode = `import('./src/queue/jobs/clearOldData.ts').then(async (module) => { try { const result = await module.resetCurrentDayData(); console.log('✅ Reset completed successfully:', result); process.exit(0); } catch (error) { console.error('❌ Reset failed:', error); process.exit(1); } }).catch(error => { console.error('❌ Import failed:', error); process.exit(1); });`;
 
   const child = spawn("npx", ["tsx", "-e", resetCode], {
     cwd: path.join(__dirname, "../.."),

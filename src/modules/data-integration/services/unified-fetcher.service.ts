@@ -734,3 +734,5 @@ export class UnifiedDataFetcher {
     return filtered
   }
 }
+
+export { UnifiedFetcherService }

@@ -19,6 +19,11 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         PORT: 3001,
+        DATABASE_URL: "file:/var/www/earnings-table/prisma/dev.db",
+        FINNHUB_API_KEY: "d28f1dhr01qjsuf342ogd28f1dhr01qjsuf342p0",
+        POLYGON_API_KEY: "Vi_pMLcusE8RA_SUvkPAmiyziVzlmOoX",
+        NEXT_PUBLIC_APP_URL: "https://earningstable.com",
+        TZ: "America/New_York",
       },
       error_file: "./logs/err.log",
       out_file: "./logs/out.log",
@@ -37,6 +42,11 @@ module.exports = {
       max_memory_restart: "512M",
       env: {
         NODE_ENV: "production",
+        DATABASE_URL: "file:/var/www/earnings-table/prisma/dev.db",
+        FINNHUB_API_KEY: "d28f1dhr01qjsuf342ogd28f1dhr01qjsuf342p0",
+        POLYGON_API_KEY: "Vi_pMLcusE8RA_SUvkPAmiyziVzlmOoX",
+        SKIP_RESET_CHECK: "true",
+        TZ: "America/New_York",
       },
       error_file: "./logs/cron-err.log",
       out_file: "./logs/cron-out.log",
