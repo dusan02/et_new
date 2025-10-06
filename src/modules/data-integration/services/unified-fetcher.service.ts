@@ -163,6 +163,14 @@ export class UnifiedDataFetcher {
         }
         
         console.log(`✅ Saved ${marketCount} market records (${marketResult.failed} failed)`)
+        // 5. Clear cache after successful data save
+        try {
+          const clearedCount = await clearCacheByPattern('earnings-*');
+          const marketClearedCount = await clearCacheByPattern('market-*');
+          console.log(`🧹 Cleared ${clearedCount + marketClearedCount} cache entries after data save`);
+        } catch (cacheError) {
+          console.warn('⚠️ Cache clear after save failed:', cacheError);
+        }
       }
 
       console.log('🎉 Unified data fetch completed successfully!')
@@ -735,4 +743,5 @@ export class UnifiedDataFetcher {
   }
 }
 
-export { UnifiedFetcherService }
+export { UnifiedFetcherService }import { clearCacheByPattern } from '@/lib/cache-wrapper'
+

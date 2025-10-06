@@ -442,20 +442,28 @@ async function main() {
     const date = process.env.DATE || isoDate()
     console.log(`Starting unified data fetch for ${date} (NY time: ${getNYTimeString()})`)
     
-    // Check if daily reset is completed (unless skipped for main fetch)
+    
+    // Enhanced daily reset check with better logging
     const skipResetCheck = process.env.SKIP_RESET_CHECK === 'true'
     if (!skipResetCheck) {
       const resetCompleted = await isDailyResetCompleted()
       if (!resetCompleted) {
         console.log('⚠️ Daily reset not completed - skipping fetch to avoid race conditions')
+        console.log('💡 This prevents data corruption during daily reset process')
         return {
           date,
           earningsCount: 0,
           marketCount: 0,
           totalTickers: 0,
           skipped: true,
-          reason: 'Daily reset not completed'
+          reason: 'Daily reset not completed - avoiding race conditions'
         }
+      } else {
+        console.log('✅ Daily reset completed - proceeding with fetch')
+      }
+    } else {
+      console.log('⚠️ Skipping daily reset check (SKIP_RESET_CHECK=true)')
+    }
       }
     }
     

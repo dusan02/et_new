@@ -93,6 +93,72 @@ function clearApplicationCache(description) {
   });
 }
 
+
+// Helper function to clear cache after successful fetch
+function clearCacheAfterFetch(description) {
+  console.log(`🧹 Running ${description}...`);
+
+  const child = spawn(
+    "curl",
+    ["-X", "POST", "http://localhost:3000/api/earnings/clear-cache"],
+    {
+      shell: true,
+    }
+  );
+
+  child.stdout.on("data", (data) => {
+    console.log(`🧹 ${description} output: ${data}`);
+  });
+
+  child.stderr.on("data", (data) => {
+    console.error(`❌ ${description} error: ${data}`);
+  });
+
+  child.on("close", (code) => {
+    console.log(`✅ ${description} completed with code ${code}`);
+  });
+}
+
+
+// Helper function to check if daily reset is completed before running fetch
+async function checkDailyResetState(description) {
+  return new Promise((resolve) => {
+    console.log(`🔍 Checking daily reset state for ${description}...`);
+    
+    const checkScript = path.join(__dirname, "jobs", "checkDailyState.ts");
+    const child = spawn("npx", ["tsx", checkScript], {
+      cwd: path.join(__dirname, "../.."),
+      env: {
+        ...process.env,
+        DATABASE_URL: process.env.DATABASE_URL,
+      },
+      shell: true,
+    });
+
+    let output = "";
+    child.stdout.on("data", (data) => {
+      output += data.toString();
+    });
+
+    child.stderr.on("data", (data) => {
+      console.error(`❌ ${description} state check error: ${data}`);
+    });
+
+    child.on("close", (code) => {
+      if (code === 0) {
+        console.log(`✅ ${description} - Daily reset completed, proceeding with fetch`);
+        resolve(true);
+      } else if (code === 2) {
+        console.log(`⚠️ ${description} - Auto-repair needed, proceeding with fetch`);
+        resolve(true);
+      } else {
+        console.log(`⏸️ ${description} - Daily reset not completed, skipping fetch`);
+        resolve(false);
+      }
+    });
+  });
+}
+
 // Helper function to run fetch script with daily reset check
 function runFetchScript(scriptName, description, skipResetCheck = false) {
   console.log(`🔄 Running ${description}...`);
@@ -124,8 +190,71 @@ function runFetchScript(scriptName, description, skipResetCheck = false) {
 }
 
 // Helper function to run optimized two-step fetch workflow
+
 function runOptimizedFetchWorkflow(description) {
-  console.log(`🎯 Running ${description} (optimized workflow)...`);
+  console.log(`🔄 Running ${description}...`);
+
+  // Step 1: Fetch earnings data first
+  const earningsScript = path.join(__dirname, "../jobs", "fetch-earnings-only.ts");
+  const earningsChild = spawn("npx", ["tsx", earningsScript], {
+    cwd: path.join(__dirname, "../.."),
+    env: {
+      ...process.env,
+      FINNHUB_API_KEY: process.env.FINNHUB_API_KEY,
+      DATABASE_URL: process.env.DATABASE_URL,
+      SKIP_RESET_CHECK: 'true' // Skip reset check for optimized workflow
+    },
+    shell: true,
+  });
+
+  earningsChild.stdout.on("data", (data) => {
+    console.log(`📊 ${description} (earnings) output: ${data}`);
+  });
+
+  earningsChild.stderr.on("data", (data) => {
+    console.error(`❌ ${description} (earnings) error: ${data}`);
+  });
+
+  earningsChild.on("close", (earningsCode) => {
+    console.log(`✅ ${description} (earnings) completed with code ${earningsCode}`);
+    
+    if (earningsCode === 0) {
+      // Step 2: If earnings fetch succeeded, fetch market data
+      const marketScript = path.join(__dirname, "../jobs", "fill-missing-market-data.ts");
+      const marketChild = spawn("npx", ["tsx", marketScript], {
+        cwd: path.join(__dirname, "../.."),
+        env: {
+          ...process.env,
+          POLYGON_API_KEY: process.env.POLYGON_API_KEY,
+          DATABASE_URL: process.env.DATABASE_URL,
+          SKIP_RESET_CHECK: 'true'
+        },
+        shell: true,
+      });
+
+      marketChild.stdout.on("data", (data) => {
+        console.log(`📈 ${description} (market) output: ${data}`);
+      });
+
+      marketChild.stderr.on("data", (data) => {
+        console.error(`❌ ${description} (market) error: ${data}`);
+      });
+
+      marketChild.on("close", (marketCode) => {
+        console.log(`✅ ${description} (market) completed with code ${marketCode}`);
+        
+        // Step 3: Clear cache after successful fetch
+        if (marketCode === 0) {
+          clearCacheAfterFetch("Clear cache after successful fetch");
+        } else {
+          console.error(`❌ ${description} (market) failed, skipping cache clear`);
+        }
+      });
+    } else {
+      console.error(`❌ ${description} (earnings) failed, skipping market data fetch`);
+    }
+  });
+} (optimized workflow)...`);
 
   // Step 1: Fetch earnings only
   console.log(`📊 Step 1: Fetching earnings data...`);
