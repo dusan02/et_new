@@ -444,11 +444,11 @@ export default function EarningsTable({
                       </td>
                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 dark:text-gray-900">
                   {item.size ? (
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                    <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
                       item.size === 'Mega' 
-                        ? 'bg-red-100 text-red-800 border border-red-200' 
+                        ? 'bg-blue-100 text-blue-800 border-2 border-blue-300' 
                         : item.size === 'Large' 
-                        ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                        ? 'bg-yellow-100 text-yellow-800 border-2 border-yellow-300'
                         : 'text-gray-600'
                     }`}>
                       {item.size}
