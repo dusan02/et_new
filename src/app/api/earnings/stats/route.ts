@@ -5,6 +5,7 @@ import { getTodayStart, getNYTimeString } from '@/modules/shared';
 import { validateRequest, checkRateLimit, statsQuerySchema } from '@/lib/validation';
 
 // Force dynamic rendering to avoid static generation issues with query parameters
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 export const fetchCache = 'force-no-store'
@@ -257,10 +258,19 @@ export async function GET(request: NextRequest) {
     // Serialize BigInt values before sending
     const serializedStats = toJSONSafe(stats);
 
-    return NextResponse.json({
+    return new Response(JSON.stringify({
       success: true,
       data: serializedStats,
-    }, { headers: { 'Cache-Control': 'no-store' }});
+      signature: { routeId: 'earnings/stats@v2' }
+    }), {
+      status: 200,
+      headers: {
+        'content-type': 'application/json',
+        'cache-control': 'no-store, no-cache, must-revalidate, max-age=0',
+        'pragma': 'no-cache',
+        'x-route-signature': 'earnings/stats@v2'
+      }
+    });
   } catch (error) {
     console.error('Error fetching earnings stats:', error);
     return NextResponse.json({

@@ -4,6 +4,10 @@ import { getTodayStart, getNYTimeString, toReportDateUTC } from '@/modules/share
 import { createJsonResponse, stringifyHeaders } from '@/lib/json-utils'
 import { detectMarketSession } from '@/lib/market-session'
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const detailed = searchParams.get('detailed') === '1'
@@ -135,21 +139,26 @@ export async function GET(request: NextRequest) {
         earnings: earningsCount > 0,
         marketData: marketDataCount > 0,
       },
+      signature: { routeId: 'health@v2' },
       ...(earningsCount > 0 && { total: earningsCount }),
       ...(detailed && { dataQuality, dataStaleness }),
       ...(lastFetchAt && { lastFetchAt }),
     }
     
-    const headers = {
-      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-      ...(detailed && {
-        'x-build': COMMIT,
-        'x-env-tz': TZ,
-        'x-market-session': marketSession,
-      })
-    }
-    
-    return createJsonResponse(payload, stringifyHeaders(headers))
+    return new Response(JSON.stringify(payload), {
+      status: 200,
+      headers: {
+        'content-type': 'application/json',
+        'cache-control': 'no-store, no-cache, must-revalidate, max-age=0',
+        'pragma': 'no-cache',
+        'x-route-signature': 'health@v2',
+        ...(detailed && {
+          'x-build': COMMIT,
+          'x-env-tz': TZ,
+          'x-market-session': marketSession,
+        })
+      }
+    })
     
   } catch (error) {
     console.error('Health check error:', error)
