@@ -52,20 +52,27 @@ export class MarketDataService {
   }
 
   /**
-   * Process and save market data from external API
+   * Process and save market data from external API with verify-readback
    * @param rawData - Raw market data from Polygon API
    * @param reportDate - Report date
-   * @returns Number of processed records
+   * @returns Object with success/failure counts and errors
    */
   async processMarketData(
     rawData: Record<string, any>, 
     reportDate: Date
-  ): Promise<number> {
+  ): Promise<{
+    ok: number
+    failed: number
+    errors: Array<{ticker: string, reason: string}>
+  }> {
+    const start = Date.now()
+    console.log(`[MARKET] Processing ${Object.keys(rawData).length} market data records for ${reportDate.toISOString().slice(0,10)}`)
+    
     const processedData: CreateMarketDataInput[] = []
     
     for (const [ticker, marketInfo] of Object.entries(rawData)) {
       if (!marketInfo || typeof marketInfo !== 'object') {
-        console.warn(`Invalid market data for ${ticker}`)
+        console.warn(`[MARKET] Invalid market data for ${ticker}`)
         continue
       }
 
@@ -87,7 +94,7 @@ export class MarketDataService {
       )
 
       if (!priceValidation.isValid) {
-        console.warn(`Invalid price data for ${ticker}:`, priceValidation.errors)
+        console.warn(`[MARKET] Invalid price data for ${ticker}:`, priceValidation.errors)
       }
 
       processedData.push({
@@ -107,7 +114,65 @@ export class MarketDataService {
       })
     }
 
-    return await this.repository.batchUpsert(processedData)
+    console.log(`[MARKET] Persisting ${processedData.length} processed records`)
+    
+    // 1) Database write
+    const result = await this.repository.batchUpsert(processedData)
+    
+    // 2) Verify-readback - check a sample of records to confirm they were written correctly
+    if (result.ok > 0) {
+      const sampleSize = Math.min(8, processedData.length)
+      const sample = processedData.slice(0, sampleSize).map(r => r.ticker)
+      
+      try {
+        const dbRows = await this.repository.findMany({
+          where: { 
+            reportDate, 
+            ticker: { in: sample } 
+          },
+          select: { 
+            ticker: true, 
+            currentPrice: true, 
+            updatedAt: true 
+          }
+        })
+
+        const mismatches: string[] = []
+        for (const ticker of sample) {
+          const wanted = processedData.find(r => r.ticker === ticker)?.currentPrice ?? null
+          const got = dbRows.find(d => d.ticker === ticker)?.currentPrice ?? null
+          
+          if (wanted === null && got === null) continue
+          if (wanted === null || got === null) {
+            mismatches.push(`${ticker} (in=${wanted}, db=${got})`)
+          } else if (Math.abs(Number(wanted) - Number(got)) > 1e-6) {
+            mismatches.push(`${ticker} (in=${wanted}, db=${got})`)
+          }
+        }
+
+        if (mismatches.length > 0) {
+          console.error(`[MARKET][VERIFY] Data mismatches detected:`, mismatches)
+          // Add verification errors to the result
+          result.errors.push(...mismatches.map(m => ({ ticker: m.split(' ')[0], reason: `Verify mismatch: ${m}` })))
+          result.failed += mismatches.length
+          result.ok -= mismatches.length
+        } else {
+          console.log(`[MARKET][VERIFY] All ${sampleSize} sample records verified successfully`)
+        }
+      } catch (verifyError) {
+        console.error(`[MARKET][VERIFY] Verification failed:`, verifyError)
+        result.errors.push({ ticker: 'VERIFY', reason: `Verification error: ${verifyError}` })
+      }
+    }
+
+    const duration = Date.now() - start
+    console.log(`[MARKET] Process completed in ${duration}ms: ok=${result.ok}, failed=${result.failed}`)
+    
+    if (result.failed > 0) {
+      console.error(`[MARKET] Failures detected:`, result.errors.slice(0, 5))
+    }
+    
+    return result
   }
 
   /**

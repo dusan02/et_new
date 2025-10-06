@@ -46,7 +46,7 @@ import {
   EarningsService,
   CreateEarningsInput 
 } from '@/modules/earnings'
-import { isoDate, getNYTimeString } from '@/modules/shared/utils/date.utils'
+import { isoDate, getNYTimeString, toReportDateUTC } from '@/modules/shared/utils/date.utils'
 import { retryWithBackoff, batchFetch } from '@/utils/fetchers'
 
 export interface FetchResult {
@@ -142,9 +142,18 @@ export class UnifiedDataFetcher {
         const marketData = await this.fetchMarketData(tickers, options)
         console.log(`✅ Found market data for ${Object.keys(marketData).length} tickers`)
         
-        // 4. Ulož market dáta
-        marketCount = await this.saveMarketData(marketData, new Date(date))
-        console.log(`✅ Saved ${marketCount} market records`)
+        // 4. Ulož market dáta (normalize date to UTC midnight)
+        const reportDate = toReportDateUTC(new Date(date))
+        const marketResult = await this.saveMarketData(marketData, reportDate)
+        marketCount = marketResult.ok
+        
+        if (marketResult.failed > 0) {
+          const marketErrors = marketResult.errors.map(e => `Market data error for ${e.ticker}: ${e.reason}`)
+          errors.push(...marketErrors)
+          console.error(`❌ Market data save had ${marketResult.failed} failures`)
+        }
+        
+        console.log(`✅ Saved ${marketCount} market records (${marketResult.failed} failed)`)
       }
 
       console.log('🎉 Unified data fetch completed successfully!')
@@ -500,37 +509,28 @@ export class UnifiedDataFetcher {
    * Ulož earnings dáta do databázy
    */
   private async saveEarningsData(earningsData: any[]): Promise<number> {
-    // Použi processEarningsData ktorá má fallback logiku
-    const reportDate = new Date(isoDate())
+    // Použi processEarningsData ktorá má fallback logiku (normalize date to UTC midnight)
+    const reportDate = toReportDateUTC(new Date(isoDate()))
     return await this.earningsService.processEarningsData(earningsData, reportDate)
   }
 
   /**
    * Ulož market dáta do databázy
    */
-  private async saveMarketData(marketData: Record<string, any>, reportDate: Date): Promise<number> {
-    const processedData: CreateMarketDataInput[] = []
-
-    for (const [ticker, data] of Object.entries(marketData)) {
-      if (!data) continue
-
-      processedData.push({
-        ticker,
-        reportDate,
-        companyName: data.companyName,
-        currentPrice: data.currentPrice,
-        previousClose: data.previousClose,
-        marketCap: data.marketCap,
-        size: data.size,
-        marketCapDiff: data.marketCapDiff,
-        marketCapDiffBillions: data.marketCapDiffBillions,
-        priceChangePercent: data.priceChangePercent,
-        sharesOutstanding: data.sharesOutstanding,
-        companyType: data.companyType,
-        primaryExchange: data.primaryExchange
-      })
+  private async saveMarketData(marketData: Record<string, any>, reportDate: Date): Promise<{
+    ok: number
+    failed: number
+    errors: Array<{ticker: string, reason: string}>
+  }> {
+    console.log(`[UNIFIED] Saving ${Object.keys(marketData).length} market data records`)
+    
+    const result = await this.marketDataService.processMarketData(marketData, reportDate)
+    
+    console.log(`[UNIFIED] Market data save result: ok=${result.ok}, failed=${result.failed}`)
+    if (result.failed > 0) {
+      console.error(`[UNIFIED] Market data save errors:`, result.errors.slice(0, 5))
     }
-
-    return await this.marketDataService.processMarketData(marketData, reportDate)
+    
+    return result
   }
 }

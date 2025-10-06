@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getTodayStart, getNYTimeString } from '@/modules/shared'
+import { getTodayStart, getNYTimeString, toReportDateUTC } from '@/modules/shared'
 import { createJsonResponse, stringifyHeaders } from '@/lib/json-utils'
 import { detectMarketSession } from '@/lib/market-session'
 
@@ -61,23 +61,45 @@ export async function GET(request: NextRequest) {
     const TZ = process.env.TZ || 'UTC'
     
     let dataQuality: any = {}
+    let dataStaleness: any = {}
+    
     if (detailed) {
       try {
-        const allMarketData = await prisma.marketSnapshotsToday.findMany({
-          where: {
-            asOf: {
-              gte: todayStart,
-              lt: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000),
-            },
-          },
-          select: {
-            currentPrice: true,
+        // Check market data staleness using the new TodayEarningsMovements table
+        const today = toReportDateUTC(new Date())
+        const marketData = await prisma.todayEarningsMovements.findMany({
+          where: { reportDate: today },
+          select: { 
+            ticker: true,
+            currentPrice: true, 
             previousClose: true,
-          },
+            updatedAt: true 
+          }
         })
         
-        const totalTickers = allMarketData.length
-        const zeroChangeTickers = allMarketData.filter(
+        const now = Date.now()
+        const ages = marketData.map(r => now - new Date(r.updatedAt).getTime())
+        const maxAge = Math.max(...ages, 0)
+        const staleThreshold = 5 * 60 * 1000 // 5 minutes
+        const staleCount = ages.filter(age => age > staleThreshold).length
+        const staleRatio = marketData.length > 0 ? staleCount / marketData.length : 1
+        
+        // Determine overall status
+        const isStale = maxAge > 2 * 60 * 1000 || staleRatio > 0.2 // 2 min max age or >20% stale
+        const status = isStale ? 'degraded' : 'ok'
+        
+        dataStaleness = {
+          status,
+          totalRecords: marketData.length,
+          maxAgeSec: Math.round(maxAge / 1000),
+          staleCount,
+          staleRatio: parseFloat(staleRatio.toFixed(3)),
+          staleThresholdSec: Math.round(staleThreshold / 1000)
+        }
+        
+        // Legacy data quality check
+        const totalTickers = marketData.length
+        const zeroChangeTickers = marketData.filter(
           (d) => d.currentPrice !== null && d.previousClose !== null && d.currentPrice === d.previousClose
         ).length
         const ratioZeroChange = totalTickers > 0 ? zeroChangeTickers / totalTickers : 0
@@ -90,8 +112,9 @@ export async function GET(request: NextRequest) {
           isHealthy,
         }
       } catch (error) {
-        console.error('Data quality check failed:', error)
+        console.error('Data quality/staleness check failed:', error)
         dataQuality = { error: 'Failed to calculate data quality' }
+        dataStaleness = { error: 'Failed to calculate data staleness' }
       }
     }
     
@@ -120,7 +143,7 @@ export async function GET(request: NextRequest) {
         marketData: marketDataCount > 0,
       },
       ...(earningsCount > 0 && { total: earningsCount }),
-      ...(detailed && { dataQuality }),
+      ...(detailed && { dataQuality, dataStaleness }),
       ...(lastFetchAt && { lastFetchAt }),
     }
     

@@ -351,3 +351,27 @@ export function getNextMarketOpen(): Date {
   nextOpen.setHours(9, 30, 0, 0)
   return nextOpen
 }
+
+/**
+ * Normalize date to UTC midnight for consistent database storage
+ * This prevents timezone issues when comparing dates in database queries
+ * @param date - Date to normalize
+ * @returns Date normalized to UTC midnight (00:00:00.000Z)
+ */
+export function toReportDateUTC(date: Date): Date {
+  // Get the date components in UTC
+  const year = date.getUTCFullYear()
+  const month = date.getUTCMonth()
+  const day = date.getUTCDate()
+  
+  // Create new date at UTC midnight
+  return new Date(Date.UTC(year, month, day, 0, 0, 0, 0))
+}
+
+/**
+ * Get today's date normalized to UTC midnight
+ * @returns Date object for today at UTC midnight
+ */
+export function getTodayUTC(): Date {
+  return toReportDateUTC(new Date())
+}

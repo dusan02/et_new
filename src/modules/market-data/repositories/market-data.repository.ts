@@ -39,6 +39,15 @@ export class MarketDataRepository {
   }
 
   /**
+   * Find market data with filters (generic findMany)
+   * @param filters - Market data filters
+   * @returns Array of market data
+   */
+  async findMany(filters: any): Promise<MarketData[]> {
+    return await prisma.todayEarningsMovements.findMany(filters)
+  }
+
+  /**
    * Find market data with filters
    * @param filters - MarketDataFilters object
    * @returns Array of market data
@@ -226,23 +235,152 @@ export class MarketDataRepository {
   }
 
   /**
-   * Batch upsert market data
+   * Batch upsert market data with transaction and full error reporting
    * @param dataArray - Array of market data
-   * @returns Number of processed records
+   * @returns Object with success/failure counts and errors
    */
-  async batchUpsert(dataArray: CreateMarketDataInput[]): Promise<number> {
-    let processedCount = 0
+  async batchUpsert(dataArray: CreateMarketDataInput[]): Promise<{
+    ok: number
+    failed: number
+    errors: Array<{ticker: string, reason: string}>
+  }> {
+    if (!dataArray.length) {
+      return { ok: 0, failed: 0, errors: [] }
+    }
+
+    console.log(`[DB] Starting batch upsert for ${dataArray.length} records`)
     
-    for (const data of dataArray) {
+    // Chunking due to transaction limits
+    const chunkSize = 100
+    let ok = 0
+    const errors: Array<{ticker: string, reason: string}> = []
+
+    for (let i = 0; i < dataArray.length; i += chunkSize) {
+      const chunk = dataArray.slice(i, i + chunkSize)
+      console.log(`[DB] Processing chunk ${Math.floor(i/chunkSize) + 1}/${Math.ceil(dataArray.length/chunkSize)} (${chunk.length} records)`)
+
       try {
-        await this.upsert(data)
-        processedCount++
-      } catch (error) {
-        console.error(`Failed to upsert market data for ${data.ticker}:`, error)
+        // Try transaction first
+        const results = await prisma.$transaction(
+          chunk.map((data) =>
+            prisma.todayEarningsMovements.upsert({
+              where: {
+                ticker_reportDate: {
+                  ticker: data.ticker,
+                  reportDate: data.reportDate
+                }
+              },
+              update: {
+                companyName: data.companyName,
+                currentPrice: data.currentPrice !== null && data.currentPrice !== undefined ? data.currentPrice : undefined,
+                previousClose: data.previousClose !== null && data.previousClose !== undefined ? data.previousClose : undefined,
+                marketCap: data.marketCap || undefined,
+                size: data.size || undefined,
+                marketCapDiff: data.marketCapDiff !== null && data.marketCapDiff !== undefined ? data.marketCapDiff : undefined,
+                marketCapDiffBillions: data.marketCapDiffBillions !== null && data.marketCapDiffBillions !== undefined ? data.marketCapDiffBillions : undefined,
+                priceChangePercent: data.priceChangePercent ?? null,
+                sharesOutstanding: data.sharesOutstanding || undefined,
+                companyType: data.companyType || undefined,
+                primaryExchange: data.primaryExchange || undefined,
+                reportTime: data.reportTime || undefined,
+                updatedAt: new Date()
+              },
+              create: {
+                ticker: data.ticker,
+                reportDate: data.reportDate,
+                companyName: data.companyName,
+                currentPrice: data.currentPrice !== null && data.currentPrice !== undefined ? data.currentPrice : undefined,
+                previousClose: data.previousClose !== null && data.previousClose !== undefined ? data.previousClose : undefined,
+                marketCap: data.marketCap || undefined,
+                size: data.size || undefined,
+                marketCapDiff: data.marketCapDiff !== null && data.marketCapDiff !== undefined ? data.marketCapDiff : undefined,
+                marketCapDiffBillions: data.marketCapDiffBillions !== null && data.marketCapDiffBillions !== undefined ? data.marketCapDiffBillions : undefined,
+                priceChangePercent: data.priceChangePercent ?? null,
+                sharesOutstanding: data.sharesOutstanding || undefined,
+                companyType: data.companyType || undefined,
+                primaryExchange: data.primaryExchange || undefined,
+                reportTime: data.reportTime || undefined
+              }
+            })
+          ),
+          { timeout: 30000 }
+        )
+        
+        // Transaction succeeded
+        ok += chunk.length
+        console.log(`[DB] Chunk ${Math.floor(i/chunkSize) + 1} transaction succeeded (${chunk.length} records)`)
+        
+      } catch (transactionError) {
+        console.warn(`[DB] Transaction failed for chunk ${Math.floor(i/chunkSize) + 1}, falling back to individual operations:`, transactionError)
+        
+        // Fallback to individual operations to identify specific failures
+        const individualResults = await Promise.allSettled(
+          chunk.map((data) =>
+            prisma.todayEarningsMovements.upsert({
+              where: {
+                ticker_reportDate: {
+                  ticker: data.ticker,
+                  reportDate: data.reportDate
+                }
+              },
+              update: {
+                companyName: data.companyName,
+                currentPrice: data.currentPrice !== null && data.currentPrice !== undefined ? data.currentPrice : undefined,
+                previousClose: data.previousClose !== null && data.previousClose !== undefined ? data.previousClose : undefined,
+                marketCap: data.marketCap || undefined,
+                size: data.size || undefined,
+                marketCapDiff: data.marketCapDiff !== null && data.marketCapDiff !== undefined ? data.marketCapDiff : undefined,
+                marketCapDiffBillions: data.marketCapDiffBillions !== null && data.marketCapDiffBillions !== undefined ? data.marketCapDiffBillions : undefined,
+                priceChangePercent: data.priceChangePercent ?? null,
+                sharesOutstanding: data.sharesOutstanding || undefined,
+                companyType: data.companyType || undefined,
+                primaryExchange: data.primaryExchange || undefined,
+                reportTime: data.reportTime || undefined,
+                updatedAt: new Date()
+              },
+              create: {
+                ticker: data.ticker,
+                reportDate: data.reportDate,
+                companyName: data.companyName,
+                currentPrice: data.currentPrice !== null && data.currentPrice !== undefined ? data.currentPrice : undefined,
+                previousClose: data.previousClose !== null && data.previousClose !== undefined ? data.previousClose : undefined,
+                marketCap: data.marketCap || undefined,
+                size: data.size || undefined,
+                marketCapDiff: data.marketCapDiff !== null && data.marketCapDiff !== undefined ? data.marketCapDiff : undefined,
+                marketCapDiffBillions: data.marketCapDiffBillions !== null && data.marketCapDiffBillions !== undefined ? data.marketCapDiffBillions : undefined,
+                priceChangePercent: data.priceChangePercent ?? null,
+                sharesOutstanding: data.sharesOutstanding || undefined,
+                companyType: data.companyType || undefined,
+                primaryExchange: data.primaryExchange || undefined,
+                reportTime: data.reportTime || undefined
+              }
+            })
+          )
+        )
+
+        // Process individual results
+        for (const [idx, result] of individualResults.entries()) {
+          if (result.status === 'fulfilled') {
+            ok++
+          } else {
+            const ticker = chunk[idx].ticker
+            const reason = result.reason?.message || String(result.reason) || 'Unknown error'
+            errors.push({ ticker, reason })
+            console.error(`[DB] Failed to upsert ${ticker}:`, reason)
+          }
+        }
       }
     }
+
+    const failed = errors.length
+    console.log(`[DB] batchUpsert completed: ${ok + failed} total → ok=${ok}, failed=${failed}`)
     
-    return processedCount
+    if (failed > 0) {
+      console.error(`[DB] Failures (first 10):`, errors.slice(0, 10))
+      // Don't throw error here - let the caller decide how to handle partial failures
+    }
+    
+    return { ok, failed, errors }
   }
 
   /**

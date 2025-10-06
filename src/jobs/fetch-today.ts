@@ -476,11 +476,16 @@ async function main() {
     
     if (!result || !result.success) {
       const errors = result?.errors || ['Unknown error occurred']
-      console.error('Unified fetch failed:', errors)
+      console.error('❌ Unified fetch failed:', errors)
       throw new Error(`Fetch failed: ${errors.join(', ')}`)
     }
     
-    console.log('Unified data fetch completed successfully!')
+    // Check for partial failures in market data
+    if (result.errors && result.errors.length > 0) {
+      console.warn(`⚠️ Fetch completed with ${result.errors.length} warnings:`, result.errors.slice(0, 5))
+    }
+    
+    console.log(`✅ Unified data fetch completed successfully! Earnings: ${result.earningsCount}, Market: ${result.marketCount}, Tickers: ${result.totalTickers}`)
     
     // Set daily fetch state
     await setDailyResetState('FETCH_DONE')
@@ -490,6 +495,7 @@ async function main() {
       earningsCount: result.earningsCount,
       marketCount: result.marketCount,
       totalTickers: result.totalTickers,
+      errors: result.errors || []
     }
   } catch (error) {
     console.error('Error in main fetch process:', error)
@@ -501,12 +507,22 @@ async function main() {
 if (require.main === module) {
   main()
     .then((result) => {
-      console.log('Final result:', result)
-      process.exit(0)
+      if (result.skipped) {
+        console.log(`⏭️ Fetch skipped: ${result.reason}`)
+        process.exitCode = 0 // Success but skipped
+      } else if (result.errors && result.errors.length > 0) {
+        console.log(`⚠️ Fetch completed with warnings: ${result.errors.length} errors`)
+        console.log(`📊 Results: Earnings=${result.earningsCount}, Market=${result.marketCount}, Tickers=${result.totalTickers}`)
+        process.exitCode = 1 // Partial failure
+      } else {
+        console.log(`✅ Fetch completed successfully!`)
+        console.log(`📊 Results: Earnings=${result.earningsCount}, Market=${result.marketCount}, Tickers=${result.totalTickers}`)
+        process.exitCode = 0 // Full success
+      }
     })
     .catch((error) => {
-      console.error('Fatal error:', error)
-      process.exit(1)
+      console.error('❌ Fatal error in fetch process:', error)
+      process.exitCode = 1 // Fatal failure
     })
     .finally(() => {
       prisma.$disconnect()
