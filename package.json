@@ -29,7 +29,8 @@
         "test:frontend": "jest src/__tests__/frontend.test.js",
         "test:integration": "jest src/__tests__/integration.test.js",
         "snapshot:create": "node scripts/shape-compare.js create",
-        "snapshot:compare": "node scripts/shape-compare.js compare"
+        "snapshot:compare": "node scripts/shape-compare.js compare",
+        "diagnose": "node quick-diagnose.js"
     },
     "dependencies": {
         "@prisma/client": "5.22.0",

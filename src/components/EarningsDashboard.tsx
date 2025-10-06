@@ -54,6 +54,13 @@ interface EarningsData {
   revenueSurprise: number | null;
 }
 
+interface EarningsMeta {
+  total: number;
+  ready: boolean;
+  lastFetchAt?: string;
+  date: string;
+}
+
 interface EarningsStats {
   totalEarnings: number;
   withEps: number;
@@ -100,6 +107,7 @@ interface EarningsStats {
 export function EarningsDashboard() {
   const [earningsData, setEarningsData] = useState<EarningsData[]>([]);
   const [stats, setStats] = useState<EarningsStats | null>(null);
+  const [meta, setMeta] = useState<EarningsMeta | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -121,6 +129,11 @@ export function EarningsDashboard() {
 
       const earningsResult = await earningsResponse.json();
       const statsResult = await statsResponse.json();
+
+      // Store meta information
+      if (earningsResult.meta) {
+        setMeta(earningsResult.meta);
+      }
 
       if (earningsResult.data) {
         setEarningsData(earningsResult.data);
@@ -171,8 +184,33 @@ export function EarningsDashboard() {
     );
   }
 
-  // If no earnings data, show simplified view
-  if (earningsData.length === 0 && !isLoading) {
+  // If data not ready yet (initial fetch in progress), show loading state
+  if (!isLoading && meta && !meta.ready && earningsData.length === 0) {
+    return (
+      <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
+        <Header 
+          lastUpdated={lastUpdated}
+        />
+        
+        <main className="flex-1 flex items-center justify-center py-8" role="main" aria-label="Earnings dashboard main content">
+          <div className="text-center">
+            <LoadingSpinner size="lg" />
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-300 mt-6 mb-2">
+              Preparing Today's Earnings Data
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              Fetching latest earnings reports...
+            </p>
+          </div>
+        </main>
+        
+        <Footer />
+      </div>
+    );
+  }
+
+  // If no earnings data AND data is ready, show empty state
+  if (earningsData.length === 0 && !isLoading && meta?.ready) {
     return (
       <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
         <Header 

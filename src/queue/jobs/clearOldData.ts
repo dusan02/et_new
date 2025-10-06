@@ -73,7 +73,7 @@ export async function clearOldData() {
     const today = getTodayDate()
     
     console.log(`🗑️ Removing data older than ${cutoffDate.toISOString()}`)
-    console.log(`🔄 Resetting current day data for ${today.toISOString()}`)
+    console.log(`✅ Preserving today's data: ${today.toISOString()}`)
     
     // 1. Clean up old earnings data (older than 7 days)
     const deletedEarnings = await prisma.earningsTickersToday.deleteMany({
@@ -93,19 +93,19 @@ export async function clearOldData() {
       }
     })
     
-    // 3. Reset current day data to ensure fresh start
-    const resetTodayEarnings = await prisma.earningsTickersToday.deleteMany({
+    // 3. ✅ Safe cleanup: delete ONLY older data (not today)
+    const cleanupYesterdayEarnings = await prisma.earningsTickersToday.deleteMany({
       where: {
         reportDate: {
-          gte: today
+          lt: today
         }
       }
     })
     
-    const resetTodayMarket = await prisma.todayEarningsMovements.deleteMany({
+    const cleanupYesterdayMarket = await prisma.todayEarningsMovements.deleteMany({
       where: {
         reportDate: {
-          gte: today
+          lt: today
         }
       }
     })
@@ -123,18 +123,19 @@ export async function clearOldData() {
     
     console.log('✅ Cleanup completed successfully!')
     console.log(`📊 Deleted records:`)
-    console.log(`   - Old earnings: ${deletedEarnings.count}`)
-    console.log(`   - Old market data: ${deletedMarket.count}`)
-    console.log(`   - Reset today's earnings: ${resetTodayEarnings.count}`)
-    console.log(`   - Reset today's market data: ${resetTodayMarket.count}`)
+    console.log(`   - Old earnings (>7d): ${deletedEarnings.count}`)
+    console.log(`   - Old market data (>7d): ${deletedMarket.count}`)
+    console.log(`   - Yesterday earnings: ${cleanupYesterdayEarnings.count}`)
+    console.log(`   - Yesterday market data: ${cleanupYesterdayMarket.count}`)
+    console.log(`   ✅ Today's data PRESERVED (not deleted)`)
     
     return {
       success: true,
       deleted: {
         oldEarnings: deletedEarnings.count,
         oldMarket: deletedMarket.count,
-        resetTodayEarnings: resetTodayEarnings.count,
-        resetTodayMarket: resetTodayMarket.count
+        yesterdayEarnings: cleanupYesterdayEarnings.count,
+        yesterdayMarket: cleanupYesterdayMarket.count
       }
     }
     

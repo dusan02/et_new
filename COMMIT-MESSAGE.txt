@@ -1,0 +1,44 @@
+🚑 Hotfix: Cleanup job no longer deletes today's data
+
+## Root Cause
+Cleanup job (`clearOldData.ts`) was deleting today's earnings data 
+(`gte: today`) without immediate re-fetch, causing empty DB and 
+"No Earnings Scheduled" on frontend.
+
+## Changes
+
+### Core Fix
+- `src/queue/jobs/clearOldData.ts`:
+  - Changed deletion filter from `gte: today` to `lt: today`
+  - Now deletes ONLY older data, preserves today's records
+  - Updated logs to confirm data preservation
+
+### New Deployment Tools
+- `immediate-data-restore.sh` - Emergency data restoration
+- `manual-fetch-fallback.sh` - Manual fetch trigger
+- `post-hotfix-check.sh` - Post-deployment validation
+- `pm2-start.sh` - PM2 wrapper with proper ENV loading
+- `cleanup-crlf.sh` - Windows line ending cleanup
+- `ecosystem.production.config.js` - PM2 config with ENV
+
+### Documentation
+- `HOTFIX-DEPLOYMENT-GUIDE.md` - Complete deployment guide
+- `DEPLOY-CHECKLIST.md` - Quick deployment checklist
+- `HOTFIX-SUMMARY.md` - Change summary
+- `POLYGON-404-FIX-EXAMPLE.md` - Optional 404 handling
+
+## Impact
+✅ Today's data is never deleted during cleanup
+✅ Cleanup still removes old data (>7 days)
+✅ PM2 processes have proper environment variables
+✅ Deployment is more reliable with helper scripts
+
+## Testing
+- Cleanup job preserves today's records
+- API returns `{"status":"ok","data":[...]}`
+- Website displays earnings table correctly
+- PM2 logs show "✅ Today's data PRESERVED"
+
+## Deployment
+See: DEPLOY-CHECKLIST.md
+

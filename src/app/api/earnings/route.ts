@@ -89,24 +89,25 @@ export async function GET(request: NextRequest) {
       const cacheAge = getCacheAge(cached)
       const cachedData = cached.data as any[]
       console.log(`[CACHE] HIT - returning cached data (age: ${cacheAge}s)`)
-      return NextResponse.json({
-        status: cachedData.length > 0 ? 'ok' : 'no-data',
-        data: cachedData,
-        meta: {
-          total: cachedData.length,
-          duration: `${Date.now() - startTime}ms`,
-          date: todayString,
-          requestedDate: todayString,
-          fallbackUsed: false,
-          cached: true,
-          cacheAge: cacheAge
-        }
-      }, {
-        headers: {
-          'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
-          'X-Cache': 'HIT'
-        }
-      })
+    return NextResponse.json({
+      status: cachedData.length > 0 ? 'ok' : 'no-data',
+      data: cachedData,
+      meta: {
+        total: cachedData.length,
+        ready: true, // Data is ready if we have cache
+        duration: `${Date.now() - startTime}ms`,
+        date: todayString,
+        requestedDate: todayString,
+        fallbackUsed: false,
+        cached: true,
+        cacheAge: cacheAge
+      }
+    }, {
+      headers: {
+        'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
+        'X-Cache': 'HIT'
+      }
+    })
     }
     
     console.log(`[CACHE] MISS - fetching fresh data`)
@@ -381,6 +382,7 @@ export async function GET(request: NextRequest) {
       data: serializedData,
       meta: {
         total: combinedData.length,
+        ready: combinedData.length > 0, // Ready if we have data
         duration: `${duration}ms`,
         date: actualDate.toISOString().split('T')[0],
         requestedDate: today.toISOString().split('T')[0],
