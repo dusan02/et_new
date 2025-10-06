@@ -1,99 +1,152 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createJsonResponse } from '@/lib/json-utils'
+import { getTodayStart, getNYTimeString } from '@/modules/shared'
+import { createJsonResponse, stringifyHeaders } from '@/lib/json-utils'
+import { detectMarketSession } from '@/lib/market-session'
 
 export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const detailed = searchParams.get('detailed') === '1'
+  
   try {
-    const { searchParams } = new URL(request.url)
-    const detailed = searchParams.get('detailed') === '1'
+    const now = new Date()
+    const todayStart = getTodayStart()
     
-    // Basic health check
-    const dbConnected = await prisma.$queryRaw`SELECT 1`.then(() => true).catch(() => false)
+    // Check database connection
+    let dbHealthy = false
+    try {
+      await prisma.$queryRaw`SELECT 1`
+      dbHealthy = true
+    } catch (error) {
+      console.error('Database health check failed:', error)
+    }
     
-    if (!detailed) {
-      return createJsonResponse({
-        status: 'ok',
-        ready: dbConnected,
-        timestamp: new Date().toISOString()
+    // Check earnings data for today
+    let earningsCount = 0
+    try {
+      earningsCount = await prisma.earningsTickersToday.count({
+        where: {
+          reportDate: {
+            gte: todayStart,
+            lt: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000),
+          },
+        },
+      })
+    } catch (error) {
+      console.error('Earnings count check failed:', error)
+    }
+    
+    // Check market data for today
+    let marketDataCount = 0
+    try {
+      marketDataCount = await prisma.marketSnapshotsToday.count({
+        where: {
+          asOf: {
+            gte: todayStart,
+            lt: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000),
+          },
+        },
+      })
+    } catch (error) {
+      console.error('Market data count check failed:', error)
+    }
+    
+    const isReady = earningsCount > 0 && marketDataCount > 0 && dbHealthy
+    
+    // Get market session
+    const marketSession = detectMarketSession(now, 'America/New_York')
+    
+    // Get commit info
+    const COMMIT = process.env.VERCEL_GIT_COMMIT_SHA || process.env.COMMIT_SHA || 'unknown'
+    const TZ = process.env.TZ || 'UTC'
+    
+    let dataQuality: any = {}
+    if (detailed) {
+      try {
+        const allMarketData = await prisma.marketSnapshotsToday.findMany({
+          where: {
+            asOf: {
+              gte: todayStart,
+              lt: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000),
+            },
+          },
+          select: {
+            currentPrice: true,
+            previousClose: true,
+          },
+        })
+        
+        const totalTickers = allMarketData.length
+        const zeroChangeTickers = allMarketData.filter(
+          (d) => d.currentPrice !== null && d.previousClose !== null && d.currentPrice === d.previousClose
+        ).length
+        const ratioZeroChange = totalTickers > 0 ? zeroChangeTickers / totalTickers : 0
+        const isHealthy = ratioZeroChange < 0.7 // Threshold for unhealthy data
+        
+        dataQuality = {
+          totalTickers,
+          zeroChangeTickers,
+          ratioZeroChange: parseFloat(ratioZeroChange.toFixed(3)),
+          isHealthy,
+        }
+      } catch (error) {
+        console.error('Data quality check failed:', error)
+        dataQuality = { error: 'Failed to calculate data quality' }
+      }
+    }
+    
+    // Get last fetch time from cron logs
+    let lastFetchAt: string | null = null
+    try {
+      const lastCronLog = await prisma.cronLog.findFirst({ 
+        orderBy: { createdAt: 'desc' } 
+      })
+      lastFetchAt = lastCronLog?.createdAt?.toISOString() || null
+    } catch (error) {
+      console.error('Last fetch time check failed:', error)
+    }
+    
+    const payload = {
+      status: isReady ? 'ok' : 'degraded',
+      ready: isReady,
+      timestamp: now.toISOString(),
+      marketSession,
+      commit: COMMIT,
+      tz: TZ,
+      uptime: process.uptime(),
+      checks: {
+        database: dbHealthy,
+        earnings: earningsCount > 0,
+        marketData: marketDataCount > 0,
+      },
+      ...(earningsCount > 0 && { total: earningsCount }),
+      ...(detailed && { dataQuality }),
+      ...(lastFetchAt && { lastFetchAt }),
+    }
+    
+    const headers = {
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      ...(detailed && {
+        'x-build': COMMIT,
+        'x-env-tz': TZ,
+        'x-market-session': marketSession,
       })
     }
     
-    // Detailed health check with market data analysis
-    const today = new Date().toISOString().split('T')[0]
-    
-    // Get today's market data
-    const marketData = await prisma.todayEarningsMovements.findMany({
-      where: {
-        reportDate: {
-          gte: new Date(today + 'T00:00:00.000Z'),
-          lt: new Date(today + 'T23:59:59.999Z')
-        }
-      },
-      select: {
-        ticker: true,
-        currentPrice: true,
-        previousClose: true,
-        priceChangePercent: true
-      }
-    })
-    
-    // Analyze data quality
-    const totalTickers = marketData.length
-    const zeroChangeTickers = marketData.filter(m => 
-      m.priceChangePercent === 0 || 
-      m.priceChangePercent === null ||
-      m.currentPrice === m.previousClose
-    ).length
-    
-    const ratioZeroChange = totalTickers > 0 ? zeroChangeTickers / totalTickers : 0
-    
-    // Market session detection
-    const nowUTC = new Date()
-    const nyTime = new Date(nowUTC.toLocaleString("en-US", {timeZone: "America/New_York"}))
-    const hour = nyTime.getHours()
-    const isRTH = hour >= 9 && hour < 16
-    
-    // Health status
-    const isHealthy = dbConnected && (
-      !isRTH || // Outside market hours - always healthy
-      ratioZeroChange < 0.7 || // Less than 70% zero changes during market hours
-      totalTickers === 0 // No data yet
-    )
-    
-    const result = {
-      status: isHealthy ? 'ok' : 'warning',
-      ready: dbConnected,
-      timestamp: new Date().toISOString(),
-      marketSession: isRTH ? 'open' : 'closed',
-      dataQuality: {
-        totalTickers,
-        zeroChangeTickers,
-        ratioZeroChange: Math.round(ratioZeroChange * 100) / 100,
-        isHealthy: isHealthy
-      },
-      recommendations: []
-    }
-    
-    // Add recommendations if unhealthy
-    if (!isHealthy && isRTH && ratioZeroChange >= 0.7) {
-      result.recommendations.push('High ratio of zero price changes detected during market hours')
-      result.recommendations.push('Consider clearing market data cache')
-    }
-    
-    if (!dbConnected) {
-      result.recommendations.push('Database connection failed')
-    }
-    
-    return createJsonResponse(result)
+    return createJsonResponse(payload, stringifyHeaders(headers))
     
   } catch (error) {
-    console.error('[HEALTH] Error:', error)
-    
-    return createJsonResponse({
-      status: 'error',
-      ready: false,
-      timestamp: new Date().toISOString(),
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, { 'status': '500' })
+    console.error('Health check error:', error)
+    return createJsonResponse(
+      { 
+        status: 'error', 
+        message: (error as Error).message,
+        timestamp: new Date().toISOString()
+      }, 
+      { 
+        status: 500,
+        headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate' }
+      }
+    )
   }
 }

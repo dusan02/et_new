@@ -7,6 +7,7 @@ import { validateRequest, checkRateLimit, earningsQuerySchema, type EarningsQuer
 import { getMonitoring } from '@/lib/monitoring'
 import { loadEnvironmentConfig } from '../../../modules/shared/config/env.config'
 import { createJsonResponse, stringifyHeaders } from '@/lib/json-utils'
+import { detectMarketSession, getTTLForSession, type MarketSession } from '@/lib/market-session'
 // 🚫 GUIDANCE DISABLED FOR PRODUCTION - Import commented out
 // import { 
 //   isGuidanceCompatible, 
@@ -37,10 +38,12 @@ export async function GET(request: NextRequest) {
     
     // Market session detection for TTL
     const nowUTC = new Date()
-    const nyTime = new Date(nowUTC.toLocaleString("en-US", {timeZone: "America/New_York"}))
-    const hour = nyTime.getHours()
-    const isRTH = hour >= 9 && hour < 16 // 9 AM - 4 PM NY time
-    const ttl = noCache ? 0 : (isRTH ? 60 : 600) // 1 min during RTH, 10 min outside
+    const marketSession = detectMarketSession(nowUTC, 'America/New_York')
+    const ttl = getTTLForSession(marketSession, noCache)
+    
+    // Build info for debug
+    const COMMIT = process.env.VERCEL_GIT_COMMIT_SHA || process.env.COMMIT_SHA || 'unknown'
+    const TZ = process.env.TZ || 'UTC'
     
     // ✅ validácia až teraz (soft pri builde, strict v runtime)
     let env: any = {}
@@ -103,19 +106,41 @@ export async function GET(request: NextRequest) {
       const cacheAge = getCacheAge(cached)
       const cachedData = cached.data as any[]
       console.log(`[CACHE] HIT - returning cached data (age: ${cacheAge}s, ttl: ${ttl}s)`)
+    // Calculate debug statistics
+    let previousSourceStats = { aggs: 0, snapshot: 0, none: 0 }
+    let zeroChangeCount = 0
+    
+    if (debugMode && cachedData.length > 0) {
+      // Analyze cached data for debug stats
+      cachedData.forEach((item: any) => {
+        if (item.debug) {
+          const source = item.debug.previousSource || 'none'
+          if (source === 'aggs') previousSourceStats.aggs++
+          else if (source === 'snapshot') previousSourceStats.snapshot++
+          else previousSourceStats.none++
+          
+          if (item.priceChangePercent === 0) zeroChangeCount++
+        }
+      })
+    }
+    
+    const zeroChangeRatio = cachedData.length > 0 ? zeroChangeCount / cachedData.length : 0
+    
     // Prepare debug info
     const debugInfo = debugMode ? {
       debug: {
-        build: process.env.NEXT_PUBLIC_APP_URL || 'localhost',
-        env: process.env.NODE_ENV,
-        tz: process.env.TZ || 'UTC',
-        commit: process.env.VERCEL_GIT_COMMIT_SHA || 'local',
+        commit: COMMIT,
+        tz: TZ,
+        serverNow: nowUTC.toISOString(),
+        marketSession,
+        ttl,
+        noCache,
         cacheKey,
         cacheAgeSeconds: cacheAge,
-        serverNow: new Date().toISOString(),
-        marketSession: isRTH ? 'open' : 'closed',
-        ttl,
-        noCache
+        previousSourceStats,
+        zeroChangeRatio: parseFloat(zeroChangeRatio.toFixed(3)),
+        totalTickers: cachedData.length,
+        zeroChangeTickers: zeroChangeCount
       }
     } : {}
 
@@ -139,11 +164,13 @@ export async function GET(request: NextRequest) {
       'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
       'X-Cache': 'HIT',
       ...(debugMode && {
-        'x-build': process.env.NEXT_PUBLIC_APP_URL || 'localhost',
+        'x-build': COMMIT,
         'x-cache': 'hit',
-        'x-isr-age': cacheAge,
-        'x-env-tz': process.env.TZ || 'UTC',
-        'x-commit': process.env.VERCEL_GIT_COMMIT_SHA || 'local'
+        'x-isr-age': String(cacheAge),
+        'x-env-tz': TZ,
+        'x-commit': COMMIT,
+        'x-market-session': marketSession,
+        'x-ttl': String(ttl)
       })
     }
 
@@ -441,20 +468,41 @@ export async function GET(request: NextRequest) {
       setCachedData(cacheKey, serializedData)
     }
     
+    // Calculate debug statistics for fresh data
+    let previousSourceStats = { aggs: 0, snapshot: 0, none: 0 }
+    let zeroChangeCount = 0
+    
+    if (debugMode && combinedData.length > 0) {
+      combinedData.forEach((item: any) => {
+        if (item.debug) {
+          const source = item.debug.previousSource || 'none'
+          if (source === 'aggs') previousSourceStats.aggs++
+          else if (source === 'snapshot') previousSourceStats.snapshot++
+          else previousSourceStats.none++
+          
+          if (item.priceChangePercent === 0) zeroChangeCount++
+        }
+      })
+    }
+    
+    const zeroChangeRatio = combinedData.length > 0 ? zeroChangeCount / combinedData.length : 0
+    
     // Prepare debug info for fresh data
     const debugInfo = debugMode ? {
       debug: {
-        build: process.env.NEXT_PUBLIC_APP_URL || 'localhost',
-        env: process.env.NODE_ENV,
-        tz: process.env.TZ || 'UTC',
-        commit: process.env.VERCEL_GIT_COMMIT_SHA || 'local',
+        commit: COMMIT,
+        tz: TZ,
+        serverNow: nowUTC.toISOString(),
+        marketSession,
+        ttl,
+        noCache,
         cacheKey,
         dataSource: 'fresh-fetch',
         tickerFilter: tickerFilter || 'all',
-        serverNow: new Date().toISOString(),
-        marketSession: isRTH ? 'open' : 'closed',
-        ttl,
-        noCache
+        previousSourceStats,
+        zeroChangeRatio: parseFloat(zeroChangeRatio.toFixed(3)),
+        totalTickers: combinedData.length,
+        zeroChangeTickers: zeroChangeCount
       }
     } : {}
 
@@ -477,11 +525,13 @@ export async function GET(request: NextRequest) {
       'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
       'X-Cache': 'MISS',
       ...(debugMode && {
-        'x-build': process.env.NEXT_PUBLIC_APP_URL || 'localhost',
+        'x-build': COMMIT,
         'x-cache': 'miss',
         'x-isr-age': '0',
-        'x-env-tz': process.env.TZ || 'UTC',
-        'x-commit': process.env.VERCEL_GIT_COMMIT_SHA || 'local'
+        'x-env-tz': TZ,
+        'x-commit': COMMIT,
+        'x-market-session': marketSession,
+        'x-ttl': String(ttl)
       })
     }
 

@@ -46,17 +46,26 @@ export function setCachedData<T>(key: string, data: T, ttl: number = 300): void 
 }
 
 /**
- * Clear cache by pattern
+ * Clear cache by pattern (supports wildcards)
  */
 export function clearCachePattern(pattern: string): number {
   let cleared = 0
+  const regex = new RegExp(pattern.replace(/\*/g, '.*'))
+  
   for (const key of memoryCache.keys()) {
-    if (key.includes(pattern)) {
+    if (regex.test(key)) {
       memoryCache.delete(key)
       cleared++
     }
   }
   return cleared
+}
+
+/**
+ * Clear cache by pattern (alias for compatibility)
+ */
+export async function clearCacheByPattern(pattern: string): Promise<number> {
+  return clearCachePattern(pattern)
 }
 
 /**
