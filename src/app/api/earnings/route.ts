@@ -182,26 +182,63 @@ export async function GET(request: NextRequest) {
     // Fetch combined earnings and market data with optimized JOIN query
     console.log(`[API] Fetching combined data from database with optimized JOIN...`)
     
-    // Use optimized Prisma query - fallback to separate queries for now
-    let combinedRows = await prisma.earningsTickersToday.findMany({
-      where: { reportDate: today },
+    // 🎯 OPTIMIZED: Use MarketData table to get only tickers with market cap
+    let combinedRows = await prisma.marketData.findMany({
+      where: { 
+        reportDate: today,
+        marketCap: { gt: 0 } // Only tickers with market cap > 0
+      },
       select: {
         ticker: true,
-        reportTime: true,
-        epsActual: true,
-        epsEstimate: true,
-        revenueActual: true,
-        revenueEstimate: true,
-        sector: true,
+        currentPrice: true,
+        previousClose: true,
+        priceChangePercent: true,
+        marketCap: true,
+        size: true,
+        companyName: true,
         companyType: true,
-        dataSource: true,
-        fiscalPeriod: true,
-        fiscalYear: true,
         primaryExchange: true,
+        // Join with earnings data
+        earningsTickersToday: {
+          select: {
+            reportTime: true,
+            epsActual: true,
+            epsEstimate: true,
+            revenueActual: true,
+            revenueEstimate: true,
+            sector: true,
+            dataSource: true,
+            fiscalPeriod: true,
+            fiscalYear: true,
+          }
+        }
       },
       orderBy: { ticker: 'asc' },
       take: 500,
     })
+    
+    // Flatten the joined data structure
+    combinedRows = combinedRows.map(row => ({
+      ticker: row.ticker,
+      reportTime: row.earningsTickersToday?.reportTime || null,
+      epsActual: row.earningsTickersToday?.epsActual || null,
+      epsEstimate: row.earningsTickersToday?.epsEstimate || null,
+      revenueActual: row.earningsTickersToday?.revenueActual || null,
+      revenueEstimate: row.earningsTickersToday?.revenueEstimate || null,
+      sector: row.earningsTickersToday?.sector || null,
+      companyType: row.companyType || row.earningsTickersToday?.companyType || null,
+      dataSource: row.earningsTickersToday?.dataSource || null,
+      fiscalPeriod: row.earningsTickersToday?.fiscalPeriod || null,
+      fiscalYear: row.earningsTickersToday?.fiscalYear || null,
+      primaryExchange: row.primaryExchange || row.earningsTickersToday?.primaryExchange || null,
+      // Add market data fields
+      currentPrice: row.currentPrice,
+      previousClose: row.previousClose,
+      priceChangePercent: row.priceChangePercent,
+      marketCap: row.marketCap,
+      size: row.size,
+      companyName: row.companyName,
+    }))
     
     // ✅ NO FALLBACK: If no data for today, return explicit no-data status
     let actualDate = today

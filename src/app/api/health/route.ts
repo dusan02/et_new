@@ -39,14 +39,7 @@ export async function GET(request: NextRequest) {
     // Check market data for today
     let marketDataCount = 0
     try {
-      marketDataCount = await prisma.marketSnapshotsToday.count({
-        where: {
-          asOf: {
-            gte: todayStart,
-            lt: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000),
-          },
-        },
-      })
+      marketDataCount = await prisma.marketData.count()
     } catch (error) {
       console.error('Market data count check failed:', error)
     }
@@ -121,10 +114,10 @@ export async function GET(request: NextRequest) {
     // Get last fetch time from cron logs
     let lastFetchAt: string | null = null
     try {
-      const lastCronLog = await prisma.cronLog.findFirst({ 
-        orderBy: { createdAt: 'desc' } 
+      const lastCronLog = await prisma.cronRun.findFirst({ 
+        orderBy: { startedAt: 'desc' } 
       })
-      lastFetchAt = lastCronLog?.createdAt?.toISOString() || null
+      lastFetchAt = lastCronLog?.startedAt?.toISOString() || null
     } catch (error) {
       console.error('Last fetch time check failed:', error)
     }

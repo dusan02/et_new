@@ -45,19 +45,15 @@ function runCurrentDayReset(description) {
 
   const resetScript = path.join(__dirname, "jobs", "clearOldData.ts");
   const resetCode = `import('./src/queue/jobs/clearOldData.js').then(async (module) => { try { const result = await module.resetCurrentDayData(); console.log('✅ Reset completed successfully:', result); process.exit(0); } catch (error) { console.error('❌ Reset failed:', error); process.exit(1); } }).catch(error => { console.error('❌ Import failed:', error); process.exit(1); });`;
-  
-  const child = spawn(
-    "npx",
-    ["tsx", "-e", resetCode],
-    {
-      cwd: path.join(__dirname, "../.."),
-      env: {
-        ...process.env,
-        DATABASE_URL: process.env.DATABASE_URL,
-      },
-      shell: true,
-    }
-  );
+
+  const child = spawn("npx", ["tsx", "-e", resetCode], {
+    cwd: path.join(__dirname, "../.."),
+    env: {
+      ...process.env,
+      DATABASE_URL: process.env.DATABASE_URL,
+    },
+    shell: true,
+  });
 
   child.stdout.on("data", (data) => {
     console.log(`🔄 ${description} output: ${data}`);
@@ -127,6 +123,81 @@ function runFetchScript(scriptName, description, skipResetCheck = false) {
   });
 }
 
+// Helper function to run optimized two-step fetch workflow
+function runOptimizedFetchWorkflow(description) {
+  console.log(`🎯 Running ${description} (optimized workflow)...`);
+
+  // Step 1: Fetch earnings only
+  console.log(`📊 Step 1: Fetching earnings data...`);
+  const earningsScript = path.join(
+    __dirname,
+    "../jobs",
+    "fetch-earnings-only.ts"
+  );
+  const earningsChild = spawn("npx", ["tsx", earningsScript], {
+    cwd: path.join(__dirname, "../.."),
+    env: {
+      ...process.env,
+      FINNHUB_API_KEY: process.env.FINNHUB_API_KEY,
+      DATABASE_URL: process.env.DATABASE_URL,
+      SKIP_RESET_CHECK: "true", // Skip reset check for optimized workflow
+    },
+    shell: true,
+  });
+
+  earningsChild.stdout.on("data", (data) => {
+    console.log(`📊 ${description} (earnings) output: ${data}`);
+  });
+
+  earningsChild.stderr.on("data", (data) => {
+    console.error(`❌ ${description} (earnings) error: ${data}`);
+  });
+
+  earningsChild.on("close", (code) => {
+    console.log(`✅ ${description} (earnings) completed with code ${code}`);
+
+    if (code === 0) {
+      // Step 2: Fetch market data for tickers with earnings
+      console.log(
+        `📈 Step 2: Fetching market data for tickers with earnings...`
+      );
+      const marketScript = path.join(
+        __dirname,
+        "../jobs",
+        "fetch-market-data-filtered.ts"
+      );
+      const marketChild = spawn("npx", ["tsx", marketScript], {
+        cwd: path.join(__dirname, "../.."),
+        env: {
+          ...process.env,
+          POLYGON_API_KEY: process.env.POLYGON_API_KEY,
+          DATABASE_URL: process.env.DATABASE_URL,
+        },
+        shell: true,
+      });
+
+      marketChild.stdout.on("data", (data) => {
+        console.log(`📈 ${description} (market) output: ${data}`);
+      });
+
+      marketChild.stderr.on("data", (data) => {
+        console.error(`❌ ${description} (market) error: ${data}`);
+      });
+
+      marketChild.on("close", (marketCode) => {
+        console.log(
+          `✅ ${description} (market) completed with code ${marketCode}`
+        );
+        console.log(`🎉 ${description} (optimized workflow) completed!`);
+      });
+    } else {
+      console.error(
+        `❌ ${description} (earnings) failed, skipping market data fetch`
+      );
+    }
+  });
+}
+
 // 1. MAIN FETCH - Daily at 2:00 AM NY time (7:00 AM UTC)
 // This fetches the earnings calendar for the day
 cron.schedule(
@@ -155,11 +226,7 @@ async function runMainCronJob() {
       setTimeout(() => {
         runCurrentDayReset("Reset current day data for fresh start");
         setTimeout(() => {
-          runFetchScript(
-            "fetch-today.ts",
-            "Main earnings calendar fetch",
-            true
-          ); // Skip reset check for main fetch
+          runOptimizedFetchWorkflow("Main earnings calendar fetch"); // Use optimized two-step workflow
         }, 3000); // Wait 3 seconds for reset to complete
       }, 5000); // Wait 5 seconds for cleanup to complete
     }, 2000); // Wait 2 seconds for cache clear to complete
@@ -311,7 +378,7 @@ setTimeout(() => {
   runCurrentDayReset("Initial startup reset");
   setTimeout(() => {
     console.log("🔄 Running initial data fetch...");
-    runFetchScript("fetch-today.ts", "Initial startup fetch");
+    runOptimizedFetchWorkflow("Initial startup fetch");
   }, 3000); // Wait 3 seconds for reset to complete
 }, 5000); // Wait 5 seconds for cleanup to complete
 

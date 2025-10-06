@@ -86,6 +86,12 @@ export class MarketDataService {
 
       const calculation = calculateMarketCapDifference(calculationInput)
       
+      // 🚫 FILTER: Skip tickers without market cap (small companies)
+      if (!calculation.marketCap || calculation.marketCap <= 0) {
+        console.log(`[MARKET:SKIP] ${ticker}: No market cap data (${calculation.marketCap}) - skipping small company`)
+        continue
+      }
+      
       // Validate price data
       const priceValidation = validatePriceData(
         marketInfo.currentPrice,

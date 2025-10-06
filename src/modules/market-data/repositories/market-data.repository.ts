@@ -263,7 +263,7 @@ export class MarketDataRepository {
         // Try transaction first
         const results = await prisma.$transaction(
           chunk.map((data) =>
-            prisma.todayEarningsMovements.upsert({
+            prisma.marketData.upsert({
               where: {
                 ticker_reportDate: {
                   ticker: data.ticker,
@@ -274,7 +274,7 @@ export class MarketDataRepository {
                 companyName: data.companyName,
                 currentPrice: data.currentPrice !== null && data.currentPrice !== undefined ? data.currentPrice : undefined,
                 previousClose: data.previousClose !== null && data.previousClose !== undefined ? data.previousClose : undefined,
-                marketCap: data.marketCap || undefined,
+                marketCap: data.marketCap ? Number(data.marketCap) : undefined,
                 size: data.size || undefined,
                 marketCapDiff: data.marketCapDiff !== null && data.marketCapDiff !== undefined ? data.marketCapDiff : undefined,
                 marketCapDiffBillions: data.marketCapDiffBillions !== null && data.marketCapDiffBillions !== undefined ? data.marketCapDiffBillions : undefined,
@@ -291,7 +291,7 @@ export class MarketDataRepository {
                 companyName: data.companyName,
                 currentPrice: data.currentPrice !== null && data.currentPrice !== undefined ? data.currentPrice : undefined,
                 previousClose: data.previousClose !== null && data.previousClose !== undefined ? data.previousClose : undefined,
-                marketCap: data.marketCap || undefined,
+                marketCap: data.marketCap ? Number(data.marketCap) : undefined,
                 size: data.size || undefined,
                 marketCapDiff: data.marketCapDiff !== null && data.marketCapDiff !== undefined ? data.marketCapDiff : undefined,
                 marketCapDiffBillions: data.marketCapDiffBillions !== null && data.marketCapDiffBillions !== undefined ? data.marketCapDiffBillions : undefined,
@@ -327,7 +327,7 @@ export class MarketDataRepository {
                 companyName: data.companyName,
                 currentPrice: data.currentPrice !== null && data.currentPrice !== undefined ? data.currentPrice : undefined,
                 previousClose: data.previousClose !== null && data.previousClose !== undefined ? data.previousClose : undefined,
-                marketCap: data.marketCap || undefined,
+                marketCap: data.marketCap ? Number(data.marketCap) : undefined,
                 size: data.size || undefined,
                 marketCapDiff: data.marketCapDiff !== null && data.marketCapDiff !== undefined ? data.marketCapDiff : undefined,
                 marketCapDiffBillions: data.marketCapDiffBillions !== null && data.marketCapDiffBillions !== undefined ? data.marketCapDiffBillions : undefined,
@@ -344,7 +344,7 @@ export class MarketDataRepository {
                 companyName: data.companyName,
                 currentPrice: data.currentPrice !== null && data.currentPrice !== undefined ? data.currentPrice : undefined,
                 previousClose: data.previousClose !== null && data.previousClose !== undefined ? data.previousClose : undefined,
-                marketCap: data.marketCap || undefined,
+                marketCap: data.marketCap ? Number(data.marketCap) : undefined,
                 size: data.size || undefined,
                 marketCapDiff: data.marketCapDiff !== null && data.marketCapDiff !== undefined ? data.marketCapDiff : undefined,
                 marketCapDiffBillions: data.marketCapDiffBillions !== null && data.marketCapDiffBillions !== undefined ? data.marketCapDiffBillions : undefined,

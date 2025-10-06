@@ -26,6 +26,9 @@ model EarningsTickersToday {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  // 🎯 RELATION: Link to market data
+  marketData      MarketData?
+
   @@id([reportDate, ticker])
   @@index([reportDate])
   @@index([reportDate, ticker])
@@ -135,4 +138,32 @@ model GuidanceImportFailures {
   reason    String
   payload   String
   createdAt DateTime @default(now())
+}
+
+/// Market data for earnings tickers
+model MarketData {
+  id                    Int      @id @default(autoincrement())
+  ticker                String
+  reportDate            DateTime
+  companyName           String?
+  currentPrice          Float?
+  previousClose         Float?
+  priceChangePercent    Float?
+  marketCap             Float?
+  size                  String?
+  marketCapDiff         Float?
+  marketCapDiffBillions Float?
+  sharesOutstanding     Float?
+  companyType           String?
+  primaryExchange       String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // 🎯 RELATION: Link to earnings data
+  earningsTickersToday  EarningsTickersToday? @relation(fields: [ticker, reportDate], references: [ticker, reportDate])
+
+  @@unique([ticker, reportDate], name: "ticker_reportDate")
+  @@index([ticker])
+  @@index([reportDate])
+  @@index([ticker, reportDate])
 }

@@ -142,9 +142,18 @@ export class UnifiedDataFetcher {
         const marketData = await this.fetchMarketData(tickers, options)
         console.log(`✅ Found market data for ${Object.keys(marketData).length} tickers`)
         
+        // 🚫 FILTER: Remove tickers without market cap before saving
+        const filteredMarketData = this.filterTickersWithMarketCap(marketData)
+        const filteredCount = Object.keys(filteredMarketData).length
+        const skippedCount = Object.keys(marketData).length - filteredCount
+        
+        if (skippedCount > 0) {
+          console.log(`🚫 Filtered out ${skippedCount} tickers without market cap (small companies)`)
+        }
+        
         // 4. Ulož market dáta (normalize date to UTC midnight)
         const reportDate = toReportDateUTC(new Date(date))
-        const marketResult = await this.saveMarketData(marketData, reportDate)
+        const marketResult = await this.saveMarketData(filteredMarketData, reportDate)
         marketCount = marketResult.ok
         
         if (marketResult.failed > 0) {
@@ -532,5 +541,196 @@ export class UnifiedDataFetcher {
     }
     
     return result
+  }
+
+  /**
+   * 🎯 OPTIMIZED: Fetch only earnings data (no market data)
+   * Used in the first step of the optimized workflow
+   */
+  async fetchEarningsOnly(date: Date): Promise<{earningsCount: number, tickersCount: number}> {
+    console.log('🎯 [EARNINGS-ONLY] Starting earnings-only fetch...')
+    
+    const reportDate = toReportDateUTC(date)
+    
+    // 1. Fetch earnings data from Finnhub
+    const earningsData = await this.fetchEarningsData(date)
+    const earningsCount = Object.keys(earningsData).length
+    
+    console.log(`📊 [EARNINGS-ONLY] Found ${earningsCount} earnings records`)
+    
+    // 2. Save earnings data
+    const earningsResult = await this.saveEarningsData(earningsData, reportDate)
+    
+    console.log(`✅ [EARNINGS-ONLY] Saved ${earningsResult.ok} earnings records`)
+    
+    return {
+      earningsCount: earningsResult.ok,
+      tickersCount: earningsCount
+    }
+  }
+
+  /**
+   * 🎯 OPTIMIZED: Fetch market data only for specific tickers
+   * Used in the second step of the optimized workflow
+   */
+  async fetchMarketDataForTickers(tickers: string[], date: Date): Promise<{marketCount: number, filteredCount: number, skippedCount: number}> {
+    console.log(`🎯 [MARKET-FILTERED] Starting market data fetch for ${tickers.length} tickers...`)
+    
+    const reportDate = toReportDateUTC(date)
+    
+    // 1. Fetch market data only for specified tickers
+    const marketData = await this.fetchMarketDataForTickersList(tickers, date)
+    const marketCount = Object.keys(marketData).length
+    
+    console.log(`📊 [MARKET-FILTERED] Found market data for ${marketCount} tickers`)
+    
+    // 2. Apply market cap filter
+    const filteredMarketData = this.filterTickersWithMarketCap(marketData)
+    const filteredCount = Object.keys(filteredMarketData).length
+    const skippedCount = marketCount - filteredCount
+    
+    if (skippedCount > 0) {
+      console.log(`🚫 [MARKET-FILTERED] Filtered out ${skippedCount} tickers without market cap (small companies)`)
+    }
+    
+    // 3. Save filtered market data
+    const marketResult = await this.saveMarketData(filteredMarketData, reportDate)
+    
+    console.log(`✅ [MARKET-FILTERED] Saved ${marketResult.ok} market records`)
+    
+    return {
+      marketCount,
+      filteredCount: marketResult.ok,
+      skippedCount
+    }
+  }
+
+  /**
+   * 🎯 OPTIMIZED: Fetch market data for specific ticker list
+   */
+  private async fetchMarketDataForTickersList(tickers: string[], date: Date): Promise<Record<string, any>> {
+    console.log(`📊 [MARKET-FILTERED] Fetching market data for ${tickers.length} specific tickers...`)
+    
+    const marketData: Record<string, any> = {}
+    
+    // Process tickers in batches to avoid rate limits
+    const batchSize = 10
+    for (let i = 0; i < tickers.length; i += batchSize) {
+      const batch = tickers.slice(i, i + batchSize)
+      console.log(`📦 [MARKET-FILTERED] Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(tickers.length/batchSize)} (${batch.length} tickers)`)
+      
+      const batchPromises = batch.map(async (ticker) => {
+        try {
+          const data = await this.fetchSingleTickerMarketData(ticker, date)
+          if (data) {
+            marketData[ticker] = data
+          }
+        } catch (error) {
+          console.error(`❌ [MARKET-FILTERED] Failed to fetch market data for ${ticker}:`, error.message)
+        }
+      })
+      
+      await Promise.allSettled(batchPromises)
+      
+      // Small delay between batches to be nice to APIs
+      if (i + batchSize < tickers.length) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+    }
+    
+    return marketData
+  }
+
+  /**
+   * 🎯 OPTIMIZED: Fetch market data for a single ticker
+   */
+  private async fetchSingleTickerMarketData(ticker: string, date: Date): Promise<any> {
+    try {
+      // Get current price and market data from Polygon
+      const [currentPrice, marketInfo] = await Promise.allSettled([
+        this.getCurrentPrice(ticker),
+        this.getMarketInfo(ticker)
+      ])
+      
+      const price = currentPrice.status === 'fulfilled' ? currentPrice.value : null
+      const info = marketInfo.status === 'fulfilled' ? marketInfo.value : null
+      
+      if (!price && !info) {
+        return null
+      }
+      
+      return {
+        currentPrice: price,
+        marketCap: info?.marketCap,
+        sharesOutstanding: info?.sharesOutstanding,
+        companyName: info?.companyName,
+        companyType: info?.companyType,
+        primaryExchange: info?.primaryExchange
+      }
+    } catch (error) {
+      console.error(`❌ [MARKET-FILTERED] Error fetching market data for ${ticker}:`, error.message)
+      return null
+    }
+  }
+
+  /**
+   * 🎯 FETCH MARKET DATA FOR SPECIFIC TICKERS (SIMPLE VERSION)
+   * Fetch market data only for the provided ticker list without date parameter
+   */
+  async fetchMarketDataForTickersSimple(tickers: string[]): Promise<Record<string, any>> {
+    console.log(`🔄 Fetching market data for ${tickers.length} specific tickers...`)
+    
+    const marketData: Record<string, any> = {}
+    
+    for (const ticker of tickers) {
+      try {
+        console.log(`📊 Fetching market data for ${ticker}...`)
+        
+        // Fetch from Polygon
+        const polygonData = await this.fetchPolygonMarketData(ticker)
+        
+        if (polygonData) {
+          marketData[ticker] = polygonData
+          console.log(`✅ ${ticker}: Got market data`)
+        } else {
+          console.log(`❌ ${ticker}: No market data from Polygon`)
+        }
+        
+      } catch (error) {
+        console.error(`❌ ${ticker}: Market data fetch failed:`, error)
+      }
+    }
+    
+    return marketData
+  }
+
+  /**
+   * 🚫 FILTER: Remove tickers without market cap (small companies)
+   * Only keep tickers that have valid market cap data from Polygon
+   */
+  filterTickersWithMarketCap(marketData: Record<string, any>): Record<string, any> {
+    const filtered: Record<string, any> = {}
+    
+    for (const [ticker, data] of Object.entries(marketData)) {
+      if (!data || typeof data !== 'object') {
+        console.log(`[FILTER:SKIP] ${ticker}: Invalid data structure`)
+        continue
+      }
+
+      // Check if we have market cap data
+      const hasMarketCap = data.marketCap && data.marketCap > 0
+      const hasSharesOutstanding = data.sharesOutstanding && data.sharesOutstanding > 0
+      const hasCurrentPrice = data.currentPrice && data.currentPrice > 0
+      
+      // Skip if no market cap data (small companies)
+      if (!hasMarketCap && !(hasSharesOutstanding && hasCurrentPrice)) {
+        console.log(`[FILTER:SKIP] ${ticker}: No market cap data (cap=${data.marketCap}, shares=${data.sharesOutstanding}, price=${data.currentPrice}) - skipping small company`)
+        continue
+      }
+
+      filtered[ticker] = data
+    }
+    
+    return filtered
   }
 }
