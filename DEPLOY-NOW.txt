@@ -1,0 +1,56 @@
+═══════════════════════════════════════════════════════
+🚀 DEPLOYMENT - ČO UROBIŤ TERAZ
+═══════════════════════════════════════════════════════
+
+✅ 1. GIT PUSH - HOTOVÝ!
+   git push origin main  ✓ Úspešne pushnuté
+
+⏭️ 2. PRIPOJ SA NA SERVER (nový PowerShell/Terminal)
+
+   Otvor nový terminál a spusti:
+   
+   ssh root@89.185.250.213
+   
+   (zadaj heslo servera)
+
+⏭️ 3. DEPLOYMENT (tieto príkazy NA SERVERI!)
+
+   Keď si pripojený cez SSH, skopíruj a spusti:
+
+   ┌─────────────────────────────────────────────────┐
+   │ cd /var/www/earnings-table                      │
+   │ git pull origin main                            │
+   │ chmod +x *.sh                                   │
+   │ ./cleanup-crlf.sh                               │
+   │ ./immediate-data-restore.sh                     │
+   │ ./post-hotfix-check.sh                          │
+   └─────────────────────────────────────────────────┘
+
+⏭️ 4. KONTROLA
+
+   • API test (na serveri):
+     curl -s "http://127.0.0.1:3001/api/earnings?nocache=1" | head -c 300
+   
+   • Website test (vo Windows browseri):
+     https://www.earningstable.com
+
+═══════════════════════════════════════════════════════
+
+🆘 AK NIEČO ZLYHÁ:
+
+   • SSH nefunguje: ssh -o PreferredAuthentications=password root@89.185.250.213
+   
+   • Deployment script zlyhal: ./manual-fetch-fallback.sh
+   
+   • API vracia "no-data": pm2 logs earnings-cron --lines 50
+
+═══════════════════════════════════════════════════════
+
+📚 DOKUMENTÁCIA:
+
+   • Windows guide: WINDOWS-DEPLOYMENT-GUIDE.md
+   • Deployment checklist: DEPLOY-CHECKLIST.md
+   • Full guide: HOTFIX-DEPLOYMENT-GUIDE.md
+
+═══════════════════════════════════════════════════════
+

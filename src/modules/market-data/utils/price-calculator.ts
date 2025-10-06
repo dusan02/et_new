@@ -153,7 +153,9 @@ export class PriceCalculator {
     if (currentPrice == null || previousClose == null || !Number.isFinite(currentPrice) || !Number.isFinite(previousClose) || previousClose <= 0) {
       return null; // 🔑 FE potom nezobrazí „+0.00%", ale „—"
     }
-    return ((currentPrice - previousClose) / previousClose) * 100;
+    
+    const result = ((currentPrice - previousClose) / previousClose) * 100;
+    return result;
   }
 
   /**

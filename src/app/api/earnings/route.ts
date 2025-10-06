@@ -6,6 +6,7 @@ import { calculateSurprise } from '@/modules/earnings'
 import { validateRequest, checkRateLimit, earningsQuerySchema, type EarningsQuery } from '@/lib/validation'
 import { getMonitoring } from '@/lib/monitoring'
 import { loadEnvironmentConfig } from '../../../modules/shared/config/env.config'
+import { createJsonResponse, stringifyHeaders } from '@/lib/json-utils'
 // 🚫 GUIDANCE DISABLED FOR PRODUCTION - Import commented out
 // import { 
 //   isGuidanceCompatible, 
@@ -28,6 +29,19 @@ export async function GET(request: NextRequest) {
   let monitoring: any = null
   
   try {
+    // Parse query parameters for debug mode and cache control
+    const { searchParams } = new URL(request.url)
+    const debugMode = searchParams.get('debug') === '1'
+    const tickerFilter = searchParams.get('ticker')
+    const noCache = searchParams.get('nocache') === '1'
+    
+    // Market session detection for TTL
+    const nowUTC = new Date()
+    const nyTime = new Date(nowUTC.toLocaleString("en-US", {timeZone: "America/New_York"}))
+    const hour = nyTime.getHours()
+    const isRTH = hour >= 9 && hour < 16 // 9 AM - 4 PM NY time
+    const ttl = noCache ? 0 : (isRTH ? 60 : 600) // 1 min during RTH, 10 min outside
+    
     // ✅ validácia až teraz (soft pri builde, strict v runtime)
     let env: any = {}
     try {
@@ -81,15 +95,31 @@ export async function GET(request: NextRequest) {
     
     console.log(`[API] Starting earnings fetch for date: ${todayString} (NY time: ${getNYTimeString()})`)
     
-    // Check cache first
+    // Check cache first (respect nocache parameter)
     const cacheKey = `earnings-${todayString}`
-    const cached = getCachedData(cacheKey)
+    const cached = noCache ? null : getCachedData(cacheKey)
     
     if (cached) {
       const cacheAge = getCacheAge(cached)
       const cachedData = cached.data as any[]
-      console.log(`[CACHE] HIT - returning cached data (age: ${cacheAge}s)`)
-    return NextResponse.json({
+      console.log(`[CACHE] HIT - returning cached data (age: ${cacheAge}s, ttl: ${ttl}s)`)
+    // Prepare debug info
+    const debugInfo = debugMode ? {
+      debug: {
+        build: process.env.NEXT_PUBLIC_APP_URL || 'localhost',
+        env: process.env.NODE_ENV,
+        tz: process.env.TZ || 'UTC',
+        commit: process.env.VERCEL_GIT_COMMIT_SHA || 'local',
+        cacheKey,
+        cacheAgeSeconds: cacheAge,
+        serverNow: new Date().toISOString(),
+        marketSession: isRTH ? 'open' : 'closed',
+        ttl,
+        noCache
+      }
+    } : {}
+
+    const payload = {
       status: cachedData.length > 0 ? 'ok' : 'no-data',
       data: cachedData,
       meta: {
@@ -100,14 +130,24 @@ export async function GET(request: NextRequest) {
         requestedDate: todayString,
         fallbackUsed: false,
         cached: true,
-        cacheAge: cacheAge
+        cacheAge: cacheAge,
+        ...debugInfo
       }
-    }, {
-      headers: {
-        'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
-        'X-Cache': 'HIT'
-      }
-    })
+    }
+
+    const headers = {
+      'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
+      'X-Cache': 'HIT',
+      ...(debugMode && {
+        'x-build': process.env.NEXT_PUBLIC_APP_URL || 'localhost',
+        'x-cache': 'hit',
+        'x-isr-age': cacheAge,
+        'x-env-tz': process.env.TZ || 'UTC',
+        'x-commit': process.env.VERCEL_GIT_COMMIT_SHA || 'local'
+      })
+    }
+
+    return createJsonResponse(payload, stringifyHeaders(headers))
     }
     
     console.log(`[CACHE] MISS - fetching fresh data`)
@@ -218,8 +258,13 @@ export async function GET(request: NextRequest) {
     console.log(`[API] Tickers with EPS Actual (${epsActualTickers.length}):`, epsActualTickers.join(', '))
     console.log(`[API] Tickers with Revenue Actual (${revenueActualTickers.length}):`, revenueActualTickers.join(', '))
 
+    // Apply ticker filter if specified in debug mode
+    const filteredRows = tickerFilter 
+      ? combinedRows.filter(row => row.ticker === tickerFilter)
+      : combinedRows
+
     // Transform combined data - manually join earnings and market data
-    const combinedData = combinedRows.map(row => {
+    const combinedData = filteredRows.map(row => {
       // Find matching market data for this ticker
       const marketInfo = marketData.find(m => m.ticker === row.ticker)
       
@@ -335,6 +380,23 @@ export async function GET(request: NextRequest) {
         currentPrice: marketInfo?.currentPrice != null ? Number(marketInfo.currentPrice) : null,
         previousClose: marketInfo?.previousClose != null ? Number(marketInfo.previousClose) : null,
         priceChangePercent: marketInfo?.priceChangePercent ?? null,
+        ...(debugMode && {
+          debug: {
+            ticker: row.ticker,
+            currentPrice: marketInfo?.currentPrice,
+            previousClose: marketInfo?.previousClose,
+            priceChangePercent: marketInfo?.priceChangePercent,
+            currentPriceType: typeof marketInfo?.currentPrice,
+            previousCloseType: typeof marketInfo?.previousClose,
+            priceChangePercentType: typeof marketInfo?.priceChangePercent,
+            marketInfoSource: marketInfo ? 'db' : 'null',
+            previousSource: marketInfo?.previousClose ? 'db-market-data' : 'none',
+            isFallback: marketInfo?.currentPrice === marketInfo?.previousClose,
+            rawChange: marketInfo?.currentPrice && marketInfo?.previousClose 
+              ? ((marketInfo.currentPrice - marketInfo.previousClose) / marketInfo.previousClose * 100)
+              : null
+          }
+        }),
         marketCapDiffBillions: marketInfo?.marketCapDiffBillions ?? null,
         sharesOutstanding: marketInfo?.sharesOutstanding || null,
         // Guidance calculations
@@ -373,11 +435,30 @@ export async function GET(request: NextRequest) {
     
     console.log(`[API] Request completed in ${duration}ms`)
     
-    // Cache the result
+    // Cache the result with safe BigInt serialization (respect TTL)
     const serializedData = toJSONSafe(combinedData)
-    setCachedData(cacheKey, serializedData)
+    if (ttl > 0) {
+      setCachedData(cacheKey, serializedData)
+    }
     
-    return NextResponse.json({
+    // Prepare debug info for fresh data
+    const debugInfo = debugMode ? {
+      debug: {
+        build: process.env.NEXT_PUBLIC_APP_URL || 'localhost',
+        env: process.env.NODE_ENV,
+        tz: process.env.TZ || 'UTC',
+        commit: process.env.VERCEL_GIT_COMMIT_SHA || 'local',
+        cacheKey,
+        dataSource: 'fresh-fetch',
+        tickerFilter: tickerFilter || 'all',
+        serverNow: new Date().toISOString(),
+        marketSession: isRTH ? 'open' : 'closed',
+        ttl,
+        noCache
+      }
+    } : {}
+
+    const payload = {
       status: responseStatus,
       data: serializedData,
       meta: {
@@ -387,14 +468,24 @@ export async function GET(request: NextRequest) {
         date: actualDate.toISOString().split('T')[0],
         requestedDate: today.toISOString().split('T')[0],
         fallbackUsed: false, // Never use fallback anymore
-        cached: false
+        cached: false,
+        ...debugInfo
       }
-    }, {
-      headers: {
-        'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
-        'X-Cache': 'MISS'
-      }
-    })
+    }
+
+    const headers = {
+      'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
+      'X-Cache': 'MISS',
+      ...(debugMode && {
+        'x-build': process.env.NEXT_PUBLIC_APP_URL || 'localhost',
+        'x-cache': 'miss',
+        'x-isr-age': '0',
+        'x-env-tz': process.env.TZ || 'UTC',
+        'x-commit': process.env.VERCEL_GIT_COMMIT_SHA || 'local'
+      })
+    }
+
+    return createJsonResponse(payload, stringifyHeaders(headers))
     
   } catch (error) {
     console.error('[API] Error:', error)

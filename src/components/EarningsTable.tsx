@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 import { SkeletonLoader, SkeletonCard } from './ui/SkeletonLoader';
 import { formatRevenueSmart } from '@/modules/shared';
+import { MobileCard } from './earnings/MobileCard';
 // Define EarningsData interface locally since we removed the types file
 interface EarningsData {
   ticker: string;
@@ -27,6 +28,16 @@ interface EarningsData {
   previousClose: number | null;
   priceChangePercent: number | null;
   sharesOutstanding: number | null;
+  debug?: {
+    ticker: string;
+    currentPrice: number | null;
+    previousClose: number | null;
+    priceChangePercent: number | null;
+    currentPriceType: string;
+    previousCloseType: string;
+    priceChangePercentType: string;
+    marketInfoSource: string;
+  };
 }
 
 interface EarningsTableProps {
@@ -227,18 +238,18 @@ export default function EarningsTable({
           Refresh
       </button>
     </div>
-  );
-    }
+    );
+  }
 
-    return (
+  return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden transition-colors duration-300 border border-gray-300">
       <div className="p-3 sm:p-4 md:p-6 border-b border-gray-300">
         <div className="mb-4">
           <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
             {stats?.totalCompanies || 0} companies reporting earnings today
           </h2>
-          </div>
         </div>
+      </div>
         
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 p-4 border-b border-gray-300">
@@ -307,246 +318,121 @@ export default function EarningsTable({
       <div className="block sm:hidden">
         {/* Mobile Card View */}
         {processedData.map((item, index) => (
-          <div key={item.ticker} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-3 mb-2 shadow-sm hover:shadow-md transition-all duration-300 ease-in-out animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
-            {/* Header */}
-      <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">#{index + 1}</span>
-                {item.size && (
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                    item.size === 'Mega' 
-                      ? 'bg-red-100 text-red-800 border border-red-200' 
-                      : item.size === 'Large' 
-                      ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-                      : 'text-gray-600'
-                  }`}>
-                    {item.size}
-                  </span>
-                )}
-        </div>
-        <div className="text-right">
-          <div className="text-xs text-gray-500 dark:text-gray-400">Report Time</div>
-          <div className="font-medium text-sm text-gray-900 dark:text-white">
-            {item.reportTime || '-'}
-          </div>
-        </div>
-      </div>
-
-            {/* Company Info */}
-            <div className="text-center mb-2">
-              <div className="font-semibold text-gray-900 dark:text-white text-base">{item.ticker}</div>
-              <div className="text-xs text-gray-500 dark:text-gray-300">{item.companyName}</div>
-            </div>
-
-            {/* Main Metrics */}
-      <div className="grid grid-cols-2 gap-2 mb-2">
-              <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
-                <div className="text-xs text-gray-500 dark:text-gray-300">Market Cap</div>
-                <div className="font-semibold text-sm text-gray-900 dark:text-white">
-                  {item.marketCap ? `$${(Number(item.marketCap) / 1_000_000_000).toFixed(1)}B` : '-'}
-        </div>
-        </div>
-              <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
-                <div className="text-xs text-gray-500 dark:text-gray-300">Price</div>
-                <div className="font-semibold text-sm text-gray-900 dark:text-white">
-            {item.currentPrice ? `$${item.currentPrice.toFixed(2)}` : '-'}
-        </div>
-        </div>
-      </div>
-
-            {/* Changes */}
-            <div className="grid grid-cols-2 gap-2 mb-2">
-              <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
-                <div className="text-xs text-gray-500 dark:text-gray-300">Cap Diff</div>
-                <div className={`font-semibold text-sm ${
-                  item.marketCapDiffBillions !== null 
-                    ? (item.marketCapDiffBillions >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')
-                    : 'text-gray-900 dark:text-white'
-                }`}>
-                  {item.marketCapDiffBillions !== null ? (
-                    `${item.marketCapDiffBillions >= 0 ? '+' : ''}${item.marketCapDiffBillions.toFixed(1)}B`
-                  ) : '-'}
-              </div>
-              </div>
-              <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
-                <div className="text-xs text-gray-500 dark:text-gray-300">Change</div>
-                <div className={`font-semibold text-sm ${
-                  item.priceChangePercent !== null 
-                    ? (item.priceChangePercent >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')
-                    : 'text-gray-900 dark:text-white'
-                }`}>
-                  {item.priceChangePercent !== null ? (
-                    `${item.priceChangePercent >= 0 ? '+' : ''}${item.priceChangePercent.toFixed(2)}%`
-                  ) : '-'}
-              </div>
-            </div>
-          </div>
-
-            {/* EPS & Revenue Data - Two Column Layout */}
-            <div className="grid grid-cols-2 gap-2 mb-2">
-              {/* Left Column - EPS Data */}
-              <div className="space-y-1">
-                <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
-                  <div className="text-xs text-gray-500 dark:text-gray-300">EPS Est</div>
-                  <div className="font-semibold text-sm text-gray-900 dark:text-white">
-                    {item.epsEstimate ? `$${item.epsEstimate.toFixed(2)}` : '-'}
-          </div>
-        </div>
-                <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
-                  <div className="text-xs text-gray-500 dark:text-gray-300">EPS Act</div>
-                  <div className="font-semibold text-sm text-gray-900 dark:text-white">
-                    {item.epsActual ? `$${item.epsActual.toFixed(2)}` : '-'}
-          </div>
-        </div>
-                <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
-                  <div className="text-xs text-gray-500 dark:text-gray-300">EPS Surp</div>
-                  <div className={`font-semibold text-sm ${
-                    item.epsActual && item.epsEstimate ? getSurpriseColor(item.epsActual, item.epsEstimate) : 'text-gray-900 dark:text-white'
-                  }`}>
-                    {item.epsActual && item.epsEstimate ? getSurpriseText(item.epsActual, item.epsEstimate) : '-'}
-          </div>
-        </div>
-      </div>
-
-              {/* Right Column - Revenue Data */}
-              <div className="space-y-1">
-                <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
-                  <div className="text-xs text-gray-500 dark:text-gray-300">Rev Est</div>
-                  <div className="font-semibold text-sm whitespace-nowrap text-gray-900 dark:text-white">
-                    {formatRevenueSmart(item.revenueEstimate)}
-          </div>
-        </div>
-                <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
-                  <div className="text-xs text-gray-500 dark:text-gray-300">Rev Act</div>
-                  <div className="font-semibold text-sm whitespace-nowrap text-gray-900 dark:text-white">
-                    {formatRevenueSmart(item.revenueActual)}
-          </div>
-        </div>
-                <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700 rounded">
-                  <div className="text-xs text-gray-500 dark:text-gray-300">Rev Surp</div>
-                  <div className={`font-semibold text-sm ${
-                    item.revenueActual && item.revenueEstimate ? getSurpriseColor(item.revenueActual, item.revenueEstimate) : 'text-gray-900 dark:text-white'
-                  }`}>
-                    {item.revenueActual && item.revenueEstimate ? getSurpriseText(item.revenueActual, item.revenueEstimate) : '-'}
-          </div>
-        </div>
-      </div>
+          <MobileCard key={item.ticker} item={item} index={index} />
+        ))}
     </div>
-          </div>
-            ))}
-          </div>
 
-      {/* Desktop Table */}
-      <div className="hidden sm:block overflow-x-auto -mx-3 sm:mx-0">
-        <div className="relative">
-          <table className="min-w-full divide-y divide-gray-200 table-fixed border border-gray-300">
-                <thead className="sticky top-0 z-10 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-300 dark:to-gray-400 border-b-2 border-blue-200 dark:border-gray-500">
-                  <tr>
-                  <th className="w-4 sm:w-5 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold text-blue-700 dark:text-gray-800 uppercase tracking-wider">
+    {/* Desktop Table */}
+    <div className="hidden sm:block overflow-x-auto -mx-3 sm:mx-0">
+      <div className="relative">
+        <table className="min-w-full divide-y divide-gray-200 table-fixed border border-gray-300">
+          <thead className="sticky top-0 z-10 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-300 dark:to-gray-400 border-b-2 border-blue-200 dark:border-gray-500">
+            <tr>
+              <th className="w-4 sm:w-5 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold text-blue-700 dark:text-gray-800 uppercase tracking-wider">
                 #
-                  </th>
-                  <th 
+              </th>
+              <th 
                 className={`w-32 sm:w-48 px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-300 ${
                   sortConfig.field === 'ticker' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
                 }`}
                 onClick={() => handleSort('ticker')}
-                  >
+              >
                 Ticker
-                  </th>
-                  <th 
+              </th>
+              <th 
                 className={`w-12 sm:w-16 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-300 ${
                   sortConfig.field === 'reportTime' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
                 }`}
                 onClick={() => handleSort('reportTime')}
-                  >
+              >
                 Time
-                  </th>
-                  <th 
+              </th>
+              <th 
                 className={`w-10 sm:w-12 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-300 ${
                   sortConfig.field === 'size' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
                 }`}
                 onClick={() => handleSort('size')}
-                  >
+              >
                 Size
-                  </th>
-                  <th 
+              </th>
+              <th 
                 className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-300 ${
                   sortConfig.field === 'marketCap' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
                 }`}
                 onClick={() => handleSort('marketCap')}
-                  >
+              >
                 Market Cap
-                  </th>
-                  <th 
+              </th>
+              <th 
                 className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-300 ${
                   sortConfig.field === 'marketCapDiff' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
                 }`}
                 onClick={() => handleSort('marketCapDiff')}
-                  >
+              >
                 Cap Diff
-                  </th>
-                  <th 
+              </th>
+              <th 
                 className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-300 ${
                   sortConfig.field === 'currentPrice' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
                 }`}
                 onClick={() => handleSort('currentPrice')}
-                  >
+              >
                 Price
-                  </th>
-                  <th 
+              </th>
+              <th 
                 className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-300 ${
                   sortConfig.field === 'priceChangePercent' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
                 }`}
                 onClick={() => handleSort('priceChangePercent')}
-                  >
+              >
                 Change
-                  </th>
-                  <th 
+              </th>
+              <th 
                 className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-300 ${
                   sortConfig.field === 'epsEstimate' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
                 }`}
                 onClick={() => handleSort('epsEstimate')}
-                  >
+              >
                 EPS Est
-                  </th>
-                  <th 
+              </th>
+              <th 
                 className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-300 ${
                   sortConfig.field === 'epsActual' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
                 }`}
                 onClick={() => handleSort('epsActual')}
-                  >
+              >
                 EPS Act
               </th>
               <th className="w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold text-blue-700 dark:text-gray-800 uppercase tracking-wider">
                 EPS Surp
-                  </th>
-                  <th 
+              </th>
+              <th 
                 className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-300 ${
                   sortConfig.field === 'revenueEstimate' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
                 }`}
                 onClick={() => handleSort('revenueEstimate')}
-                  >
+              >
                 Rev Est
-                  </th>
-                  <th 
+              </th>
+              <th 
                 className={`w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-400 hover:text-blue-800 dark:hover:text-gray-900 transition-all duration-300 ${
                   sortConfig.field === 'revenueActual' ? 'text-blue-900 dark:text-gray-900 bg-blue-100 dark:bg-gray-400' : 'text-blue-700 dark:text-gray-800'
                 }`}
                 onClick={() => handleSort('revenueActual')}
-                  >
+              >
                 Rev Act
-                  </th>
+              </th>
               <th className="w-20 sm:w-24 px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold text-blue-700 dark:text-gray-800 uppercase tracking-wider">
                 Rev Surp
-                  </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-200 divide-y divide-gray-200 dark:divide-gray-300">
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white dark:bg-gray-200 divide-y divide-gray-200 dark:divide-gray-300">
             {processedData.map((item, index) => (
               <tr key={item.ticker} className="hover:bg-gray-50 dark:hover:bg-gray-300 transition-colors duration-300 ease-in-out animate-fade-in" style={{ animationDelay: `${index * 30}ms` }}>
                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-500 dark:text-gray-400 text-center">
-                      {index + 1}
-                    </td>
+                  {index + 1}
+                </td>
                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-900">
                   <div className="flex flex-col">
                     <span className="font-semibold">{item.ticker}</span>
@@ -584,9 +470,16 @@ export default function EarningsTable({
                     </td>
                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-right">
                   {item.priceChangePercent !== null ? (
-                    <span className={item.priceChangePercent >= 0 ? 'text-green-600' : 'text-red-600'}>
-                      {item.priceChangePercent >= 0 ? '+' : ''}{item.priceChangePercent.toFixed(2)}%
-                    </span>
+                    <div className="flex flex-col items-end">
+                      <span className={item.priceChangePercent >= 0 ? 'text-green-600' : 'text-red-600'}>
+                        {item.priceChangePercent >= 0 ? '+' : ''}{item.priceChangePercent.toFixed(2)}%
+                      </span>
+                      {process.env.NODE_ENV === 'development' && item.debug && (
+                        <span className="text-xs text-gray-400 mt-1">
+                          curr={item.debug.currentPrice} prev={item.debug.previousClose}
+                        </span>
+                      )}
+                    </div>
                   ) : '—'}
                     </td>
                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 text-right">
@@ -616,18 +509,18 @@ export default function EarningsTable({
                   ) : '-'}
                     </td>
                   </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-      {/* Footer */}
-      <div className="bg-gray-50 dark:bg-gray-200 px-3 sm:px-6 py-2 sm:py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 sm:gap-0 text-xs sm:text-sm text-gray-500 dark:text-gray-700">
-        <span>Showing {processedData.length} of {data.length} companies</span>
-        <span>Last updated: {stats?.lastUpdated ? new Date(stats.lastUpdated).toLocaleString() : 'Loading...'}</span>
-          </div>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
+
+    {/* Footer */}
+    <div className="bg-gray-50 dark:bg-gray-200 px-3 sm:px-6 py-2 sm:py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 sm:gap-0 text-xs sm:text-sm text-gray-500 dark:text-gray-700">
+      <span>Showing {processedData.length} of {data.length} companies</span>
+      <span>Last updated: {stats?.lastUpdated ? new Date(stats.lastUpdated).toLocaleString() : 'Loading...'}</span>
+    </div>
+  </div>
   );
 }
 

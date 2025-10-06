@@ -29,6 +29,7 @@ export async function getLastTrade(ticker: string): Promise<{ price: number | nu
       params: { apiKey: POLY },
       timeout: 10000
     });
+    
     const p = data?.results?.p;
     const t = data?.results?.t;
     return (Number.isFinite(p) ? { price: Number(p), ts: Number(t) } : { price: null, ts: null });
@@ -49,6 +50,7 @@ export async function getOpenClose(ticker: string, ymd: string): Promise<{
       params: { apiKey: POLY, adjusted: true },
       timeout: 10000
     });
+    
     const getNum = (v: any) => (Number.isFinite(Number(v)) ? Number(v) : null);
     return {
       preMarket: getNum(data?.preMarket),
