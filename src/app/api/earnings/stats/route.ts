@@ -54,40 +54,53 @@ export async function GET(request: NextRequest) {
       topLosers,
       earningsWithActuals
     ] = await Promise.all([
-      // Total earnings count
-      prisma.earningsTickersToday.count({
-        where: { reportDate: actualDate }
-      }),
-      
-      // Count with EPS data
-      prisma.earningsTickersToday.count({
+      // Total earnings count - only tickers with market cap data
+      prisma.marketData.count({
         where: { 
           reportDate: actualDate,
-          epsActual: { not: null }
+          marketCap: { gt: 0 }
         }
       }),
       
-      // Count with revenue data
-      prisma.earningsTickersToday.count({
+      // Count with EPS data - only for tickers with market cap
+      prisma.marketData.count({
         where: { 
           reportDate: actualDate,
-          revenueActual: { not: null }
+          marketCap: { gt: 0 },
+          earningsTickersToday: {
+            epsActual: { not: null }
+          }
         }
       }),
       
-      // Size distribution - simplified approach
-      prisma.todayEarningsMovements.findMany({
-        where: { reportDate: actualDate },
+      // Count with revenue data - only for tickers with market cap
+      prisma.marketData.count({
+        where: { 
+          reportDate: actualDate,
+          marketCap: { gt: 0 },
+          earningsTickersToday: {
+            revenueActual: { not: null }
+          }
+        }
+      }),
+      
+      // Size distribution - from MarketData
+      prisma.marketData.findMany({
+        where: { 
+          reportDate: actualDate,
+          marketCap: { gt: 0 }
+        },
         select: {
           size: true,
           marketCap: true
         }
       }),
       
-      // Top gainers
-      prisma.todayEarningsMovements.findMany({
+      // Top gainers - from MarketData
+      prisma.marketData.findMany({
         where: { 
           reportDate: actualDate,
+          marketCap: { gt: 0 },
           priceChangePercent: { not: null }
         },
         orderBy: { priceChangePercent: 'desc' },
@@ -101,10 +114,11 @@ export async function GET(request: NextRequest) {
         }
       }),
       
-      // Top losers
-      prisma.todayEarningsMovements.findMany({
+      // Top losers - from MarketData
+      prisma.marketData.findMany({
         where: { 
           reportDate: actualDate,
+          marketCap: { gt: 0 },
           priceChangePercent: { not: null }
         },
         orderBy: { priceChangePercent: 'asc' },
@@ -118,19 +132,26 @@ export async function GET(request: NextRequest) {
         }
       }),
       
-      // All earnings with actual and estimate data
-      prisma.earningsTickersToday.findMany({
+      // All earnings with actual and estimate data - only for tickers with market cap
+      prisma.marketData.findMany({
         where: { 
           reportDate: actualDate,
-          epsActual: { not: null },
-          epsEstimate: { not: null }
+          marketCap: { gt: 0 },
+          earningsTickersToday: {
+            epsActual: { not: null },
+            epsEstimate: { not: null }
+          }
         },
         select: {
           ticker: true,
-          epsActual: true,
-          epsEstimate: true,
-          revenueActual: true,
-          revenueEstimate: true
+          earningsTickersToday: {
+            select: {
+              epsActual: true,
+              epsEstimate: true,
+              revenueActual: true,
+              revenueEstimate: true
+            }
+          }
         }
       })
     ]);
@@ -168,20 +189,28 @@ export async function GET(request: NextRequest) {
       marketCapDiffBillions: item.marketCapDiffBillions
     }));
 
-    // Calculate beat/miss data
-    const epsBeats = earningsWithActuals
+    // Calculate beat/miss data - flatten the nested structure
+    const flattenedEarnings = earningsWithActuals.map(item => ({
+      ticker: item.ticker,
+      epsActual: item.earningsTickersToday?.epsActual,
+      epsEstimate: item.earningsTickersToday?.epsEstimate,
+      revenueActual: item.earningsTickersToday?.revenueActual,
+      revenueEstimate: item.earningsTickersToday?.revenueEstimate
+    }));
+
+    const epsBeats = flattenedEarnings
       .filter(e => e.epsActual && e.epsEstimate && e.epsActual > e.epsEstimate)
       .sort((a, b) => (b.epsActual! - b.epsEstimate!) - (a.epsActual! - a.epsEstimate!));
     
-    const epsMisses = earningsWithActuals
+    const epsMisses = flattenedEarnings
       .filter(e => e.epsActual && e.epsEstimate && e.epsActual < e.epsEstimate)
       .sort((a, b) => (a.epsActual! - a.epsEstimate!) - (b.epsActual! - b.epsEstimate!));
     
-    const revenueBeats = earningsWithActuals
+    const revenueBeats = flattenedEarnings
       .filter(e => e.revenueActual && e.revenueEstimate && e.revenueActual > e.revenueEstimate)
       .sort((a, b) => Number(b.revenueActual! - b.revenueEstimate!) - Number(a.revenueActual! - a.revenueEstimate!));
     
-    const revenueMisses = earningsWithActuals
+    const revenueMisses = flattenedEarnings
       .filter(e => e.revenueActual && e.revenueEstimate && e.revenueActual < e.revenueEstimate)
       .sort((a, b) => Number(a.revenueActual! - a.revenueEstimate!) - Number(b.revenueActual! - b.revenueEstimate!));
 
@@ -191,7 +220,7 @@ export async function GET(request: NextRequest) {
       select: { updatedAt: true }
     });
     
-    const mostRecentMarket = await prisma.todayEarningsMovements.findFirst({
+    const mostRecentMarket = await prisma.marketData.findFirst({
       orderBy: { updatedAt: 'desc' },
       select: { updatedAt: true }
     });
@@ -205,8 +234,8 @@ export async function GET(request: NextRequest) {
       totalCompanies: totalEarnings,
       withEpsActual: withEps,
       withRevenueActual: withRevenue,
-      withBothActual: earningsWithActuals.filter(e => e.epsActual && e.revenueActual).length,
-      withoutAnyActual: totalEarnings - earningsWithActuals.length,
+      withBothActual: flattenedEarnings.filter(e => e.epsActual && e.revenueActual).length,
+      withoutAnyActual: totalEarnings - flattenedEarnings.length,
       lastUpdated: lastUpdated.toISOString(),
       // Fallback information
       requestedDate: today.toISOString().split('T')[0],
