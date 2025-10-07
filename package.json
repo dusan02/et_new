@@ -11,7 +11,7 @@
         "lint": "next lint",
         "lint:fix": "next lint --fix",
         "lint:jsx-return": "bash scripts/check-return-jsx.sh",
-        "diagnose": "bash scripts/diagnose-dev-prod-differences.sh",
+        "diagnose": "node quick-diagnose.js",
         "monitor": "bash scripts/monitor-zero-changes.sh",
         "test:calc-change": "jest src/__tests__/calc-change.test.ts",
         "db:generate": "prisma generate",
@@ -33,8 +33,7 @@
         "test:frontend": "jest src/__tests__/frontend.test.js",
         "test:integration": "jest src/__tests__/integration.test.js",
         "snapshot:create": "node scripts/shape-compare.js create",
-        "snapshot:compare": "node scripts/shape-compare.js compare",
-        "diagnose": "node quick-diagnose.js"
+        "snapshot:compare": "node scripts/shape-compare.js compare"
     },
     "dependencies": {
         "@prisma/client": "5.22.0",
@@ -46,7 +45,7 @@
         "date-fns": "^4.1.0",
         "date-fns-tz": "^3.2.0",
         "dotenv": "17.2.2",
-        "ioredis": "5.7.0",
+        "ioredis": "^5.7.0",
         "lru-cache": "10.2.0",
         "lucide-react": "0.294.0",
         "next": "15.0.0",

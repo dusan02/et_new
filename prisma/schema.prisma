@@ -30,6 +30,7 @@ model EarningsTickersToday {
   marketData      MarketData?
 
   @@id([reportDate, ticker])
+  @@unique([ticker, reportDate], name: "ticker_reportDate_unique")
   @@index([reportDate])
   @@index([reportDate, ticker])
   @@index([ticker])
@@ -92,6 +93,7 @@ model TodayEarningsMovements {
   reportTime            String?
 
   @@id([ticker, reportDate])
+  @@unique([ticker, reportDate], name: "movements_ticker_reportDate_unique")
   @@index([reportDate])
   @@index([reportDate, ticker])
   @@index([ticker])

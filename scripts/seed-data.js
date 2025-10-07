@@ -166,11 +166,33 @@ async function seedData() {
     // Clear existing data
     await prisma.earningsTickersToday.deleteMany({});
     await prisma.todayEarningsMovements.deleteMany({});
+    await prisma.marketData.deleteMany({});
 
     // Create movements first
     for (const movement of testMovements) {
       await prisma.todayEarningsMovements.create({
         data: movement,
+      });
+    }
+
+    // Create market data (API uses MarketData table)
+    for (const movement of testMovements) {
+      await prisma.marketData.create({
+        data: {
+          ticker: movement.ticker,
+          reportDate: movement.reportDate,
+          companyName: movement.companyName,
+          currentPrice: movement.currentPrice,
+          previousClose: movement.previousClose,
+          priceChangePercent: movement.priceChangePercent,
+          marketCap: Number(movement.marketCap), // Convert BigInt to Number
+          size: movement.size,
+          marketCapDiff: movement.marketCapDiff,
+          marketCapDiffBillions: movement.marketCapDiffBillions,
+          sharesOutstanding: Number(movement.sharesOutstanding), // Convert BigInt to Number
+          companyType: movement.companyType,
+          primaryExchange: movement.primaryExchange,
+        },
       });
     }
 

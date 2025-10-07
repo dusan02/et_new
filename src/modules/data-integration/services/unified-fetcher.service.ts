@@ -561,7 +561,8 @@ export class UnifiedDataFetcher {
     const reportDate = toReportDateUTC(date)
     
     // 1. Fetch earnings data from Finnhub
-    const earningsData = await this.fetchEarningsData(date)
+    const dateStr = format(date, 'yyyy-MM-dd')
+    const earningsData = await this.fetchEarningsData(dateStr)
     const earningsCount = Object.keys(earningsData).length
     
     console.log(`📊 [EARNINGS-ONLY] Found ${earningsCount} earnings records`)

@@ -1,18 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createJsonResponse, stringifyHeaders } from '@/lib/json-utils'
-import { clearCacheByPattern } from '@/lib/cache-wrapper'
+import { clearCache } from '@/lib/cache-utils'
 
 export async function POST(request: NextRequest) {
   try {
     console.log('[CACHE] Manual cache clear requested')
     
-    // Clear all earnings cache
-    const clearedCount = await clearCacheByPattern('earnings-*')
-    
-    // Also clear any market data cache if it exists
-    const marketClearedCount = await clearCacheByPattern('market-*')
-    
-    const totalCleared = clearedCount + marketClearedCount
+    // Clear all cache (cache-utils uses a single Map)
+    const totalCleared = clearCache()
     
     console.log(`[CACHE] Cleared ${totalCleared} cache entries`)
     

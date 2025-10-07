@@ -464,8 +464,6 @@ async function main() {
     } else {
       console.log('⚠️ Skipping daily reset check (SKIP_RESET_CHECK=true)')
     }
-      }
-    }
     
     // Použi nový UnifiedDataFetcher
     let result

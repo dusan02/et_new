@@ -3,7 +3,9 @@ const { spawn } = require("child_process");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, "../../.env") });
 
-console.log("🚀 Starting IMPROVED Earnings Queue Worker with GPT enhancements...");
+console.log(
+  "🚀 Starting IMPROVED Earnings Queue Worker with GPT enhancements..."
+);
 
 // Helper function to get NY time
 function getNYTime() {
@@ -115,7 +117,6 @@ async function runMainFetch() {
     });
 
     console.log("✅ Main fetch completed successfully!");
-
   } catch (error) {
     console.error("❌ Main fetch failed:", error);
   } finally {

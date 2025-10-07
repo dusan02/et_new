@@ -1,177 +1,180 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { getTodayStart, getNYTimeString, toReportDateUTC } from '@/modules/shared'
-import { createJsonResponse, stringifyHeaders } from '@/lib/json-utils'
-import { detectMarketSession } from '@/lib/market-session'
+import { NextRequest, NextResponse } from 'next/server';
+import { PrismaClient } from '@prisma/client';
+import { getBootState, getBootStateLastUpdated, isSystemReady } from '@/lib/boot-state';
+import { getTodayDate } from '@/lib/daily-reset-state';
+import { getCacheStats } from '@/lib/cache-version';
+import { isLocked } from '@/lib/redis-lock';
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+const prisma = new PrismaClient();
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const detailed = searchParams.get('detailed') === '1'
-  
   try {
-    const now = new Date()
-    const todayStart = getTodayStart()
+    const startTime = Date.now();
     
-    // Check database connection
-    let dbHealthy = false
+    // Get current time in NY timezone
+    const now = new Date();
+    const nyTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+    const today = getTodayDate();
+    
+    // Check database connectivity
+    let dbStatus = 'unknown';
+    let dbLatency = 0;
     try {
-      await prisma.$queryRaw`SELECT 1`
-      dbHealthy = true
+      const dbStart = Date.now();
+      await prisma.$queryRaw`SELECT 1`;
+      dbLatency = Date.now() - dbStart;
+      dbStatus = 'connected';
     } catch (error) {
-      console.error('Database health check failed:', error)
+      dbStatus = 'error';
+      console.error('❌ Database health check failed:', error);
     }
     
-    // Check earnings data for today
-    let earningsCount = 0
-    try {
-      earningsCount = await prisma.earningsTickersToday.count({
-        where: {
-          reportDate: {
-            gte: todayStart,
-            lt: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000),
-          },
-        },
-      })
-    } catch (error) {
-      console.error('Earnings count check failed:', error)
-    }
+    // Get boot state info
+    const bootState = getBootState();
+    const bootStateLastUpdated = getBootStateLastUpdated();
+    const systemReady = isSystemReady();
     
-    // Check market data for today
-    let marketDataCount = 0
-    try {
-      marketDataCount = await prisma.marketData.count()
-    } catch (error) {
-      console.error('Market data count check failed:', error)
-    }
+    // Check for active locks
+    const mainLockKey = `lock:bootstrap:${today.toISOString().slice(0, 10)}`;
+    const isMainLockActive = await isLocked(mainLockKey);
     
-    const isReady = earningsCount > 0 && marketDataCount > 0 && dbHealthy
+    // Get data counts
+    let earningsCount = 0;
+    let marketDataCount = 0;
+    let movementsCount = 0;
     
-    // Get market session
-    const marketSession = detectMarketSession(now, 'America/New_York')
-    
-    // Get commit info
-    const COMMIT = process.env.VERCEL_GIT_COMMIT_SHA || process.env.COMMIT_SHA || 'unknown'
-    const TZ = process.env.TZ || 'UTC'
-    
-    let dataQuality: any = {}
-    let dataStaleness: any = {}
-    
-    if (detailed) {
+    if (dbStatus === 'connected') {
       try {
-        // Check market data staleness using the new TodayEarningsMovements table
-        const today = toReportDateUTC(new Date())
-        const marketData = await prisma.todayEarningsMovements.findMany({
-          where: { reportDate: today },
-          select: { 
-            ticker: true,
-            currentPrice: true, 
-            previousClose: true,
-            updatedAt: true 
-          }
-        })
+        earningsCount = await prisma.earningsTickersToday.count({
+          where: { reportDate: today }
+        });
         
-        const now = Date.now()
-        const ages = marketData.map(r => now - new Date(r.updatedAt).getTime())
-        const maxAge = Math.max(...ages, 0)
-        const staleThreshold = 5 * 60 * 1000 // 5 minutes
-        const staleCount = ages.filter(age => age > staleThreshold).length
-        const staleRatio = marketData.length > 0 ? staleCount / marketData.length : 1
+        marketDataCount = await prisma.marketData.count({
+          where: { reportDate: today }
+        });
         
-        // Determine overall status
-        const isStale = maxAge > 2 * 60 * 1000 || staleRatio > 0.2 // 2 min max age or >20% stale
-        const status = isStale ? 'degraded' : 'ok'
-        
-        dataStaleness = {
-          status,
-          totalRecords: marketData.length,
-          maxAgeSec: Math.round(maxAge / 1000),
-          staleCount,
-          staleRatio: parseFloat(staleRatio.toFixed(3)),
-          staleThresholdSec: Math.round(staleThreshold / 1000)
-        }
-        
-        // Legacy data quality check
-        const totalTickers = marketData.length
-        const zeroChangeTickers = marketData.filter(
-          (d) => d.currentPrice !== null && d.previousClose !== null && d.currentPrice === d.previousClose
-        ).length
-        const ratioZeroChange = totalTickers > 0 ? zeroChangeTickers / totalTickers : 0
-        const isHealthy = ratioZeroChange < 0.7 // Threshold for unhealthy data
-        
-        dataQuality = {
-          totalTickers,
-          zeroChangeTickers,
-          ratioZeroChange: parseFloat(ratioZeroChange.toFixed(3)),
-          isHealthy,
-        }
+        movementsCount = await prisma.todayEarningsMovements.count({
+          where: { reportDate: today }
+        });
       } catch (error) {
-        console.error('Data quality/staleness check failed:', error)
-        dataQuality = { error: 'Failed to calculate data quality' }
-        dataStaleness = { error: 'Failed to calculate data staleness' }
+        console.error('❌ Failed to get data counts:', error);
       }
     }
     
-    // Get last fetch time from cron logs
-    let lastFetchAt: string | null = null
+    // Get cache stats
+    let cacheStats = null;
     try {
-      const lastCronLog = await prisma.cronRun.findFirst({ 
-        orderBy: { startedAt: 'desc' } 
-      })
-      lastFetchAt = lastCronLog?.startedAt?.toISOString() || null
+      cacheStats = await getCacheStats();
     } catch (error) {
-      console.error('Last fetch time check failed:', error)
+      console.error('❌ Failed to get cache stats:', error);
     }
     
-    const payload = {
-      status: isReady ? 'ok' : 'degraded',
-      ready: isReady,
-      timestamp: now.toISOString(),
-      marketSession,
-      commit: COMMIT,
-      tz: TZ,
-      uptime: process.uptime(),
-      checks: {
-        database: dbHealthy,
-        earnings: earningsCount > 0,
-        marketData: marketDataCount > 0,
-      },
-      signature: { routeId: 'health@v2' },
-      ...(earningsCount > 0 && { total: earningsCount }),
-      ...(detailed && { dataQuality, dataStaleness }),
-      ...(lastFetchAt && { lastFetchAt }),
-    }
-    
-    return new Response(JSON.stringify(payload), {
-      status: 200,
-      headers: {
-        'content-type': 'application/json',
-        'cache-control': 'no-store, no-cache, must-revalidate, max-age=0',
-        'pragma': 'no-cache',
-        'x-route-signature': 'health@v2',
-        ...(detailed && {
-          'x-build': COMMIT,
-          'x-env-tz': TZ,
-          'x-market-session': marketSession,
-        })
+    // Get recent cron runs
+    let recentCronRuns = [];
+    if (dbStatus === 'connected') {
+      try {
+        recentCronRuns = await prisma.cronRun.findMany({
+          take: 5,
+          orderBy: { startedAt: 'desc' },
+          select: {
+            name: true,
+            status: true,
+            startedAt: true,
+            finishedAt: true,
+            message: true
+          }
+        });
+      } catch (error) {
+        console.error('❌ Failed to get cron runs:', error);
       }
-    })
+    }
+    
+    const responseTime = Date.now() - startTime;
+    
+    const healthData = {
+      status: systemReady ? 'healthy' : 'initializing',
+      timestamp: now.toISOString(),
+      nyTime: nyTime.toISOString(),
+      responseTime: `${responseTime}ms`,
+      
+      system: {
+        ready: systemReady,
+        bootState,
+        bootStateLastUpdated: bootStateLastUpdated.toISOString(),
+        description: getBootStateDescription(bootState)
+      },
+      
+      database: {
+        status: dbStatus,
+        latency: `${dbLatency}ms`,
+        today: today.toISOString()
+      },
+      
+      data: {
+        earningsToday: earningsCount,
+        marketDataToday: marketDataCount,
+        movementsToday: movementsCount,
+        totalRecords: earningsCount + marketDataCount + movementsCount
+      },
+      
+      locks: {
+        mainBootstrapLock: isMainLockActive
+      },
+      
+      cache: cacheStats,
+      
+      cron: {
+        recentRuns: recentCronRuns
+      },
+      
+      environment: {
+        nodeEnv: process.env.NODE_ENV,
+        hasRedis: !!process.env.REDIS_URL,
+        hasFinnhub: !!process.env.FINNHUB_API_KEY,
+        hasPolygon: !!process.env.POLYGON_API_KEY
+      }
+    };
+    
+    // Return appropriate HTTP status
+    const httpStatus = systemReady ? 200 : 503;
+    
+    return NextResponse.json(healthData, { 
+      status: httpStatus,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
     
   } catch (error) {
-    console.error('Health check error:', error)
-    return createJsonResponse(
-      { 
-        status: 'error', 
-        message: (error as Error).message,
-        timestamp: new Date().toISOString()
-      }, 
-      { 
-        status: 500,
-        headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate' }
+    console.error('❌ Health check failed:', error);
+    
+    return NextResponse.json({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, { 
+      status: 500,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate'
       }
-    )
+    });
+  } finally {
+    await prisma.$disconnect();
   }
+}
+
+function getBootStateDescription(state: string): string {
+  const descriptions: Record<string, string> = {
+    "00_PENDING": "System starting up...",
+    "10_CALENDAR_READY": "Loading earnings calendar...",
+    "20_PREVCLOSE_READY": "Loading market data...",
+    "30_PREMARKET_READY": "Processing pre-market data...",
+    "40_METRICS_READY": "Calculating metrics...",
+    "50_CACHE_WARMED": "Warming up cache...",
+    "60_PUBLISHED": "System ready"
+  };
+  
+  return descriptions[state] || "Unknown state";
 }

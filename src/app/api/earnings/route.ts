@@ -182,34 +182,35 @@ export async function GET(request: NextRequest) {
     // Fetch combined earnings and market data with optimized JOIN query
     console.log(`[API] Fetching combined data from database with optimized JOIN...`)
     
-    // 🎯 OPTIMIZED: Use MarketData table to get only tickers with market cap
-    let combinedRows = await prisma.marketData.findMany({
+    // 🎯 OPTIMIZED: Use EarningsTickersToday as primary source, join with MarketData
+    let combinedRows = await prisma.earningsTickersToday.findMany({
       where: { 
-        reportDate: today,
-        marketCap: { gt: 0 } // Only tickers with market cap > 0
+        reportDate: today
       },
       select: {
         ticker: true,
-        currentPrice: true,
-        previousClose: true,
-        priceChangePercent: true,
-        marketCap: true,
-        size: true,
-        companyName: true,
+        reportTime: true,
+        epsActual: true,
+        epsEstimate: true,
+        revenueActual: true,
+        revenueEstimate: true,
+        sector: true,
+        dataSource: true,
+        fiscalPeriod: true,
+        fiscalYear: true,
         companyType: true,
         primaryExchange: true,
-        // Join with earnings data
-        earningsTickersToday: {
+        // Join with market data
+        marketData: {
           select: {
-            reportTime: true,
-            epsActual: true,
-            epsEstimate: true,
-            revenueActual: true,
-            revenueEstimate: true,
-            sector: true,
-            dataSource: true,
-            fiscalPeriod: true,
-            fiscalYear: true,
+            currentPrice: true,
+            previousClose: true,
+            priceChangePercent: true,
+            marketCap: true,
+            size: true,
+            companyName: true,
+            companyType: true,
+            primaryExchange: true,
           }
         }
       },
@@ -220,24 +221,24 @@ export async function GET(request: NextRequest) {
     // Flatten the joined data structure
     combinedRows = combinedRows.map(row => ({
       ticker: row.ticker,
-      reportTime: row.earningsTickersToday?.reportTime || null,
-      epsActual: row.earningsTickersToday?.epsActual || null,
-      epsEstimate: row.earningsTickersToday?.epsEstimate || null,
-      revenueActual: row.earningsTickersToday?.revenueActual || null,
-      revenueEstimate: row.earningsTickersToday?.revenueEstimate || null,
-      sector: row.earningsTickersToday?.sector || null,
-      companyType: row.companyType || row.earningsTickersToday?.companyType || null,
-      dataSource: row.earningsTickersToday?.dataSource || null,
-      fiscalPeriod: row.earningsTickersToday?.fiscalPeriod || null,
-      fiscalYear: row.earningsTickersToday?.fiscalYear || null,
-      primaryExchange: row.primaryExchange || row.earningsTickersToday?.primaryExchange || null,
-      // Add market data fields
-      currentPrice: row.currentPrice,
-      previousClose: row.previousClose,
-      priceChangePercent: row.priceChangePercent,
-      marketCap: row.marketCap,
-      size: row.size,
-      companyName: row.companyName,
+      reportTime: row.reportTime,
+      epsActual: row.epsActual,
+      epsEstimate: row.epsEstimate,
+      revenueActual: row.revenueActual,
+      revenueEstimate: row.revenueEstimate,
+      sector: row.sector,
+      companyType: row.companyType,
+      dataSource: row.dataSource,
+      fiscalPeriod: row.fiscalPeriod,
+      fiscalYear: row.fiscalYear,
+      primaryExchange: row.primaryExchange,
+      // Add market data fields (from joined marketData)
+      currentPrice: row.marketData?.currentPrice || null,
+      previousClose: row.marketData?.previousClose || null,
+      priceChangePercent: row.marketData?.priceChangePercent || null,
+      marketCap: row.marketData?.marketCap || null,
+      size: row.marketData?.size || null,
+      companyName: row.marketData?.companyName || row.ticker,
     }))
     
     // ✅ NO FALLBACK: If no data for today, return explicit no-data status
