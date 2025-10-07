@@ -254,15 +254,36 @@ function runOptimizedFetchWorkflow(description) {
       console.error(`❌ ${description} (earnings) failed, skipping market data fetch`);
     }
   });
-} (optimized workflow)...`);
+}
 
-  // Step 1: Fetch earnings only
-  console.log(`📊 Step 1: Fetching earnings data...`);
-  const earningsScript = path.join(
-    __dirname,
-    "../jobs",
-    "fetch-earnings-only.ts"
+// Helper function to clear cache after successful fetch
+function clearCacheAfterFetch(description) {
+  console.log(`🧹 Running ${description}...`);
+  const child = spawn(
+    "curl",
+    ["-X", "POST", "http://localhost:3000/api/earnings/clear-cache"],
+    { shell: true }
   );
+
+  child.stdout.on("data", (data) => {
+    console.log(`🧹 ${description} output: ${data}`);
+  });
+
+  child.stderr.on("data", (data) => {
+    console.error(`❌ ${description} error: ${data}`);
+  });
+
+  child.on("close", (code) => {
+    console.log(`✅ ${description} completed with code ${code}`);
+  });
+}
+
+// Optimized two-step workflow: earnings first, then market data
+function runOptimizedFetchWorkflow(description) {
+  console.log(`🔄 Running ${description}...`);
+
+  // Step 1: Fetch earnings data first
+  const earningsScript = path.join(__dirname, "../jobs", "fetch-earnings-only.ts");
   const earningsChild = spawn("npx", ["tsx", earningsScript], {
     cwd: path.join(__dirname, "../.."),
     env: {
