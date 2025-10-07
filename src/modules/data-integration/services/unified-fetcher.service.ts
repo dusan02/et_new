@@ -743,5 +743,7 @@ export class UnifiedDataFetcher {
   }
 }
 
-export { UnifiedFetcherService }import { clearCacheByPattern } from '@/lib/cache-wrapper'
+export { UnifiedFetcherService };
+
+import { clearCacheByPattern } from '@/lib/cache-wrapper';
 
