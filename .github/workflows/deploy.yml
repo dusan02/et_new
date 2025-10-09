@@ -100,18 +100,21 @@ jobs:
 
             # Stop any existing processes
             echo "🛑 Stopping existing processes..."
-            pkill -f "npm start" || echo "No existing npm start processes found"
-            pkill -f "node.*next" || echo "No existing Next.js processes found"
-            sleep 2
+            pkill -f "npm start" 2>/dev/null || echo "No existing npm start processes found"
+            pkill -f "node.*next" 2>/dev/null || echo "No existing Next.js processes found"
+            echo "Processes stopped, waiting 3 seconds..."
+            sleep 3
 
             # Start the application
             echo "▶️ Starting application..."
             echo "Current working directory: $(pwd)"
             echo "Checking if .next directory exists: $(ls -la .next 2>/dev/null || echo 'No .next directory')"
             
+            echo "Starting npm start command..."
             nohup npm start > /var/log/earnings-table.log 2>&1 &
             APP_PID=$!
             echo "Application started with PID: $APP_PID"
+            echo "Checking if PID is valid: $APP_PID"
             
             # Wait a bit longer for startup
             echo "Waiting 10 seconds for application to start..."
