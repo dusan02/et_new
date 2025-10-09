@@ -86,7 +86,7 @@ export function EarningsStats({ stats }: EarningsStatsProps) {
   const formatMarketCap = (value: number | bigint) => {
     const numValue = typeof value === 'bigint' ? Number(value) : value;
     const billions = numValue / 1e9;
-    return `${billions.toFixed(0)}B`;
+    return `${billions.toFixed(0)} B`;
   };
 
   const formatPercentage = (value: number | null) => {
@@ -98,9 +98,9 @@ export function EarningsStats({ stats }: EarningsStatsProps) {
     if (value === null || value === undefined) return '-';
     
     // Handle zero case  
-    if (value === 0) return '0.0B';
+    if (value === 0) return '0.0 B';
     
-    return `${value > 0 ? '+' : ''}${value.toFixed(1)}B`;
+    return `${value > 0 ? '+' : ''}${value.toFixed(1)} B`;
   };
 
   // Get best performers
@@ -120,7 +120,7 @@ export function EarningsStats({ stats }: EarningsStatsProps) {
 
   // Utility functions
   const fmtPct = (v?: number) => (v == null ? "—" : `${v > 0 ? "+" : ""}${v.toFixed(2)}%`);
-  const fmtBill = (v?: number) => (v == null ? "—" : `${v > 0 ? "+" : ""}${v.toFixed(1)}B`);
+  const fmtBill = (v?: number) => (v == null ? "—" : `${v > 0 ? "+" : ""}${v.toFixed(1)} B`);
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12 gap-4 sm:gap-5 md:gap-6 lg:gap-8 mb-8 sm:mb-10 md:mb-12">
@@ -128,7 +128,7 @@ export function EarningsStats({ stats }: EarningsStatsProps) {
       <StatCard title="LARGE+" main={largePlusCount ?? "—"} sub={formatMarketCap(largePlusCap)} variant="blue" onClick={() => trackCardClick('large_cap')} />
       <StatCard title="MID" main={midCount ?? "—"} sub={formatMarketCap(midCap)} variant="blue" onClick={() => trackCardClick('mid_cap')} />
       <StatCard title="SMALL" main={smallCount ?? "—"} sub={formatMarketCap(smallCap)} variant="blue" onClick={() => trackCardClick('small_cap')} />
-      <StatCard title="TOTAL" main={stats.totalEarnings ?? "—"} sub={`${(totalMarketCap / 1e9).toFixed(0)}B`} variant="blue" onClick={() => trackCardClick('total_earnings')} />
+      <StatCard title="TOTAL" main={stats.totalEarnings ?? "—"} sub={`${(totalMarketCap / 1e9).toFixed(0)} B`} variant="blue" onClick={() => trackCardClick('total_earnings')} />
 
       {/* GREEN — Winners */}
       <StatCard title="PRICE" main={topPriceGainer?.ticker ?? "—"} sub={fmtPct(topPriceGainer?.priceChangePercent)} variant="green" onClick={() => trackCardClick('top_price_gainer')} />

@@ -139,8 +139,16 @@ export async function GET(request: NextRequest) {
           reportDate: actualDate,
           marketCap: { gt: 0 },
           earningsTickersToday: {
-            epsActual: { not: null },
-            epsEstimate: { not: null }
+            OR: [
+              {
+                epsActual: { not: null },
+                epsEstimate: { not: null }
+              },
+              {
+                revenueActual: { not: null },
+                revenueEstimate: { not: null }
+              }
+            ]
           }
         },
         select: {
