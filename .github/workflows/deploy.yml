@@ -107,12 +107,19 @@ jobs:
             # Start the application
             echo "▶️ Starting application..."
             nohup npm start > /var/log/earnings-table.log 2>&1 &
-            echo "Application started in background"
+            APP_PID=$!
+            echo "Application started with PID: $APP_PID"
 
             # Wait and check if process is running
             sleep 5
             echo "🔍 Checking if application is running..."
-            ps aux | grep -E "(npm|node|next)" | grep -v grep || echo "No application processes found"
+            if ps -p $APP_PID > /dev/null; then
+                echo "✅ Application process is running (PID: $APP_PID)"
+            else
+                echo "❌ Application process died, checking logs..."
+                tail -20 /var/log/earnings-table.log || echo "No log file found"
+                exit 1
+            fi
 
             # Quick health check
             echo "🏥 Health check..."
