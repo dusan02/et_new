@@ -1,204 +1,118 @@
-/**
- * 📊 REFACTORED EARNINGS TABLE
- * Modulárny a optimalizovaný earnings table komponent
- */
+'use client';
 
-import { useState, useMemo, useCallback, memo, useRef } from 'react';
-import { RefreshCw } from 'lucide-react';
-import { useVirtualizer } from '@tanstack/react-virtual';
-import { LoadingSpinner } from '../ui/LoadingSpinner';
-import { SkeletonTable } from '../ui/SkeletonCard';
-import { EarningsHeader } from './EarningsHeader';
-import { EarningsRow } from './EarningsRow';
-import { EarningsFilters } from './EarningsFilters';
-import { EarningsStats } from './EarningsStats';
-import { useEarningsData } from './hooks/useEarningsData';
-import { 
-  SortConfig, 
-  FilterConfig, 
-  TableColumn 
-} from './types';
-import { filterData, sortData } from './utils';
+import { useState, useMemo } from 'react';
+import { EarningsTableHeader } from './EarningsTableHeader';
+import { EarningsTableBody } from './EarningsTableBody';
+import { EarningsTableProps } from './types';
 
-const TABLE_COLUMNS: TableColumn[] = [
-  { key: 'index', label: '#', sortable: false, width: '60px' },
-  { key: 'ticker', label: 'Ticker', sortable: true, width: '200px' },
-  { key: 'reportTime', label: 'Time', sortable: true, width: '120px' },
-  { key: 'size', label: 'Size', sortable: true, width: '100px' },
-  { key: 'marketCap', label: 'Market Cap', sortable: true, width: '120px' },
-  { key: 'marketCapDiff', label: 'Cap Diff', sortable: true, width: '120px' },
-  { key: 'currentPrice', label: 'Price', sortable: true, width: '100px' },
-  { key: 'priceChangePercent', label: 'Change', sortable: true, width: '100px' },
-  { key: 'epsEstimate', label: 'EPS Est', sortable: true, width: '100px' },
-  { key: 'epsActual', label: 'EPS Act', sortable: true, width: '100px' },
-  { key: 'epsSurprise', label: 'EPS Surp', sortable: false, width: '100px' },
-  { key: 'revenueEstimate', label: 'Rev Est', sortable: true, width: '120px' },
-  { key: 'revenueActual', label: 'Rev Act', sortable: true, width: '120px' },
-  { key: 'revenueSurprise', label: 'Rev Surp', sortable: false, width: '100px' },
-];
+export function EarningsTableRefactored({
+  data,
+  stats,
+  isLoading,
+  error,
+  lastUpdated
+}: EarningsTableProps) {
+  const [sortColumn, setSortColumn] = useState<string>('marketCap');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
-export const EarningsTableRefactored = memo(function EarningsTableRefactored() {
-  const {
-    data,
-    stats,
-    isLoading,
-    error,
-    processedData,
-    sortConfig,
-    filterConfig,
-    setSortConfig,
-    setFilterConfig,
-    refresh
-  } = useEarningsData();
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('desc');
+    }
+  };
 
-  // Virtualization setup
-  const parentRef = useRef<HTMLDivElement>(null);
-  const virtualizer = useVirtualizer({
-    count: processedData.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 60, // Estimated row height
-    overscan: 10
-  });
+  const sortedData = useMemo(() => {
+    if (!data || data.length === 0) return data;
 
-  // Event handlers
-  const handleSort = useCallback((field: string) => {
-    setSortConfig((prev: SortConfig) => ({
-      field: field as any,
-      direction: prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc'
-    }));
-  }, [setSortConfig]);
+    // Filter data based on search term
+    let filteredData = data;
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase();
+      filteredData = data.filter(item => 
+        item.ticker.toLowerCase().includes(searchLower) ||
+        (item.companyName && item.companyName.toLowerCase().includes(searchLower))
+      );
+    }
 
-  const handleFilterChange = useCallback((newFilterConfig: FilterConfig) => {
-    setFilterConfig(newFilterConfig);
-  }, [setFilterConfig]);
+    // Helper function to check if value is null/undefined/empty
+    const isNullValue = (value: any) => {
+      return value === null || value === undefined || value === '' || value === 0;
+    };
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">
-              {stats.totalCompanies} companies reporting earnings today
-            </h2>
-            <button
-              onClick={refresh}
-              disabled
-              className="flex items-center gap-2 px-4 py-2 text-sm text-gray-500 bg-gray-100 rounded-lg cursor-not-allowed"
-            >
-              <RefreshCw className="w-4 h-4 animate-spin" />
-              Refreshing...
-            </button>
-          </div>
-          <SkeletonTable />
-        </div>
-      </div>
-    );
-  }
+    // Helper function to get numeric value or null
+    const getNumericValue = (value: any) => {
+      if (isNullValue(value)) return null;
+      const num = Number(value);
+      return isNaN(num) ? null : num;
+    };
 
-  // Error state
-  if (error) {
-    return (
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6">
-          <div className="text-center">
-            <div className="text-red-600 text-lg font-semibold mb-2">
-              Error loading data
-            </div>
-            <div className="text-gray-600 mb-4">{error}</div>
-            <button
-              onClick={refresh}
-              className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 mx-auto"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Try Again
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+    return [...filteredData].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortColumn) {
+        case 'company':
+          aValue = a.ticker.toLowerCase();
+          bValue = b.ticker.toLowerCase();
+          break;
+        case 'marketCap':
+          aValue = getNumericValue(a.marketCap);
+          bValue = getNumericValue(b.marketCap);
+          break;
+        case 'price':
+          aValue = getNumericValue(a.currentPrice);
+          bValue = getNumericValue(b.currentPrice);
+          break;
+        case 'time':
+          aValue = a.reportTime || '';
+          bValue = b.reportTime || '';
+          break;
+        case 'eps':
+          // Sort by EPS estimate (ignore null values)
+          aValue = getNumericValue(a.epsEstimate);
+          bValue = getNumericValue(b.epsEstimate);
+          break;
+        case 'revenue':
+          // Sort by Revenue estimate (ignore null values)
+          aValue = getNumericValue(a.revenueEstimate);
+          bValue = getNumericValue(b.revenueEstimate);
+          break;
+        default:
+          return 0;
+      }
+
+      // Handle null values - put them at the end
+      if (aValue === null && bValue === null) return 0;
+      if (aValue === null) return 1; // null values go to end
+      if (bValue === null) return -1; // null values go to end
+
+      // Normal comparison for non-null values
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [data, sortColumn, sortDirection, searchTerm]);
 
   return (
-    <div className="bg-white rounded-lg shadow">
-      {/* Header */}
-      <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-gray-900">
-            {stats.totalCompanies} companies reporting earnings today
-          </h2>
-          <button
-            onClick={refresh}
-            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Refresh
-          </button>
-        </div>
-        
-        <EarningsStats stats={stats} isLoading={false} />
-      </div>
-
-      {/* Filters */}
-      <EarningsFilters
-        filterConfig={filterConfig}
-        onFilterChange={handleFilterChange}
-        stats={stats}
-        data={data}
+    <div className="space-y-6">
+      <EarningsTableHeader 
+        lastUpdated={lastUpdated}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
       />
-
-      {/* Table */}
-      <div className="overflow-hidden">
-        <div
-          ref={parentRef}
-          className="h-96 overflow-auto"
-        >
-          <table className="min-w-full divide-y divide-gray-200">
-            <EarningsHeader
-              columns={TABLE_COLUMNS}
-              sortConfig={sortConfig}
-              onSort={handleSort}
-            />
-            <tbody className="bg-white divide-y divide-gray-200">
-              {virtualizer.getVirtualItems().map((virtualItem) => {
-                const item = processedData[virtualItem.index];
-                return (
-                  <EarningsRow
-                    key={item.ticker}
-                    data={item}
-                    index={virtualItem.index}
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      height: `${virtualItem.size}px`,
-                      transform: `translateY(${virtualItem.start}px)`,
-                    }}
-                  />
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-        <div className="flex items-center justify-between text-sm text-gray-600">
-          <div>
-            Showing {processedData.length} of {data.length} companies
-            {filterConfig.searchTerm && (
-              <span className="ml-2 text-blue-600">
-                (filtered by "{filterConfig.searchTerm}")
-              </span>
-            )}
-          </div>
-          <div>
-            Last updated: {new Date(stats.lastUpdated).toLocaleString()}
-          </div>
-        </div>
-      </div>
+      
+      <EarningsTableBody 
+        data={sortedData}
+        isLoading={isLoading}
+        error={error}
+        sortColumn={sortColumn}
+        sortDirection={sortDirection}
+        onSort={handleSort}
+      />
     </div>
   );
-});
+}

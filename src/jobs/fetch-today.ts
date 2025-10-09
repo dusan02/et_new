@@ -391,7 +391,7 @@ async function upsertMarketData(marketData: Record<string, any>, reportDate: Dat
       console.log('[UPSERT] %s | current=%s prev=%s todaysChangePerc=%s -> priceChangePercent=%s',
         data.ticker, data.currentPrice, data.previousClose, data.todaysChangePerc, priceChangePercent);
 
-      await prisma.todayEarningsMovements.upsert({
+      await prisma.marketData.upsert({
         where: {
           ticker_reportDate: {
             ticker,
@@ -404,10 +404,10 @@ async function upsertMarketData(marketData: Record<string, any>, reportDate: Dat
           priceChangePercent: priceChangePercent,
           companyName: data.companyName,
           size: data.size,
-          marketCap: data.marketCap ? BigInt(Math.round(data.marketCap)) : null,
+          marketCap: data.marketCap ? Number(data.marketCap) : null,
           marketCapDiff: data.marketCapDiff,
           marketCapDiffBillions: data.marketCapDiffBillions,
-          sharesOutstanding: data.sharesOutstanding,
+          sharesOutstanding: data.sharesOutstanding ? Number(data.sharesOutstanding) : null,
           companyType: data.companyType,
           primaryExchange: data.primaryExchange,
           updatedAt: new Date(),
@@ -420,10 +420,10 @@ async function upsertMarketData(marketData: Record<string, any>, reportDate: Dat
           priceChangePercent: priceChangePercent,
           companyName: data.companyName,
           size: data.size,
-          marketCap: data.marketCap ? BigInt(Math.round(data.marketCap)) : null,
+          marketCap: data.marketCap ? Number(data.marketCap) : null,
           marketCapDiff: data.marketCapDiff,
           marketCapDiffBillions: data.marketCapDiffBillions,
-          sharesOutstanding: data.sharesOutstanding,
+          sharesOutstanding: data.sharesOutstanding ? Number(data.sharesOutstanding) : null,
           companyType: data.companyType,
           primaryExchange: data.primaryExchange,
         },

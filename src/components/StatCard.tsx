@@ -71,7 +71,7 @@ export default function StatCard({
           {title}
         </div>
         <div className={clsx(
-          "text-sm sm:text-base font-bold leading-tight tabular-nums flex items-center justify-center",
+          "text-xs sm:text-sm font-bold leading-tight tabular-nums flex items-center justify-center",
           variant === "blue" ? "text-blue-900 dark:text-blue-100" : "",
           variant === "green" ? "text-emerald-900 dark:text-emerald-100" : "",
           variant === "red" ? "text-red-900 dark:text-red-100" : ""

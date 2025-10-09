@@ -324,8 +324,8 @@ export class UnifiedDataFetcher {
       )
 
       const prevClose = prevData?.results?.[0]?.c
-      if (!prevClose) {
-        throw new Error(`No previous close data for ${ticker}`)
+      if (!prevClose || prevClose <= 0) {
+        throw new Error(`No valid previous close data for ${ticker} (value: ${prevClose})`)
       }
 
       // 2. Získaj current price (s fallback na snapshot)
@@ -367,10 +367,12 @@ export class UnifiedDataFetcher {
         todaysChangePerc = snapshotData?.ticker?.todaysChangePerc || null
       } catch (error) {
         console.warn(`Failed to fetch snapshot for ${ticker}, using prev close:`, (error as Error).message)
+        // Continue with prevClose as current price - don't fail the entire ticker
       }
 
-      // 3. Získaj company name
+      // 3. Získaj company name a sector
       let companyName = ticker
+      let sector = null
       try {
         const { data: profileData } = await retryWithBackoff(
           () => axios.get(
@@ -380,8 +382,10 @@ export class UnifiedDataFetcher {
           { maxRetries: 2, baseDelay: 1000, maxDelay: 5000 }
         )
         companyName = profileData?.results?.name || ticker
+        sector = profileData?.results?.sic_description || null
       } catch (error) {
-        console.warn(`Failed to fetch company name for ${ticker}:`, error)
+        console.warn(`Failed to fetch company name and sector for ${ticker}:`, error)
+        // Continue with ticker as company name - don't fail the entire ticker
       }
 
       // 4. Získaj shares outstanding
@@ -397,6 +401,7 @@ export class UnifiedDataFetcher {
         sharesOutstanding = profileData?.results?.share_class_shares_outstanding || null
       } catch (error) {
         console.warn(`Failed to fetch shares outstanding for ${ticker}:`, error)
+        // Continue without shares outstanding - don't fail the entire ticker
       }
 
       // 5. Vypočítaj price change percent s premarket logikou
@@ -504,6 +509,7 @@ export class UnifiedDataFetcher {
         previousClose: prevClose,
         priceChangePercent: finalPriceChangePercent,
         companyName: companyName || ticker,
+        sector,
         size,
         marketCap: calculationResult.marketCap,
         marketCapDiff: calculationResult.marketCapDiff,
@@ -731,9 +737,9 @@ export class UnifiedDataFetcher {
       const hasSharesOutstanding = data.sharesOutstanding && data.sharesOutstanding > 0
       const hasCurrentPrice = data.currentPrice && data.currentPrice > 0
       
-      // Skip if no market cap data (small companies)
-      if (!hasMarketCap && !(hasSharesOutstanding && hasCurrentPrice)) {
-        console.log(`[FILTER:SKIP] ${ticker}: No market cap data (cap=${data.marketCap}, shares=${data.sharesOutstanding}, price=${data.currentPrice}) - skipping small company`)
+      // Skip only if we have no useful data at all (no price, no market cap, no shares)
+      if (!hasCurrentPrice && !hasMarketCap && !hasSharesOutstanding) {
+        console.log(`[FILTER:SKIP] ${ticker}: No useful data (cap=${data.marketCap}, shares=${data.sharesOutstanding}, price=${data.currentPrice}) - skipping`)
         continue
       }
 

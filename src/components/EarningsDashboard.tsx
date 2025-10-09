@@ -5,8 +5,10 @@ import { LoadingSpinner } from './ui/LoadingSpinner';
 import { ErrorMessage } from './ui/ErrorMessage';
 import { Header } from './Header';
 import { Footer } from './Footer';
-import EarningsTable from './EarningsTable';
+import { EarningsTableRefactored } from './earnings/EarningsTableRefactored';
 import { EarningsStats } from './EarningsStats';
+import { ErrorBoundary } from './ErrorBoundary';
+import { useEarningsData } from '../hooks/useEarningsData';
 
 interface EarningsData {
   ticker: string;
@@ -105,55 +107,21 @@ interface EarningsStats {
 }
 
 export function EarningsDashboard() {
-  const [earningsData, setEarningsData] = useState<EarningsData[]>([]);
-  const [stats, setStats] = useState<EarningsStats | null>(null);
-  const [meta, setMeta] = useState<EarningsMeta | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isClient, setIsClient] = useState(false);
-
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const [earningsResponse, statsResponse] = await Promise.all([
-        fetch('/api/earnings'),
-        fetch('/api/earnings/stats'),
-      ]);
-
-      if (!earningsResponse.ok || !statsResponse.ok) {
-        throw new Error('Failed to fetch data');
-      }
-
-      const earningsResult = await earningsResponse.json();
-      const statsResult = await statsResponse.json();
-
-      // Store meta information
-      if (earningsResult.meta) {
-        setMeta(earningsResult.meta);
-      }
-
-      if (earningsResult.data) {
-        setEarningsData(earningsResult.data);
-      }
-
-      if (statsResult.success) {
-        setStats(statsResult.data);
-      }
-
-      setLastUpdated(new Date());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  
+  // Use optimized data fetching hook
+  const {
+    earningsData,
+    stats,
+    meta,
+    lastUpdated,
+    isLoading,
+    error,
+    refresh
+  } = useEarningsData();
 
   useEffect(() => {
     setIsClient(true);
-    fetchData();
   }, []);
 
   // Prevent hydration mismatch by showing consistent content on server and client
@@ -179,7 +147,7 @@ export function EarningsDashboard() {
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <ErrorMessage message={error} onRetry={fetchData} />
+        <ErrorMessage message={error} onRetry={refresh} />
       </div>
     );
   }
@@ -190,6 +158,7 @@ export function EarningsDashboard() {
       <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
         <Header 
           lastUpdated={lastUpdated}
+          stats={stats}
         />
         
         <main className="flex-1 flex items-center justify-center py-8" role="main" aria-label="Earnings dashboard main content">
@@ -215,6 +184,7 @@ export function EarningsDashboard() {
       <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
         <Header 
           lastUpdated={lastUpdated}
+          stats={stats}
         />
         
         <main className="flex-1 flex items-center justify-center py-8" role="main" aria-label="Earnings dashboard main content">
@@ -251,28 +221,35 @@ export function EarningsDashboard() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
-      <Header 
-        lastUpdated={lastUpdated}
-      />
-      
-      <main className="flex-1 py-8" role="main" aria-label="Earnings dashboard main content">
-        <section className="container mx-auto px-4 max-w-7xl" aria-label="Earnings data and statistics">
-          {stats && <EarningsStats stats={stats} />}
-          <div className="px-0">
-            <EarningsTable
-              data={earningsData}
-              stats={stats}
-              isLoading={isLoading}
-              error={error}
-              onRefresh={fetchData}
-            />
-          </div>
-        </section>
-      </main>
-      
-      <Footer />
-    </div>
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        console.error('EarningsDashboard Error:', error, errorInfo);
+        // TODO: Send to error tracking service
+      }}
+    >
+      <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
+        <Header 
+          lastUpdated={lastUpdated}
+          stats={stats}
+        />
+        
+        <main className="flex-1 py-8" role="main" aria-label="Earnings dashboard main content">
+          <section className="w-3/5 mx-auto px-4" aria-label="Earnings data and statistics">
+            <div className="px-0">
+              <EarningsTableRefactored
+                data={earningsData}
+                stats={stats}
+                isLoading={isLoading}
+                error={error}
+                lastUpdated={lastUpdated}
+              />
+            </div>
+          </section>
+        </main>
+        
+        <Footer />
+      </div>
+    </ErrorBoundary>
   );
 }
 

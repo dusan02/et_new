@@ -3,13 +3,58 @@
 import { Clock, RefreshCw } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { ThemeToggle } from './ui/ThemeToggle';
+import { CardsToggle } from './ui/CardsToggle';
+import { EarningsStats } from './EarningsStats';
 
 interface HeaderProps {
   lastUpdated: Date | null;
+  stats?: {
+    totalEarnings: number;
+    withEps: number;
+    withRevenue: number;
+    sizeDistribution: Array<{
+      size: string;
+      _count: { size: number };
+      _sum: { marketCap: bigint | null };
+    }>;
+    topGainers: Array<{
+      ticker: string;
+      companyName: string;
+      priceChangePercent: number;
+      marketCapDiffBillions: number;
+    }>;
+    topLosers: Array<{
+      ticker: string;
+      companyName: string;
+      priceChangePercent: number;
+      marketCapDiffBillions: number;
+    }>;
+    epsBeat: {
+      ticker: string;
+      epsActual: number;
+      epsEstimate: number;
+    } | null;
+    revenueBeat: {
+      ticker: string;
+      revenueActual: bigint;
+      revenueEstimate: bigint;
+    } | null;
+    epsMiss: {
+      ticker: string;
+      epsActual: number;
+      epsEstimate: number;
+    } | null;
+    revenueMiss: {
+      ticker: string;
+      revenueActual: bigint;
+      revenueEstimate: bigint;
+    } | null;
+  };
 }
 
-export function Header({ lastUpdated }: HeaderProps) {
+export function Header({ lastUpdated, stats }: HeaderProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [showCards, setShowCards] = useState(true);
 
   // Update date every minute
   useEffect(() => {
@@ -43,14 +88,9 @@ export function Header({ lastUpdated }: HeaderProps) {
         backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%236366f1' fill-opacity='0.03'%3E%3Ccircle cx='20' cy='20' r='1'/%3E%3C/g%3E%3C/svg%3E")`
       }}></div>
       
-      {/* Subtle Background Elements */}
-      <div className="absolute top-0 left-0 w-full h-full">
-        <div className="absolute top-10 left-8 w-20 h-20 bg-blue-100/40 rounded-full blur-2xl"></div>
-        <div className="absolute top-20 right-12 w-16 h-16 bg-indigo-100/40 rounded-full blur-xl"></div>
-        <div className="absolute bottom-10 left-1/4 w-24 h-24 bg-slate-100/40 rounded-full blur-2xl"></div>
-      </div>
+      {/* Subtle Background Elements - removed white balls */}
 
-      <div className="relative container mx-auto px-3 sm:px-4 py-4 sm:py-6 md:py-8 max-w-7xl">
+      <div className="relative w-3/5 mx-auto px-3 sm:px-4 py-4 sm:py-6 md:py-8">
         <div className="text-center">
           {/* Main Title */}
           <div className="mb-4">
@@ -90,14 +130,26 @@ export function Header({ lastUpdated }: HeaderProps) {
               <span className="text-xs sm:text-sm font-medium text-green-700 dark:text-green-300">Autorefresh</span>
             </div>
             <ThemeToggle />
+            <CardsToggle onToggle={setShowCards} />
             </div>
           </div>
 
           {/* Subtitle */}
-          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 max-w-xl mx-auto leading-relaxed px-2">
+          <p className="text-sm text-gray-600 dark:text-gray-400 max-w-xl mx-auto leading-relaxed px-2">
             Real-time earnings data with live market updates, EPS surprises, and revenue beats
           </p>
         </div>
+
+        {/* Stats Cards */}
+        {stats && (
+          <div className={`mt-8 overflow-hidden transition-all duration-500 ease-in-out ${
+            showCards 
+              ? 'max-h-[500px] opacity-100' 
+              : 'max-h-0 opacity-0'
+          }`}>
+            <EarningsStats stats={stats} />
+          </div>
+        )}
       </div>
     </header>
   );

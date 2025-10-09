@@ -8,6 +8,7 @@ import { getMonitoring } from '@/lib/monitoring'
 import { loadEnvironmentConfig } from '../../../modules/shared/config/env.config'
 import { createJsonResponse, stringifyHeaders } from '@/lib/json-utils'
 import { detectMarketSession, getTTLForSession, type MarketSession } from '@/lib/market-session'
+import { ApiResponseBuilder } from '@/lib/api-response-builder'
 // 🚫 GUIDANCE DISABLED FOR PRODUCTION - Import commented out
 // import { 
 //   isGuidanceCompatible, 
@@ -81,12 +82,9 @@ export async function GET(request: NextRequest) {
         })
       }
       
-      return NextResponse.json(
-        { 
-          error: 'Invalid request parameters',
-          details: validation.error.details
-        },
-        { status: 400 }
+      return ApiResponseBuilder.validationError(
+        validation.error.details.map(d => d.message),
+        { endpoint: '/api/earnings' }
       )
     }
     
@@ -144,37 +142,35 @@ export async function GET(request: NextRequest) {
       }
     } : {}
 
-    const payload = {
-      status: cachedData.length > 0 ? 'ok' : 'no-data',
-      data: cachedData,
-      meta: {
+    const response = ApiResponseBuilder.cached(
+      cachedData,
+      cacheAge,
+      {
         total: cachedData.length,
         ready: true, // Data is ready if we have cache
         duration: `${Date.now() - startTime}ms`,
         date: todayString,
         requestedDate: todayString,
         fallbackUsed: false,
-        cached: true,
-        cacheAge: cacheAge,
         ...debugInfo
       }
+    )
+
+    // Add cache headers
+    response.headers.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600')
+    response.headers.set('X-Cache', 'HIT')
+    
+    if (debugMode) {
+      response.headers.set('x-build', COMMIT)
+      response.headers.set('x-cache', 'hit')
+      response.headers.set('x-isr-age', String(cacheAge))
+      response.headers.set('x-env-tz', TZ)
+      response.headers.set('x-commit', COMMIT)
+      response.headers.set('x-market-session', marketSession)
+      response.headers.set('x-ttl', String(ttl))
     }
 
-    const headers = {
-      'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
-      'X-Cache': 'HIT',
-      ...(debugMode && {
-        'x-build': COMMIT,
-        'x-cache': 'hit',
-        'x-isr-age': String(cacheAge),
-        'x-env-tz': TZ,
-        'x-commit': COMMIT,
-        'x-market-session': marketSession,
-        'x-ttl': String(ttl)
-      })
-    }
-
-    return createJsonResponse(payload, stringifyHeaders(headers))
+    return response
     }
     
     console.log(`[CACHE] MISS - fetching fresh data`)
@@ -207,6 +203,8 @@ export async function GET(request: NextRequest) {
             previousClose: true,
             priceChangePercent: true,
             marketCap: true,
+            marketCapDiff: true,
+            marketCapDiffBillions: true,
             size: true,
             companyName: true,
             companyType: true,
@@ -214,32 +212,56 @@ export async function GET(request: NextRequest) {
           }
         }
       },
-      orderBy: { ticker: 'asc' },
+      orderBy: { 
+        marketData: {
+          marketCap: 'desc'
+        }
+      },
       take: 500,
     })
     
     // Flatten the joined data structure
-    combinedRows = combinedRows.map(row => ({
-      ticker: row.ticker,
-      reportTime: row.reportTime,
-      epsActual: row.epsActual,
-      epsEstimate: row.epsEstimate,
-      revenueActual: row.revenueActual,
-      revenueEstimate: row.revenueEstimate,
-      sector: row.sector,
-      companyType: row.companyType,
-      dataSource: row.dataSource,
-      fiscalPeriod: row.fiscalPeriod,
-      fiscalYear: row.fiscalYear,
-      primaryExchange: row.primaryExchange,
-      // Add market data fields (from joined marketData)
-      currentPrice: row.marketData?.currentPrice || null,
-      previousClose: row.marketData?.previousClose || null,
-      priceChangePercent: row.marketData?.priceChangePercent || null,
-      marketCap: row.marketData?.marketCap || null,
-      size: row.marketData?.size || null,
-      companyName: row.marketData?.companyName || row.ticker,
-    }))
+    combinedRows = combinedRows.map(row => {
+      // Debug logging
+      if (row.ticker === 'AONC') {
+        console.log(`[API DEBUG] ${row.ticker}: marketData=`, row.marketData);
+        console.log(`[API DEBUG] ${row.ticker}: currentPrice=`, row.marketData?.currentPrice);
+        console.log(`[API DEBUG] ${row.ticker}: companyName=`, row.marketData?.companyName);
+        console.log(`[API DEBUG] ${row.ticker}: priceChangePercent=`, row.marketData?.priceChangePercent);
+      }
+      
+      return {
+        ticker: row.ticker,
+        reportTime: row.reportTime,
+        epsActual: row.epsActual,
+        epsEstimate: row.epsEstimate,
+        revenueActual: row.revenueActual,
+        revenueEstimate: row.revenueEstimate,
+        sector: row.sector,
+        companyType: row.companyType,
+        dataSource: row.dataSource,
+        fiscalPeriod: row.fiscalPeriod,
+        fiscalYear: row.fiscalYear,
+        primaryExchange: row.primaryExchange,
+        // Add market data fields (from joined marketData)
+        currentPrice: row.marketData?.currentPrice ?? null,
+        previousClose: row.marketData?.previousClose ?? null,
+        priceChangePercent: row.marketData?.priceChangePercent ?? null,
+        marketCap: row.marketData?.marketCap ?? null,
+        marketCapDiff: row.marketData?.marketCapDiff ?? null,
+        marketCapDiffBillions: row.marketData?.marketCapDiffBillions ?? null,
+        size: row.marketData?.size ?? null,
+        companyName: row.marketData?.companyName ?? row.ticker,
+      }
+    })
+    
+    // Debug logging after transformation
+    const aoncRow = combinedRows.find(row => row.ticker === 'AONC');
+    if (aoncRow) {
+      console.log(`[API DEBUG AFTER] AONC: currentPrice=`, aoncRow.currentPrice);
+      console.log(`[API DEBUG AFTER] AONC: companyName=`, aoncRow.companyName);
+      console.log(`[API DEBUG AFTER] AONC: priceChangePercent=`, aoncRow.priceChangePercent);
+    }
     
     // ✅ NO FALLBACK: If no data for today, return explicit no-data status
     let actualDate = today
@@ -250,22 +272,7 @@ export async function GET(request: NextRequest) {
       // Keep combinedRows as empty array - no fallback to old data
     }
     
-    // Get market data separately (optimized query) - use today (no fallback)
-    const marketData = await prisma.todayEarningsMovements.findMany({
-      where: { reportDate: today },
-      select: {
-        ticker: true,
-        companyName: true,
-        currentPrice: true,
-        previousClose: true,
-        priceChangePercent: true,
-        marketCap: true,
-        marketCapDiff: true,
-        marketCapDiffBillions: true,
-        sharesOutstanding: true,
-        size: true,
-      }
-    })
+    // Market data is already included in the JOIN query above, no need for separate query
 
     // 🚫 GUIDANCE DISABLED FOR PRODUCTION - COMMENTED OUT
     // TODO: Re-enable when guidance issues are resolved
@@ -328,10 +335,19 @@ export async function GET(request: NextRequest) {
       ? combinedRows.filter(row => row.ticker === tickerFilter)
       : combinedRows
 
-    // Transform combined data - manually join earnings and market data
+    // Transform combined data - market data is already flattened in the previous step
     const combinedData = filteredRows.map(row => {
-      // Find matching market data for this ticker
-      const marketInfo = marketData.find(m => m.ticker === row.ticker)
+      // Market data is already flattened into individual fields in the previous transformation
+      const marketInfo = {
+        currentPrice: row.currentPrice,
+        previousClose: row.previousClose,
+        priceChangePercent: row.priceChangePercent,
+        marketCap: row.marketCap,
+        marketCapDiff: row.marketCapDiff,
+        marketCapDiffBillions: row.marketCapDiffBillions,
+        size: row.size,
+        companyName: row.companyName
+      }
       
       // 🚫 GUIDANCE DISABLED FOR PRODUCTION - COMMENTED OUT
       // TODO: Re-enable when guidance issues are resolved
@@ -544,36 +560,49 @@ export async function GET(request: NextRequest) {
       }
     } : {}
 
-    const payload = {
-      status: responseStatus,
-      data: serializedData,
-      meta: {
-        total: combinedData.length,
-        ready: combinedData.length > 0, // Ready if we have data
-        duration: `${duration}ms`,
-        date: actualDate.toISOString().split('T')[0],
-        requestedDate: today.toISOString().split('T')[0],
-        fallbackUsed: false, // Never use fallback anymore
-        cached: false,
-        ...debugInfo
-      }
+    const response = responseStatus === 'no-data' 
+      ? ApiResponseBuilder.noData(
+          'No earnings data available for today',
+          {
+            total: combinedData.length,
+            ready: combinedData.length > 0,
+            duration: `${duration}ms`,
+            date: actualDate.toISOString().split('T')[0],
+            requestedDate: today.toISOString().split('T')[0],
+            fallbackUsed: false,
+            cached: false,
+            ...debugInfo
+          }
+        )
+      : ApiResponseBuilder.withMetrics(
+          serializedData,
+          startTime,
+          {
+            total: combinedData.length,
+            ready: combinedData.length > 0,
+            date: actualDate.toISOString().split('T')[0],
+            requestedDate: today.toISOString().split('T')[0],
+            fallbackUsed: false,
+            cached: false,
+            ...debugInfo
+          }
+        )
+
+    // Add cache headers
+    response.headers.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600')
+    response.headers.set('X-Cache', 'MISS')
+    
+    if (debugMode) {
+      response.headers.set('x-build', COMMIT)
+      response.headers.set('x-cache', 'miss')
+      response.headers.set('x-isr-age', '0')
+      response.headers.set('x-env-tz', TZ)
+      response.headers.set('x-commit', COMMIT)
+      response.headers.set('x-market-session', marketSession)
+      response.headers.set('x-ttl', String(ttl))
     }
 
-    const headers = {
-      'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
-      'X-Cache': 'MISS',
-      ...(debugMode && {
-        'x-build': COMMIT,
-        'x-cache': 'miss',
-        'x-isr-age': '0',
-        'x-env-tz': TZ,
-        'x-commit': COMMIT,
-        'x-market-session': marketSession,
-        'x-ttl': String(ttl)
-      })
-    }
-
-    return createJsonResponse(payload, stringifyHeaders(headers))
+    return response
     
   } catch (error) {
     console.error('[API] Error:', error)
@@ -595,9 +624,10 @@ export async function GET(request: NextRequest) {
       monitoring.trackAPICall('/api/earnings', 'GET', Date.now() - startTime, 500)
     }
     
-    return NextResponse.json(
-      { error: 'Internal Server Error', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+    return ApiResponseBuilder.error(
+      error instanceof Error ? error.message : 'Unknown error',
+      500,
+      { endpoint: '/api/earnings' }
     )
   }
 }

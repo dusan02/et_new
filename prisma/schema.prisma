@@ -169,3 +169,57 @@ model MarketData {
   @@index([reportDate])
   @@index([ticker, reportDate])
 }
+
+/// Sprint 2: Daily prices data (minimal, clear)
+model PricesDaily {
+  ticker            String
+  day               DateTime
+  last              Float?
+  marketCap         Float?
+  sharesOutstanding Float?
+  priceStale        Boolean   @default(false)
+  updatedAt         DateTime  @default(now()) @updatedAt
+  source            String    // polygon|iex|tiingo|computed
+
+  @@id([ticker, day])
+  @@index([day])
+  @@index([day, last])
+}
+
+/// Sprint 2: Publish metadata (DQ gate)
+model PublishMeta {
+  day                DateTime   @id
+  coverageSchedule   Float      @default(0)
+  coveragePrice      Float      @default(0)
+  coverageEpsrev     Float      @default(0)
+  publishedAt        DateTime?
+  status             String     @default("staging") // staging|published|delayed
+  updatedAt          DateTime   @default(now()) @updatedAt
+
+  @@index([day])
+  @@index([status])
+  @@index([publishedAt])
+}
+
+/// Sprint 3: Daily earnings data (Finnhub only, no guidance)
+model EarningsDaily {
+  ticker             String
+  day                DateTime
+  epsEst             Float?
+  epsAct             Float?
+  revEst             Float?
+  revAct             Float?
+  hasSchedule        Boolean    @default(false)
+  scheduleInferred   Boolean    @default(false)
+  actualPending      Boolean    @default(false)
+  updatedAt          DateTime   @default(now()) @updatedAt
+  source             String     @default("finnhub")
+
+  @@id([ticker, day])
+  @@index([day])
+  @@index([day, epsEst])
+  @@index([day, epsAct])
+  @@index([day, revEst])
+  @@index([day, revAct])
+  @@index([actualPending])
+}

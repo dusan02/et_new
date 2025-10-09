@@ -1,267 +1,189 @@
-# 🚀 PRODUCTION DEPLOYMENT COMMANDS
+# 🚀 PRODUKČNÉ DEPLOYMENT PRÍKAZY
 
-## 📋 **KROK 1: Pripojenie na server a príprava priečinkov**
+## 1. SSH pripojenie na server
 
 ```bash
-# Pripojenie na server
-ssh root@89.185.250.213
-
-# Vytvorenie hlavného priečinka aplikácie
-mkdir -p /opt/earnings-table
-cd /opt/earnings-table
-
-# Vytvorenie priečinkov pre aplikáciu
-mkdir -p src
-mkdir -p public
-mkdir -p prisma
-mkdir -p scripts
-mkdir -p deployment
-mkdir -p docs
-
-# Vytvorenie priečinkov pre logy a cache
-mkdir -p logs
-mkdir -p cache
-mkdir -p backups
-
-# Nastavenie oprávnení
-chown -R www-data:www-data /opt/earnings-table
-chmod -R 755 /opt/earnings-table
+ssh root@your-server-ip
+# alebo
+ssh user@your-server-ip
 ```
 
-## 📋 **KROK 2: Klonovanie kódu z gitu**
+## 2. Navigácia do projektu
 
 ```bash
-# Prejsť do hlavného priečinka
-cd /opt/earnings-table
+cd /path/to/your/earnings-table-project
+# alebo
+cd ~/earnings-table
+```
 
-# Klonovanie repozitára (ak ešte neexistuje)
-git clone https://github.com/dusan02/et_new.git .
+## 3. Pull najnovší kód
 
-# Alebo ak už existuje, aktualizácia
+```bash
 git pull origin main
-
-# Overenie, že sme na správnom commite
-git log --oneline -5
 ```
 
-## 📋 **KROK 3: Inštalácia závislostí**
+## 4. Inštalácia závislostí (ak potrebné)
 
 ```bash
-# Prejsť do priečinka aplikácie
-cd /opt/earnings-table
-
-# Inštalácia Node.js závislostí
+npm install
+# alebo
 npm ci --production
-
-# Overenie inštalácie
-npm list --depth=0
 ```
 
-## 📋 **KROK 4: Konfigurácia prostredia**
+## 5. Build aplikácie
 
 ```bash
-# Kopírovanie produkčného env súboru
-cp env.production.example .env.production
-
-# Úprava env súboru
-nano .env.production
-
-# Overenie env súboru
-cat .env.production | grep -v "PASSWORD\|KEY\|SECRET"
-```
-
-## 📋 **KROK 5: Build aplikácie**
-
-```bash
-# Prejsť do priečinka aplikácie
-cd /opt/earnings-table
-
-# Build aplikácie
 npm run build
-
-# Overenie build súborov
-ls -la .next/
 ```
 
-## 📋 **KROK 6: Nastavenie databázy**
+## 6. Database migrácia (ak potrebné)
 
 ```bash
-# Prejsť do priečinka aplikácie
-cd /opt/earnings-table
-
-# Spustenie Prisma migrácií
+npx prisma db push --accept-data-loss
+# alebo
 npx prisma migrate deploy
-
-# Generovanie Prisma klienta
-npx prisma generate
-
-# Overenie databázy
-npx prisma db pull
 ```
 
-## 📋 **KROK 7: Nastavenie PM2**
+## 7. Restart PM2 procesov
 
 ```bash
-# Prejsť do priečinka aplikácie
-cd /opt/earnings-table
+# Zastavenie všetkých procesov
+pm2 stop all
 
-# Spustenie aplikácie cez PM2
-pm2 start ecosystem.config.js --env production
+# Restart s novou konfiguráciou
+pm2 start ecosystem.production.config.js
 
-# Nastavenie PM2 pre auto-restart
-pm2 startup
-pm2 save
+# Alebo restart konkrétnych procesov
+pm2 restart earnings-worker
+pm2 restart earnings-app
+```
 
-# Overenie stavu
+## 8. Kontrola stavu
+
+```bash
+# Stav PM2 procesov
 pm2 status
-pm2 logs earningstable --lines 50
+
+# Logy
+pm2 logs earnings-worker --lines 50
+pm2 logs earnings-app --lines 50
+
+# Health check
+curl http://localhost:3000/api/health
 ```
 
-## 📋 **KROK 8: Nastavenie Nginx**
+## 9. Testovanie
 
 ```bash
-# Kopírovanie Nginx konfigurácie
-cp nginx-production.conf /etc/nginx/sites-available/earningstable
-
-# Aktivácia site
-ln -sf /etc/nginx/sites-available/earningstable /etc/nginx/sites-enabled/
-
-# Test Nginx konfigurácie
-nginx -t
-
-# Reštart Nginx
-systemctl restart nginx
-
-# Overenie stavu
-systemctl status nginx
-```
-
-## 📋 **KROK 9: Nastavenie SSL certifikátu**
-
-```bash
-# Inštalácia Certbot
-apt-get install certbot python3-certbot-nginx
-
-# Získanie SSL certifikátu
-certbot --nginx -d earningstable.com -d www.earningstable.com
-
-# Overenie certifikátu
-certbot certificates
-```
-
-## 📋 **KROK 10: Nastavenie cron jobov**
-
-```bash
-# Prejsť do priečinka aplikácie
-cd /opt/earnings-table
-
-# Spustenie cron worker-a
-pm2 start src/queue/worker-new.js --name "earnings-cron"
-
-# Overenie cron jobov
-pm2 status
-pm2 logs earnings-cron --lines 20
-```
-
-## 📋 **KROK 11: Finálne overenie**
-
-```bash
-# Health check aplikácie
-curl -f http://localhost:3000/api/monitoring/health
-
 # Test API endpointu
-curl -s http://localhost:3000/api/earnings/stats | head -20
+curl http://localhost:3000/api/earnings
 
-# Overenie logov
-pm2 logs earningstable --lines 10
-pm2 logs earnings-cron --lines 10
-
-# Overenie procesov
-ps aux | grep node
+# Test frontendu
+curl http://localhost:3000/
 ```
 
-## 📋 **KROK 12: Monitoring a údržba**
+## 10. Nginx restart (ak potrebné)
 
 ```bash
-# Spustenie monitoringu
-./monitor-production.sh
-
-# Backup databázy
-./backup-production.sh
-
-# Overenie disk space
-df -h
-
-# Overenie pamäte
-free -h
-
-# Overenie CPU
-top -bn1 | grep "Cpu(s)"
+sudo systemctl restart nginx
+# alebo
+sudo service nginx restart
 ```
 
----
-
-## 🔧 **ÚDRŽBA A AKTUALIZÁCIE**
-
-### Aktualizácia kódu:
+## 11. Kontrola Redis (ak používaš)
 
 ```bash
-cd /opt/earnings-table
-git pull origin main
-npm ci --production
+# Spustenie Redis
+sudo systemctl start redis
+sudo systemctl enable redis
+
+# Test Redis
+redis-cli ping
+```
+
+## 12. Monitoring
+
+```bash
+# Sledovanie logov v reálnom čase
+pm2 logs --follow
+
+# Sledovanie výkonu
+pm2 monit
+```
+
+## 🚨 TROUBLESHOOTING
+
+### Ak sa worker nespustí:
+
+```bash
+# Kontrola logov
+pm2 logs earnings-worker
+
+# Manuálny test
+node src/queue/worker-new.js
+
+# Kontrola environment variables
+cat .env.production
+```
+
+### Ak API nefunguje:
+
+```bash
+# Kontrola portu
+netstat -tlnp | grep 3000
+
+# Test build
 npm run build
-pm2 restart earningstable
-pm2 restart earnings-cron
+
+# Restart aplikácie
+pm2 restart earnings-app
 ```
 
-### Reštart aplikácie:
+### Ak sú problémy s databázou:
 
 ```bash
-pm2 restart earningstable
-pm2 restart earnings-cron
+# Kontrola DB pripojenia
+npx prisma db pull
+
+# Reset DB (POZOR: vymaže dáta!)
+npx prisma db push --force-reset
 ```
 
-### Kontrola logov:
+## 📊 POST-DEPLOY VALIDÁCIA
+
+1. **Health check**: `curl http://localhost:3000/api/health`
+2. **API test**: `curl http://localhost:3000/api/earnings`
+3. **Frontend test**: Otvor `http://your-domain.com`
+4. **Worker test**: `pm2 logs earnings-worker --lines 20`
+5. **Data test**: Skontroluj či sa načítavajú earnings dáta
+
+## 🎯 OČAKÁVANÉ VÝSLEDKY
+
+- ✅ Worker sa spustí za ~2 sekundy (vs. 5+ minút pôvodne)
+- ✅ API vracia `ready: true` s earnings dátami
+- ✅ Frontend zobrazuje earnings tabuľku
+- ✅ Žiadne duplicitné cron behy (lock funguje)
+- ✅ UPSERT operácie bez duplicít
+- ✅ Change calculation s NULL handling
+
+## 🔧 ENVIRONMENT VARIABLES
+
+Skontroluj `.env.production`:
 
 ```bash
-pm2 logs earningstable
-pm2 logs earnings-cron
-tail -f /var/log/nginx/access.log
-tail -f /var/log/nginx/error.log
+DATABASE_URL="file:./prisma/production.db"
+NEXT_PUBLIC_APP_URL="https://your-domain.com"
+FINNHUB_API_KEY="your-finnhub-key"
+POLYGON_API_KEY="your-polygon-key"
+NODE_ENV="production"
 ```
 
----
+## 📞 SUPPORT
 
-## 🚨 **TROUBLESHOOTING**
+Ak máš problémy:
 
-### Ak aplikácia neštartuje:
-
-```bash
-pm2 logs earningstable --lines 100
-npm run build
-pm2 restart earningstable
-```
-
-### Ak databáza nefunguje:
-
-```bash
-npx prisma migrate status
-npx prisma db push
-npx prisma generate
-```
-
-### Ak Nginx nefunguje:
-
-```bash
-nginx -t
-systemctl restart nginx
-systemctl status nginx
-```
-
----
-
-**🌐 Finálne URL:**
-
-- **HTTP**: http://89.185.250.213:3000
-- **HTTPS**: https://earningstable.com
-- **API**: https://earningstable.com/api/earnings
+1. Skontroluj `pm2 logs`
+2. Testuj manuálne: `node src/queue/worker-new.js`
+3. Skontroluj environment variables
+4. Restart PM2 procesov
+5. Skontroluj nginx konfiguráciu

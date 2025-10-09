@@ -1,0 +1,69 @@
+{
+    "day": "2025-01-08",
+    "publishedAt": "2025-01-08T14:30:00.000Z",
+    "coverage": {
+        "schedule": 100,
+        "price": 95,
+        "epsRev": 85
+    },
+    "data": [
+        {
+            "ticker": "AAPL",
+            "name": "Apple Inc.",
+            "exchange": "NASDAQ",
+            "last_price": 185.92,
+            "market_cap": 2850000000000,
+            "shares_outstanding": 15300000000,
+            "price_stale": false,
+            "has_schedule": true,
+            "schedule_inferred": false,
+            "eps_est": 2.10,
+            "eps_act": 2.18,
+            "rev_est": 123000000000,
+            "rev_act": 125000000000,
+            "actual_pending": false,
+            "source": "polygon",
+            "updated_at": "2025-01-08T14:30:00.000Z"
+        },
+        {
+            "ticker": "MSFT",
+            "name": "Microsoft Corporation",
+            "exchange": "NASDAQ",
+            "last_price": 384.30,
+            "market_cap": 2850000000000,
+            "shares_outstanding": 7420000000,
+            "price_stale": false,
+            "has_schedule": true,
+            "schedule_inferred": false,
+            "eps_est": 2.78,
+            "eps_act": null,
+            "rev_est": 61100000000,
+            "rev_act": null,
+            "actual_pending": true,
+            "source": "polygon",
+            "updated_at": "2025-01-08T14:30:00.000Z"
+        },
+        {
+            "ticker": "GOOGL",
+            "name": "Alphabet Inc.",
+            "exchange": "NASDAQ",
+            "last_price": 142.56,
+            "market_cap": 1780000000000,
+            "shares_outstanding": 12500000000,
+            "price_stale": false,
+            "has_schedule": true,
+            "schedule_inferred": false,
+            "eps_est": 1.45,
+            "eps_act": 1.52,
+            "rev_est": 86000000000,
+            "rev_act": 87000000000,
+            "actual_pending": false,
+            "source": "polygon",
+            "updated_at": "2025-01-08T14:30:00.000Z"
+        }
+    ],
+    "flags": [
+        "static_snapshot",
+        "demo_data"
+    ]
+}

@@ -1,180 +1,216 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
+import { testConnection } from '@/lib/redis';
 import { PrismaClient } from '@prisma/client';
-import { getBootState, getBootStateLastUpdated, isSystemReady } from '@/lib/boot-state';
-import { getTodayDate } from '@/lib/daily-reset-state';
-import { getCacheStats } from '@/lib/cache-version';
-import { isLocked } from '@/lib/redis-lock';
+import { MarketDataRetryService } from '@/modules/market-data/services/market-data-retry.service';
 
 const prisma = new PrismaClient();
 
-export async function GET(request: NextRequest) {
-  try {
-    const startTime = Date.now();
-    
-    // Get current time in NY timezone
-    const now = new Date();
-    const nyTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
-    const today = getTodayDate();
-    
-    // Check database connectivity
-    let dbStatus = 'unknown';
-    let dbLatency = 0;
-    try {
-      const dbStart = Date.now();
-      await prisma.$queryRaw`SELECT 1`;
-      dbLatency = Date.now() - dbStart;
-      dbStatus = 'connected';
-    } catch (error) {
-      dbStatus = 'error';
-      console.error('❌ Database health check failed:', error);
-    }
-    
-    // Get boot state info
-    const bootState = getBootState();
-    const bootStateLastUpdated = getBootStateLastUpdated();
-    const systemReady = isSystemReady();
-    
-    // Check for active locks
-    const mainLockKey = `lock:bootstrap:${today.toISOString().slice(0, 10)}`;
-    const isMainLockActive = await isLocked(mainLockKey);
-    
-    // Get data counts
-    let earningsCount = 0;
-    let marketDataCount = 0;
-    let movementsCount = 0;
-    
-    if (dbStatus === 'connected') {
-      try {
-        earningsCount = await prisma.earningsTickersToday.count({
-          where: { reportDate: today }
-        });
-        
-        marketDataCount = await prisma.marketData.count({
-          where: { reportDate: today }
-        });
-        
-        movementsCount = await prisma.todayEarningsMovements.count({
-          where: { reportDate: today }
-        });
-      } catch (error) {
-        console.error('❌ Failed to get data counts:', error);
-      }
-    }
-    
-    // Get cache stats
-    let cacheStats = null;
-    try {
-      cacheStats = await getCacheStats();
-    } catch (error) {
-      console.error('❌ Failed to get cache stats:', error);
-    }
-    
-    // Get recent cron runs
-    let recentCronRuns = [];
-    if (dbStatus === 'connected') {
-      try {
-        recentCronRuns = await prisma.cronRun.findMany({
-          take: 5,
-          orderBy: { startedAt: 'desc' },
-          select: {
-            name: true,
-            status: true,
-            startedAt: true,
-            finishedAt: true,
-            message: true
-          }
-        });
-      } catch (error) {
-        console.error('❌ Failed to get cron runs:', error);
-      }
-    }
-    
-    const responseTime = Date.now() - startTime;
-    
-    const healthData = {
-      status: systemReady ? 'healthy' : 'initializing',
-      timestamp: now.toISOString(),
-      nyTime: nyTime.toISOString(),
-      responseTime: `${responseTime}ms`,
-      
-      system: {
-        ready: systemReady,
-        bootState,
-        bootStateLastUpdated: bootStateLastUpdated.toISOString(),
-        description: getBootStateDescription(bootState)
-      },
-      
-      database: {
-        status: dbStatus,
-        latency: `${dbLatency}ms`,
-        today: today.toISOString()
-      },
-      
-      data: {
-        earningsToday: earningsCount,
-        marketDataToday: marketDataCount,
-        movementsToday: movementsCount,
-        totalRecords: earningsCount + marketDataCount + movementsCount
-      },
-      
-      locks: {
-        mainBootstrapLock: isMainLockActive
-      },
-      
-      cache: cacheStats,
-      
-      cron: {
-        recentRuns: recentCronRuns
-      },
-      
-      environment: {
-        nodeEnv: process.env.NODE_ENV,
-        hasRedis: !!process.env.REDIS_URL,
-        hasFinnhub: !!process.env.FINNHUB_API_KEY,
-        hasPolygon: !!process.env.POLYGON_API_KEY
-      }
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+interface HealthCheckResult {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  timestamp: string;
+  services: {
+    database: {
+      status: 'healthy' | 'unhealthy';
+      responseTime: number;
+      error?: string;
     };
-    
-    // Return appropriate HTTP status
-    const httpStatus = systemReady ? 200 : 503;
-    
-    return NextResponse.json(healthData, { 
-      status: httpStatus,
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      }
-    });
-    
-  } catch (error) {
-    console.error('❌ Health check failed:', error);
-    
-    return NextResponse.json({
-      status: 'error',
-      timestamp: new Date().toISOString(),
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, { 
-      status: 500,
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate'
-      }
-    });
-  } finally {
-    await prisma.$disconnect();
-  }
+    redis: {
+      status: 'healthy' | 'unhealthy';
+      responseTime: number;
+      error?: string;
+    };
+    marketData: {
+      status: 'healthy' | 'degraded' | 'unhealthy';
+      metrics: {
+        totalRecords: number;
+        recentSuccessRate: number;
+        lastUpdate: string | null;
+      };
+      issues: string[];
+    };
+  };
+  overall: {
+    uptime: number;
+    version: string;
+    environment: string;
+  };
 }
 
-function getBootStateDescription(state: string): string {
-  const descriptions: Record<string, string> = {
-    "00_PENDING": "System starting up...",
-    "10_CALENDAR_READY": "Loading earnings calendar...",
-    "20_PREVCLOSE_READY": "Loading market data...",
-    "30_PREMARKET_READY": "Processing pre-market data...",
-    "40_METRICS_READY": "Calculating metrics...",
-    "50_CACHE_WARMED": "Warming up cache...",
-    "60_PUBLISHED": "System ready"
-  };
+/**
+ * Comprehensive health check endpoint
+ */
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  const startTime = Date.now();
+  const timestamp = new Date().toISOString();
   
-  return descriptions[state] || "Unknown state";
+  logger.info('Health check started', { timestamp });
+
+  const healthResult: HealthCheckResult = {
+    status: 'healthy',
+    timestamp,
+    services: {
+      database: { status: 'unhealthy', responseTime: 0 },
+      redis: { status: 'unhealthy', responseTime: 0 },
+      marketData: {
+        status: 'unhealthy',
+        metrics: { totalRecords: 0, recentSuccessRate: 0, lastUpdate: null },
+        issues: []
+      }
+    },
+    overall: {
+      uptime: process.uptime(),
+      version: process.env.npm_package_version || '1.0.0',
+      environment: process.env.NODE_ENV || 'development'
+    }
+  };
+
+  // Check database connection
+  try {
+    const dbStart = Date.now();
+    await prisma.$queryRaw`SELECT 1`;
+    healthResult.services.database = {
+      status: 'healthy',
+      responseTime: Date.now() - dbStart
+    };
+  } catch (error) {
+    healthResult.services.database = {
+      status: 'unhealthy',
+      responseTime: 0,
+      error: error instanceof Error ? error.message : 'Database connection failed'
+    };
+    healthResult.status = 'unhealthy';
+  }
+
+  // Check Redis connection
+  try {
+    const redisStart = Date.now();
+    const isConnected = await testConnection();
+    healthResult.services.redis = {
+      status: isConnected ? 'healthy' : 'unhealthy',
+      responseTime: Date.now() - redisStart,
+      error: isConnected ? undefined : 'Redis connection failed'
+    };
+    
+    if (!isConnected) {
+      healthResult.status = 'degraded'; // Redis is optional in development
+    }
+  } catch (error) {
+    healthResult.services.redis = {
+      status: 'unhealthy',
+      responseTime: 0,
+      error: error instanceof Error ? error.message : 'Redis connection failed'
+    };
+    healthResult.status = 'degraded'; // Redis is optional in development
+  }
+
+  // Check market data service
+  try {
+    const marketDataService = new MarketDataRetryService();
+    
+    // Check today's market data specifically
+    const today = new Date();
+    const easternTime = new Date(today.toLocaleString("en-US", {timeZone: "America/New_York"}));
+    const todayDate = new Date(Date.UTC(easternTime.getFullYear(), easternTime.getMonth(), easternTime.getDate()));
+    
+    const todayData = await marketDataService.getMarketDataForDate(todayDate);
+    const todayCount = todayData.data.length;
+    const todaySuccessRate = todayData.statistics.successRate;
+    
+    let marketDataStatus: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
+    const issues: string[] = [];
+    
+    if (todayCount === 0) {
+      marketDataStatus = 'unhealthy';
+      issues.push(`No market data for today (${todayDate.toISOString().slice(0, 10)})`);
+    } else if (todaySuccessRate < 50) {
+      marketDataStatus = 'unhealthy';
+      issues.push(`Low success rate for today: ${todaySuccessRate.toFixed(1)}%`);
+    } else if (todaySuccessRate < 70) {
+      marketDataStatus = 'degraded';
+      issues.push(`Moderate success rate for today: ${todaySuccessRate.toFixed(1)}%`);
+    }
+    
+    healthResult.services.marketData = {
+      status: marketDataStatus,
+      metrics: {
+        totalRecords: todayCount,
+        recentSuccessRate: todaySuccessRate,
+        lastUpdate: todayCount > 0 ? todayData.data[0]?.updatedAt?.toISOString() || null : null
+      },
+      issues
+    };
+    
+    if (marketDataStatus === 'unhealthy') {
+      healthResult.status = 'unhealthy';
+    } else if (marketDataStatus === 'degraded' && healthResult.status === 'healthy') {
+      healthResult.status = 'degraded';
+    }
+  } catch (error) {
+    healthResult.services.marketData = {
+      status: 'unhealthy',
+      metrics: { totalRecords: 0, recentSuccessRate: 0, lastUpdate: null },
+      issues: [`Market data health check failed: ${error instanceof Error ? error.message : 'Unknown error'}`]
+    };
+    healthResult.status = 'unhealthy';
+  }
+
+  // Check earnings data availability
+  try {
+    const now = new Date();
+    const easternTime = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
+    const today = new Date(Date.UTC(easternTime.getFullYear(), easternTime.getMonth(), easternTime.getDate()));
+    
+    const earningsCount = await prisma.earningsTickersToday.count({
+      where: { reportDate: today }
+    });
+    
+    if (earningsCount === 0) {
+      healthResult.services.marketData.issues.push(`No earnings data for today (${today.toISOString().slice(0, 10)})`);
+      if (healthResult.status === 'healthy') {
+        healthResult.status = 'degraded';
+      }
+    }
+  } catch (error) {
+    healthResult.services.marketData.issues.push(`Earnings data check failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+
+  const totalResponseTime = Date.now() - startTime;
+  
+  logger.info('Health check completed', {
+    status: healthResult.status,
+    responseTime: totalResponseTime,
+    databaseStatus: healthResult.services.database.status,
+    redisStatus: healthResult.services.redis.status,
+    marketDataStatus: healthResult.services.marketData.status
+  });
+
+  const statusCode = healthResult.status === 'healthy' ? 200 : 
+                    healthResult.status === 'degraded' ? 200 : 503;
+
+  return NextResponse.json(healthResult, {
+    status: statusCode,
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'X-Response-Time': `${totalResponseTime}ms`
+    }
+  });
+}
+
+/**
+ * Simple health check for load balancers
+ */
+export async function HEAD(request: NextRequest): Promise<NextResponse> {
+  try {
+    // Quick database ping
+    await prisma.$queryRaw`SELECT 1`;
+    return new NextResponse(null, { status: 200 });
+  } catch (error) {
+    return new NextResponse(null, { status: 503 });
+  }
 }
