@@ -29,52 +29,52 @@ jobs:
             echo "Current directory: $(pwd)"
             echo "User: $(whoami)"
             echo "Date: $(date)"
-            
+
             # Navigate to project directory
             cd /var/www/earnings-table
             echo "📁 Project directory: $(pwd)"
-            
+
             # Check git status
             echo "📋 Git status:"
             git status --short
-            
+
             # Force reset to match remote exactly
             echo "🧹 Force resetting to remote state..."
             git fetch origin main
             git reset --hard origin/main
             git clean -fd
-            
+
             # Show current commit
             echo "📝 Current commit:"
             git log --oneline -1
-            
+
             # Install dependencies with cache
             echo "📦 Installing dependencies..."
             npm ci --production=false
-            
+
             # Build the application with timeout protection
             echo "🏗️ Building application..."
             timeout 600 npm run build || {
                 echo "⚠️ Build timed out, trying again..."
                 npm run build
             }
-            
+
             # Stop any existing processes
             echo "🛑 Stopping existing processes..."
             pkill -f "npm start" || echo "No existing npm start processes found"
             pkill -f "node.*next" || echo "No existing Next.js processes found"
             sleep 2
-            
+
             # Start the application
             echo "▶️ Starting application..."
             nohup npm start > /var/log/earnings-table.log 2>&1 &
             echo "Application started in background"
-            
+
             # Wait and check if process is running
             sleep 5
             echo "🔍 Checking if application is running..."
             ps aux | grep -E "(npm|node|next)" | grep -v grep || echo "No application processes found"
-            
+
             # Quick health check
             echo "🏥 Health check..."
             sleep 5
@@ -84,7 +84,7 @@ jobs:
                 echo "⚠️ Health check failed - checking logs..."
                 tail -20 /var/log/earnings-table.log || echo "No log file found"
             fi
-            
+
             echo "🎉 Deployment completed!"
 
       - name: Health check (SSL disabled)
