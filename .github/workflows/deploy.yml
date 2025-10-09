@@ -91,9 +91,9 @@ jobs:
             export FINNHUB_API_KEY="dummy_key_for_build"
             export POLYGON_API_KEY="dummy_key_for_build"
             
-          # Build the application using optimized production script
-          echo "🏗️ Building application with optimized script..."
-          npm run build:production
+            # Build the application using optimized production script
+            echo "🏗️ Building application with optimized script..."
+            npm run build:production
 
             # Create logs directory
             mkdir -p logs
