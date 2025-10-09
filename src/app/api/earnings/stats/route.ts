@@ -326,10 +326,25 @@ function calculateStatsFromPublishedData(data: any[]) {
   // Filter records with market cap data
   const recordsWithMarketCap = data.filter(item => item.market_cap && item.market_cap > 0);
   
+  // Debug: log unique sizes found in data
+  const uniqueSizes = [...new Set(recordsWithMarketCap.map(item => item.size))];
+  console.log(`[STATS DEBUG] Unique sizes found:`, uniqueSizes);
+  
+  // Function to determine company size based on market cap (same logic as EarningsTableRow)
+  const getCompanySize = (marketCap: number | null) => {
+    if (!marketCap) return 'Small';
+    const capInBillions = marketCap / 1e9;
+    if (capInBillions >= 100) return 'Mega';
+    if (capInBillions >= 10) return 'Large';
+    if (capInBillions >= 1) return 'Mid';
+    return 'Small';
+  };
+
   // Calculate size distribution
   const sizeGroups = new Map();
   recordsWithMarketCap.forEach(item => {
-    const size = item.size || 'Unknown';
+    const size = getCompanySize(item.market_cap);
+    
     if (!sizeGroups.has(size)) {
       sizeGroups.set(size, { count: 0, totalMarketCap: 0 });
     }
@@ -342,6 +357,8 @@ function calculateStatsFromPublishedData(data: any[]) {
     _count: { size: data.count },
     _sum: { marketCap: data.totalMarketCap }
   }));
+
+  console.log(`[STATS DEBUG] Size distribution:`, transformedSizeDistribution);
 
   // Calculate top gainers/losers by price
   const priceGainers = data
