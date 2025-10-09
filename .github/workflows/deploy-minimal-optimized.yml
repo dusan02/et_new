@@ -1,0 +1,86 @@
+name: Deploy to VPS (Minimal Optimized)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to server (Minimal Optimized)
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: 22
+          timeout: 600s
+          command_timeout: 25m
+          script: |
+            cd /var/www/earnings-table
+            
+            echo "🚀 Starting minimal optimized deployment..."
+            
+            # Set environment variables
+            export NODE_ENV=production
+            export NEXT_PUBLIC_APP_ENV=production
+            export DATABASE_URL="file:./dev.db"
+            export REDIS_URL="redis://localhost:6379"
+            export PARITY_SKIP=1
+            
+            # Quick cleanup and pull
+            echo "📋 Updating code..."
+            git clean -fd
+            git stash
+            git pull origin main
+            
+            # Install dependencies only if needed
+            if [ ! -d "node_modules" ] || [ "package-lock.json" -nt "node_modules" ]; then
+                echo "📦 Installing dependencies..."
+                npm ci --production=false --prefer-offline --no-audit --no-fund
+            else
+                echo "✅ Dependencies up to date, skipping install"
+            fi
+            
+            # Use the optimized production build script
+            echo "🏗️ Building application..."
+            timeout 600 npm run build:production || {
+                echo "⚠️ Production build failed, trying direct Next.js build..."
+                timeout 300 npx next build || {
+                    echo "❌ All build attempts failed"
+                    exit 1
+                }
+            }
+            
+            # Quick restart
+            echo "🔄 Restarting application..."
+            pkill -f "node.*next" 2>/dev/null || true
+            sleep 3
+            
+            # Start application
+            echo "▶️ Starting application..."
+            nohup npm start > /var/log/earnings-table.log 2>&1 &
+            sleep 5
+            
+            # Quick health check
+            echo "🏥 Health check..."
+            if curl -f http://localhost:3000 > /dev/null 2>&1; then
+                echo "✅ Deployment successful!"
+            else
+                echo "⚠️ Health check failed - checking logs..."
+                tail -20 /var/log/earnings-table.log || echo "No log file found"
+                exit 1
+            fi
+            
+            echo "🎉 Minimal optimized deployment completed!"
+
+      - name: Final verification
+        run: |
+          sleep 30
+          echo "🔍 Final verification..."
+          curl -f https://${{ secrets.HOST }} || echo "Final check failed - may need manual verification"

@@ -69,7 +69,7 @@ export function EarningsTableBody({
       <div className="space-y-4">
         {/* Desktop skeleton */}
         <div className="hidden md:block">
-          <div className="overflow-x-auto shadow ring-1 ring-black ring-opacity-5 md:rounded-lg w-full">
+          <div className="overflow-x-auto shadow ring-1 ring-black ring-opacity-5 dark:ring-1 dark:ring-white dark:ring-opacity-20 md:rounded-lg w-full">
             <div className="flex justify-center">
               <div className="grid grid-cols-[3fr_2fr_1fr_1fr_1fr_1.2fr] w-full max-w-[1100px] mx-auto">
               {/* Header Row */}
@@ -180,7 +180,7 @@ export function EarningsTableBody({
     <div className="space-y-4">
       {/* Desktop table */}
       <div className="hidden md:block">
-        <div className="overflow-x-auto shadow ring-1 ring-black ring-opacity-5 md:rounded-lg w-full">
+        <div className="overflow-x-auto shadow ring-1 ring-black ring-opacity-5 dark:ring-1 dark:ring-white dark:ring-opacity-20 md:rounded-lg w-full">
           <div className="flex justify-center">
             <div className="grid grid-cols-[3fr_2fr_1fr_1fr_1fr_1.2fr] w-full max-w-[1100px] mx-auto">
             {/* Header Row */}

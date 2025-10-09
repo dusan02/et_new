@@ -7,6 +7,7 @@
         "dev": "next dev -p 3000",
         "prebuild:parity": "node scripts/assert-parity.js",
         "build": "npm run prebuild:parity && node scripts/build-check.js && next build",
+        "build:production": "node scripts/build-production.js",
         "start": "next start -p 3001",
         "start:prod": "next start -p 3000",
         "parity:check": "node scripts/parity-check.js",
