@@ -25,9 +25,9 @@ export function EarningsTableRow({ item, index }: EarningsTableRowProps) {
   const getMarkerStyles = (size: string) => {
     switch (size) {
       case 'MEGA':
-        return 'bg-blue-500 border-blue-700 text-white';
-      case 'LARGE':
         return 'bg-yellow-500 border-yellow-700 text-black';
+      case 'LARGE':
+        return 'bg-blue-500 border-blue-700 text-white';
       case 'MID':
       case 'SMALL':
       default:
@@ -150,7 +150,7 @@ export function EarningsTableRow({ item, index }: EarningsTableRowProps) {
                 ? (
                   <>
                     <span>{item.priceChangePercent >= 0 ? '+' : '−'}</span>
-                    <span className="ml-0.5">{Number(item.priceChangePercent).toFixed(2)}%</span>
+                    <span className="ml-0.5">{Math.abs(Number(item.priceChangePercent)).toFixed(2)}%</span>
                   </>
                 )
                 : '—'
