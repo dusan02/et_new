@@ -98,23 +98,31 @@ jobs:
                 npm run build
             }
 
-            # Stop any existing processes
-            echo "🛑 Stopping existing processes..."
-            pkill -f "npm start" 2>/dev/null || echo "No existing npm start processes found"
-            pkill -f "node.*next" 2>/dev/null || echo "No existing Next.js processes found"
-            echo "Processes stopped, waiting 3 seconds..."
-            sleep 3
+            # Create logs directory
+            mkdir -p logs
 
-            # Start the application
+            # Stop any existing processes (pidfile-safe, no pkill!)
+            echo "🛑 Stopping existing processes safely..."
+            if [ -f app.pid ] && kill -0 "$(cat app.pid)" 2>/dev/null; then
+                echo "Stopping process with PID: $(cat app.pid)"
+                kill -TERM "$(cat app.pid)" || true
+                sleep 2
+                # Force kill if still running
+                kill -KILL "$(cat app.pid)" 2>/dev/null || true
+            else
+                echo "No existing process found or PID file missing"
+            fi
+            rm -f app.pid
+
+            # Start the application with pidfile
             echo "▶️ Starting application..."
             echo "Current working directory: $(pwd)"
             echo "Checking if .next directory exists: $(ls -la .next 2>/dev/null || echo 'No .next directory')"
             
-            echo "Starting npm start command..."
-            nohup npm start > /var/log/earnings-table.log 2>&1 &
-            APP_PID=$!
+            echo "Starting npm start command with pidfile..."
+            nohup env NODE_ENV=production PORT=3000 npm start > logs/app.out 2> logs/app.err < /dev/null & echo $! > app.pid
+            APP_PID=$(cat app.pid)
             echo "Application started with PID: $APP_PID"
-            echo "Checking if PID is valid: $APP_PID"
             
             # Wait a bit longer for startup
             echo "Waiting 10 seconds for application to start..."
@@ -127,14 +135,17 @@ jobs:
                 echo "✅ Application process is running (PID: $APP_PID)"
             else
                 echo "❌ Application process died, checking logs..."
-                echo "Checking if log file exists: $(ls -la /var/log/earnings-table.log 2>/dev/null || echo 'No log file found')"
-                if [ -f "/var/log/earnings-table.log" ]; then
-                    echo "Last 30 lines of log:"
-                    tail -30 /var/log/earnings-table.log
-                else
-                    echo "No log file found, checking npm processes:"
-                    ps aux | grep npm || echo "No npm processes found"
+                echo "Checking if log files exist:"
+                ls -la logs/ 2>/dev/null || echo "No logs directory found"
+                if [ -f "logs/app.out" ]; then
+                    echo "Last 30 lines of app.out:"
+                    tail -30 logs/app.out
                 fi
+                if [ -f "logs/app.err" ]; then
+                    echo "Last 30 lines of app.err:"
+                    tail -30 logs/app.err
+                fi
+                echo "Checking if PID file exists: $(ls -la app.pid 2>/dev/null || echo 'No PID file found')"
                 exit 1
             fi
 
@@ -145,7 +156,14 @@ jobs:
                 echo "✅ Deployment successful!"
             else
                 echo "⚠️ Health check failed - checking logs..."
-                tail -20 /var/log/earnings-table.log || echo "No log file found"
+                if [ -f "logs/app.out" ]; then
+                    echo "Last 20 lines of app.out:"
+                    tail -20 logs/app.out
+                fi
+                if [ -f "logs/app.err" ]; then
+                    echo "Last 20 lines of app.err:"
+                    tail -20 logs/app.err
+                fi
             fi
 
             echo "🎉 Deployment completed!"
