@@ -91,12 +91,9 @@ jobs:
             export FINNHUB_API_KEY="dummy_key_for_build"
             export POLYGON_API_KEY="dummy_key_for_build"
             
-            # Build the application with timeout protection
-            echo "🏗️ Building application..."
-            timeout 600 npm run build || {
-                echo "⚠️ Build timed out, trying again..."
-                npm run build
-            }
+          # Build the application using optimized production script
+          echo "🏗️ Building application with optimized script..."
+          npm run build:production
 
             # Create logs directory
             mkdir -p logs
