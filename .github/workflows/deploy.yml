@@ -8,7 +8,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
 
     steps:
       - name: Checkout code
@@ -21,8 +21,8 @@ jobs:
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
           port: 22
-          timeout: 300s
-          command_timeout: 30m
+          timeout: 600s
+          command_timeout: 40m
           debug: true
           script: |
             echo "🚀 Starting deployment..."
@@ -106,9 +106,16 @@ jobs:
 
             # Start the application
             echo "▶️ Starting application..."
+            echo "Current working directory: $(pwd)"
+            echo "Checking if .next directory exists: $(ls -la .next 2>/dev/null || echo 'No .next directory')"
+            
             nohup npm start > /var/log/earnings-table.log 2>&1 &
             APP_PID=$!
             echo "Application started with PID: $APP_PID"
+            
+            # Wait a bit longer for startup
+            echo "Waiting 10 seconds for application to start..."
+            sleep 10
 
             # Wait and check if process is running
             sleep 5
@@ -117,7 +124,14 @@ jobs:
                 echo "✅ Application process is running (PID: $APP_PID)"
             else
                 echo "❌ Application process died, checking logs..."
-                tail -20 /var/log/earnings-table.log || echo "No log file found"
+                echo "Checking if log file exists: $(ls -la /var/log/earnings-table.log 2>/dev/null || echo 'No log file found')"
+                if [ -f "/var/log/earnings-table.log" ]; then
+                    echo "Last 30 lines of log:"
+                    tail -30 /var/log/earnings-table.log
+                else
+                    echo "No log file found, checking npm processes:"
+                    ps aux | grep npm || echo "No npm processes found"
+                fi
                 exit 1
             fi
 
