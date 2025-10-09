@@ -25,7 +25,7 @@ jobs:
           command_timeout: 40m
           debug: true
           script: |
-            echo "🚀 Starting optimized deployment..."
+            echo "Starting optimized deployment..."
             echo "Current directory: $(pwd)"
             echo "User: $(whoami)"
             echo "Date: $(date)"
@@ -38,37 +38,37 @@ jobs:
             export PARITY_SKIP=1  # Skip parity checks during deployment
             
             # Create project directory if it doesn't exist
-            echo "📁 Setting up project directory..."
+            echo "Setting up project directory..."
             mkdir -p /var/www/earnings-table
             cd /var/www/earnings-table
-            echo "📁 Project directory: $(pwd)"
+            echo "Project directory: $(pwd)"
 
             # Clone or update repository
             if [ ! -d ".git" ]; then
-                echo "📥 Cloning repository..."
+                echo "Cloning repository..."
                 git clone https://github.com/dusan02/et_new.git .
             else
-                echo "📋 Updating repository..."
+                echo "Updating repository..."
                 git fetch origin main
                 git reset --hard origin/main
                 git clean -fd
             fi
 
             # Show current commit
-            echo "📝 Current commit:"
+            echo "Current commit:"
             git log --oneline -1
 
             # Install dependencies with optimizations
-            echo "📦 Installing dependencies..."
+            echo "Installing dependencies..."
             npm ci --production=false --prefer-offline --no-audit --no-fund
 
             # Create a simplified build script that skips problematic validations
-            echo "🔧 Creating optimized build script..."
+            echo "Creating optimized build script..."
             cat > build-optimized.js << 'EOF'
             const { execSync } = require('child_process');
             const fs = require('fs');
             
-            console.log('🏗️ Starting optimized build...');
+            console.log('Starting optimized build...');
             
             try {
               // Set environment variables
@@ -79,27 +79,27 @@ jobs:
               process.env.PARITY_SKIP = '1';
               
               // Skip pre-build validations and go straight to Next.js build
-              console.log('📦 Running Next.js build...');
+              console.log('Running Next.js build...');
               execSync('npx next build', { 
                 stdio: 'inherit',
                 env: { ...process.env },
                 timeout: 600000  // 10 minutes timeout
               });
               
-              console.log('✅ Build completed successfully!');
+              console.log('Build completed successfully!');
             } catch (error) {
-              console.error('❌ Build failed:', error.message);
+              console.error('Build failed:', error.message);
               process.exit(1);
             }
             EOF
 
             # Run the optimized build
-            echo "🏗️ Building application with optimizations..."
+            echo "Building application with optimizations..."
             timeout 900 node build-optimized.js || {
-                echo "⚠️ Build timed out or failed, trying fallback..."
+                echo "Build timed out or failed, trying fallback..."
                 # Fallback: try direct Next.js build
                 timeout 600 npx next build || {
-                    echo "❌ Build failed completely"
+                    echo "Build failed completely"
                     exit 1
                 }
             }
@@ -108,53 +108,53 @@ jobs:
             rm -f build-optimized.js
 
             # Stop any existing processes gracefully
-            echo "🛑 Stopping existing processes..."
+            echo "Stopping existing processes..."
             pkill -f "npm start" 2>/dev/null || echo "No npm start processes found"
             pkill -f "node.*next" 2>/dev/null || echo "No Next.js processes found"
             sleep 3
 
             # Start the application with proper process management
-            echo "▶️ Starting application..."
+            echo "Starting application..."
             nohup npm start > /var/log/earnings-table.log 2>&1 &
             APP_PID=$!
             echo "Application started with PID: $APP_PID"
 
             # Wait and verify the process is running
             sleep 5
-            echo "🔍 Checking if application is running..."
+            echo "Checking if application is running..."
             if ps -p $APP_PID > /dev/null; then
-                echo "✅ Application process is running (PID: $APP_PID)"
+                echo "Application process is running (PID: $APP_PID)"
             else
-                echo "❌ Application process died, checking logs..."
+                echo "Application process died, checking logs..."
                 tail -20 /var/log/earnings-table.log || echo "No log file found"
                 exit 1
             fi
 
             # Health check with retries
-            echo "🏥 Health check..."
+            echo "Health check..."
             for i in {1..5}; do
                 echo "Health check attempt $i/5..."
                 if curl -f http://localhost:3000 > /dev/null 2>&1; then
-                    echo "✅ Health check passed!"
+                    echo "Health check passed!"
                     break
                 else
                     if [ $i -eq 5 ]; then
-                        echo "❌ Health check failed after 5 attempts"
-                        echo "📋 Recent logs:"
+                        echo "Health check failed after 5 attempts"
+                        echo "Recent logs:"
                         tail -30 /var/log/earnings-table.log || echo "No log file found"
                         exit 1
                     fi
-                    echo "⏳ Waiting 10 seconds before retry..."
+                    echo "Waiting 10 seconds before retry..."
                     sleep 10
                 fi
             done
 
-            echo "🎉 Optimized deployment completed successfully!"
+            echo "Optimized deployment completed successfully!"
 
       - name: Final health check
         run: |
           sleep 30
-          echo "🔍 Final health check..."
+          echo "Final health check..."
           curl -f http://${{ secrets.HOST }} || echo "HTTP check failed"
           curl -k -f https://${{ secrets.HOST }} || echo "HTTPS check failed - SSL certificate issue"
-          echo "✅ Final health check completed"
+          echo "Final health check completed"
