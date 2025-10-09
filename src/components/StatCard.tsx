@@ -39,11 +39,11 @@ export default function StatCard({
       onClick={onClick}
       className={clsx(
         "relative group overflow-hidden",
-        "bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl",
-        "rounded-lg border border-gray-300 dark:border-gray-600",
+        "bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl",
+        "rounded-lg border-2 border-gray-300 dark:border-gray-600",
         "shadow-2xl hover:shadow-3xl",
         "transition-all duration-300 ease-out",
-        "p-3 sm:p-4 md:p-6 min-h-[90px] sm:min-h-[100px] md:min-h-[110px] w-full",
+        "p-3 sm:p-4 md:p-5 min-h-[90px] sm:min-h-[100px] md:min-h-[110px] w-full",
         "flex flex-col justify-between",
         "hover:scale-105 hover:rotate-1 animate-fade-in",
         align === "center" ? "items-center text-center" : "items-start text-left",
@@ -63,7 +63,7 @@ export default function StatCard({
       {/* Content */}
       <div className="relative z-10 h-full flex flex-col justify-between px-1 py-3">
         <div className={clsx(
-          "text-xs uppercase font-semibold tracking-wider text-center whitespace-nowrap",
+          "text-xs uppercase font-semibold tracking-wide text-center whitespace-nowrap",
           variant === "blue" ? "text-blue-700 dark:text-blue-300" : "",
           variant === "green" ? "text-emerald-700 dark:text-emerald-300" : "",
           variant === "red" ? "text-red-700 dark:text-red-300" : ""
@@ -71,7 +71,7 @@ export default function StatCard({
           {title}
         </div>
         <div className={clsx(
-          "text-xs sm:text-sm font-bold leading-tight tabular-nums flex items-center justify-center",
+          "text-sm font-bold leading-tight tabular-nums flex items-center justify-center",
           variant === "blue" ? "text-blue-900 dark:text-blue-100" : "",
           variant === "green" ? "text-emerald-900 dark:text-emerald-100" : "",
           variant === "red" ? "text-red-900 dark:text-red-100" : ""
@@ -79,7 +79,7 @@ export default function StatCard({
           {main ?? "—"}
         </div>
         <div className={clsx(
-          "text-xs font-medium leading-tight tabular-nums text-center",
+          "text-xs font-semibold leading-tight tabular-nums text-center",
           variant === "blue" ? "text-blue-600 dark:text-blue-400" : "",
           variant === "green" ? "text-emerald-600 dark:text-emerald-400" : "",
           variant === "red" ? "text-red-600 dark:text-red-400" : ""
@@ -90,7 +90,7 @@ export default function StatCard({
       
       {/* Top accent line */}
       <div className={clsx(
-        "absolute top-0 left-0 right-0 h-1 rounded-t-lg opacity-60 transition-opacity duration-300",
+        "absolute top-0 left-0 right-0 h-2 rounded-t-lg opacity-80 transition-opacity duration-300",
         variant === "blue" ? "bg-gradient-to-r from-blue-400 to-blue-600" : "",
         variant === "green" ? "bg-gradient-to-r from-emerald-400 to-emerald-600" : "",
         variant === "red" ? "bg-gradient-to-r from-red-400 to-red-600" : ""
@@ -98,7 +98,7 @@ export default function StatCard({
       
       {/* Bottom accent line */}
       <div className={clsx(
-        "absolute bottom-0 left-0 right-0 h-1 rounded-b-lg opacity-60 transition-opacity duration-300",
+        "absolute bottom-0 left-0 right-0 h-2 rounded-b-lg opacity-80 transition-opacity duration-300",
         variant === "blue" ? "bg-gradient-to-r from-blue-400 to-blue-600" : "",
         variant === "green" ? "bg-gradient-to-r from-emerald-400 to-emerald-600" : "",
         variant === "red" ? "bg-gradient-to-r from-red-400 to-red-600" : ""

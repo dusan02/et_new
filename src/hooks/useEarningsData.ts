@@ -148,8 +148,11 @@ export function useEarningsData() {
     revalidateIfStale: true,
     errorRetryCount: 3,
     errorRetryInterval: 5000,
-    onSuccess: () => {
-      setLastUpdated(new Date());
+    onSuccess: (data: any) => {
+      // Use the actual lastUpdated from API response, not current time
+      if (data?.data?.lastUpdated) {
+        setLastUpdated(new Date(data.data.lastUpdated));
+      }
     }
   };
 
@@ -161,51 +164,13 @@ export function useEarningsData() {
     mutate: mutateEarnings
   } = useSWR<ApiResponse<EarningsData[]>>('/api/earnings/today', fetcher, swrConfig);
 
-  // Fetch stats data - temporarily disabled due to database issues
-  // const { 
-  //   data: statsResponse, 
-  //   error: statsError, 
-  //   isLoading: statsLoading,
-  //   mutate: mutateStats
-  // } = useSWR<ApiResponse<EarningsStats>>('/api/earnings/stats', statsFetcher, swrConfig);
-  
-  // Mock stats response for now
-  const statsResponse = {
-    status: 'success' as const,
-    data: {
-      totalEarnings: earningsResponse?.data?.length || 0,
-      withEps: 0,
-      withRevenue: 0,
-      sizeDistribution: [
-        { size: 'Large', _count: { size: 2 }, _sum: { marketCap: 5000000000 } },
-        { size: 'Mid', _count: { size: 3 }, _sum: { marketCap: 2000000000 } },
-        { size: 'Small', _count: { size: 3 }, _sum: { marketCap: 500000000 } }
-      ],
-      topGainers: [
-        { ticker: 'AZZ', companyName: 'AZZ Inc.', priceChangePercent: 0.44, marketCapDiffBillions: 0.0 }
-      ],
-      topLosers: [
-        { ticker: 'RELL', companyName: 'Richardson Electronics Ltd', priceChangePercent: 0.99, marketCapDiffBillions: 0.0 }
-      ],
-      epsBeat: null,
-      revenueBeat: null,
-      epsMiss: null,
-      revenueMiss: null
-    },
-    meta: {
-      total: earningsResponse?.data?.length || 0,
-      ready: true,
-      duration: '0ms',
-      date: new Date().toISOString().split('T')[0],
-      requestedDate: new Date().toISOString().split('T')[0],
-      fallbackUsed: false,
-      cached: false
-    },
-    timestamp: new Date().toISOString()
-  };
-  const statsError = null;
-  const statsLoading = false;
-  const mutateStats = () => Promise.resolve();
+  // Fetch stats data from API
+  const { 
+    data: statsResponse, 
+    error: statsError, 
+    isLoading: statsLoading,
+    mutate: mutateStats
+  } = useSWR<ApiResponse<EarningsStats>>('/api/earnings/stats', statsFetcher, swrConfig);
 
   // Manual refresh function
   const refresh = useCallback(async () => {
@@ -213,7 +178,8 @@ export function useEarningsData() {
       mutateEarnings(),
       mutateStats()
     ]);
-    setLastUpdated(new Date());
+    // Don't update lastUpdated here - it should come from the API response
+    // which reflects the actual database update time from cron jobs
   }, [mutateEarnings, mutateStats]);
 
   // Extract data from responses

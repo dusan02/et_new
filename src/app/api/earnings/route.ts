@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
       }
       
       return ApiResponseBuilder.validationError(
-        validation.error.details.map(d => d.message),
+        validation.error.details,
         { endpoint: '/api/earnings' }
       )
     }
@@ -221,7 +221,7 @@ export async function GET(request: NextRequest) {
     })
     
     // Flatten the joined data structure
-    combinedRows = combinedRows.map(row => {
+    const flattenedRows = combinedRows.map(row => {
       // Debug logging
       if (row.ticker === 'AONC') {
         console.log(`[API DEBUG] ${row.ticker}: marketData=`, row.marketData);
@@ -256,7 +256,7 @@ export async function GET(request: NextRequest) {
     })
     
     // Debug logging after transformation
-    const aoncRow = combinedRows.find(row => row.ticker === 'AONC');
+    const aoncRow = flattenedRows.find(row => row.ticker === 'AONC');
     if (aoncRow) {
       console.log(`[API DEBUG AFTER] AONC: currentPrice=`, aoncRow.currentPrice);
       console.log(`[API DEBUG AFTER] AONC: companyName=`, aoncRow.companyName);
@@ -266,7 +266,7 @@ export async function GET(request: NextRequest) {
     // ✅ NO FALLBACK: If no data for today, return explicit no-data status
     let actualDate = today
     let responseStatus = 'ok'
-    if (combinedRows.length === 0) {
+    if (flattenedRows.length === 0) {
       console.log(`[API] No data for ${todayString} - returning no-data status (no fallback to old data)`)
       responseStatus = 'no-data'
       // Keep combinedRows as empty array - no fallback to old data
@@ -307,33 +307,33 @@ export async function GET(request: NextRequest) {
     const guidanceData: any[] = [] // Empty array for production
 
     console.log(`[API] Database query results:`, {
-      combinedRowsCount: combinedRows.length,
+      combinedRowsCount: flattenedRows.length,
       guidanceDataCount: guidanceData.length
     })
 
     // Count actual data
-    const withEpsActual = combinedRows.filter(r => r.epsActual !== null).length
-    const withRevenueActual = combinedRows.filter(r => r.revenueActual !== null).length
-    const withBothActual = combinedRows.filter(r => r.epsActual !== null && r.revenueActual !== null).length
+    const withEpsActual = flattenedRows.filter(r => r.epsActual !== null).length
+    const withRevenueActual = flattenedRows.filter(r => r.revenueActual !== null).length
+    const withBothActual = flattenedRows.filter(r => r.epsActual !== null && r.revenueActual !== null).length
     
     console.log(`[API] Actual data counts:`, {
       withEpsActual,
       withRevenueActual,
       withBothActual,
-      withoutAnyActual: combinedRows.length - withEpsActual - withRevenueActual + withBothActual
+      withoutAnyActual: flattenedRows.length - withEpsActual - withRevenueActual + withBothActual
     })
 
     // Log detailed breakdown
-    const epsActualTickers = combinedRows.filter(r => r.epsActual !== null).map(r => r.ticker)
-    const revenueActualTickers = combinedRows.filter(r => r.revenueActual !== null).map(r => r.ticker)
+    const epsActualTickers = flattenedRows.filter(r => r.epsActual !== null).map(r => r.ticker)
+    const revenueActualTickers = flattenedRows.filter(r => r.revenueActual !== null).map(r => r.ticker)
     
     console.log(`[API] Tickers with EPS Actual (${epsActualTickers.length}):`, epsActualTickers.join(', '))
     console.log(`[API] Tickers with Revenue Actual (${revenueActualTickers.length}):`, revenueActualTickers.join(', '))
 
     // Apply ticker filter if specified in debug mode
     const filteredRows = tickerFilter 
-      ? combinedRows.filter(row => row.ticker === tickerFilter)
-      : combinedRows
+      ? flattenedRows.filter(row => row.ticker === tickerFilter)
+      : flattenedRows
 
     // Transform combined data - market data is already flattened in the previous step
     const combinedData = filteredRows.map(row => {
@@ -479,7 +479,7 @@ export async function GET(request: NextRequest) {
           }
         }),
         marketCapDiffBillions: marketInfo?.marketCapDiffBillions ?? null,
-        sharesOutstanding: marketInfo?.sharesOutstanding || null,
+        sharesOutstanding: null, // Not available in current data structure
         // Guidance calculations
         epsGuideSurprise,
         epsGuideBasis,

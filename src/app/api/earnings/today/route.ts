@@ -32,6 +32,7 @@ interface ApiResponse {
   };
   data: any[];
   flags: string[];
+  lastUpdated?: string; // Add lastUpdated field
   message?: string;
 }
 
@@ -69,6 +70,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           epsRev: 0
         },
         data: [],
+        flags: [],
         message: 'No published snapshot available'
       };
 
@@ -102,6 +104,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           epsRev: 0
         },
         data: [],
+        flags: [],
         message: 'Failed to parse published data'
       };
 
@@ -122,7 +125,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       },
       coverage: publishedData.coverage,
       data: publishedData.data,
-      flags: publishedData.flags || []
+      flags: publishedData.flags || [],
+      lastUpdated: publishedData.publishedAt // Add lastUpdated field for frontend
     };
 
     logger.info(`Successfully served published data for ${today}`, {
@@ -159,6 +163,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         epsRev: 0
       },
       data: [],
+      flags: [],
       message: 'Internal server error'
     };
 

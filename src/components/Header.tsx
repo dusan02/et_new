@@ -54,7 +54,14 @@ interface HeaderProps {
 
 export function Header({ lastUpdated, stats }: HeaderProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [showCards, setShowCards] = useState(true);
+  const [showCards, setShowCards] = useState(() => {
+    // Load from localStorage on initial render
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('showCards');
+      return saved !== null ? JSON.parse(saved) : true;
+    }
+    return true;
+  });
 
   // Update date every minute
   useEffect(() => {
@@ -64,6 +71,13 @@ export function Header({ lastUpdated, stats }: HeaderProps) {
 
     return () => clearInterval(timer);
   }, []);
+
+  // Save showCards state to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('showCards', JSON.stringify(showCards));
+    }
+  }, [showCards]);
 
   const formatLastUpdated = (date: Date | null) => {
     if (!date) return 'Never';
@@ -90,7 +104,7 @@ export function Header({ lastUpdated, stats }: HeaderProps) {
       
       {/* Subtle Background Elements - removed white balls */}
 
-      <div className="relative w-3/5 mx-auto px-3 sm:px-4 py-4 sm:py-6 md:py-8">
+      <div className="relative w-full px-[10%] py-4 sm:py-6 md:py-8">
         <div className="text-center">
           {/* Main Title */}
           <div className="mb-4">
@@ -130,7 +144,7 @@ export function Header({ lastUpdated, stats }: HeaderProps) {
               <span className="text-xs sm:text-sm font-medium text-green-700 dark:text-green-300">Autorefresh</span>
             </div>
             <ThemeToggle />
-            <CardsToggle onToggle={setShowCards} />
+            <CardsToggle isVisible={showCards} onToggle={setShowCards} />
             </div>
           </div>
 

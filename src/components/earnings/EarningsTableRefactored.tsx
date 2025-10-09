@@ -15,6 +15,7 @@ export function EarningsTableRefactored({
   const [sortColumn, setSortColumn] = useState<string>('marketCap');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [marketCapFilters, setMarketCapFilters] = useState<string[]>([]);
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -36,6 +37,34 @@ export function EarningsTableRefactored({
         item.ticker.toLowerCase().includes(searchLower) ||
         (item.companyName && item.companyName.toLowerCase().includes(searchLower))
       );
+    }
+
+    // Filter data based on market cap filters
+    if (marketCapFilters.length > 0 && !marketCapFilters.includes('All')) {
+      filteredData = filteredData.filter(item => {
+        // Calculate size from marketCap if size property is missing
+        let itemSize = item.size;
+        if (!itemSize && item.marketCap) {
+          const marketCapValue = Number(item.marketCap);
+          if (marketCapValue > 100_000_000_000) itemSize = 'Mega';
+          else if (marketCapValue >= 10_000_000_000) itemSize = 'Large';
+          else if (marketCapValue >= 2_000_000_000) itemSize = 'Mid';
+          else itemSize = 'Small';
+        }
+        
+        if (!itemSize) return false;
+        
+        // Convert filter values to match data format (MEGA -> Mega, etc.)
+        const normalizedFilters = marketCapFilters.map(filter => {
+          if (filter === 'MEGA') return 'Mega';
+          if (filter === 'LARGE') return 'Large';
+          if (filter === 'MID') return 'Mid';
+          if (filter === 'SMALL') return 'Small';
+          return filter;
+        });
+        
+        return normalizedFilters.includes(itemSize);
+      });
     }
 
     // Helper function to check if value is null/undefined/empty
@@ -95,7 +124,7 @@ export function EarningsTableRefactored({
       if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [data, sortColumn, sortDirection, searchTerm]);
+  }, [data, sortColumn, sortDirection, searchTerm, marketCapFilters]);
 
   return (
     <div className="space-y-6">
@@ -103,6 +132,8 @@ export function EarningsTableRefactored({
         lastUpdated={lastUpdated}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
+        marketCapFilters={marketCapFilters}
+        onMarketCapFilterChange={setMarketCapFilters}
       />
       
       <EarningsTableBody 

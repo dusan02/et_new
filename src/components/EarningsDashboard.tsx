@@ -234,7 +234,7 @@ export function EarningsDashboard() {
         />
         
         <main className="flex-1 py-8" role="main" aria-label="Earnings dashboard main content">
-          <section className="w-3/5 mx-auto px-4" aria-label="Earnings data and statistics">
+          <section className="w-full max-w-[1100px] mx-auto px-4" aria-label="Earnings data and statistics">
             <div className="px-0">
               <EarningsTableRefactored
                 data={earningsData}

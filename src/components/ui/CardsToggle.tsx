@@ -1,18 +1,15 @@
 'use client';
 
-import { useState } from 'react';
 import { Grid3X3, Eye, EyeOff } from 'lucide-react';
 
 interface CardsToggleProps {
+  isVisible: boolean;
   onToggle?: (isVisible: boolean) => void;
 }
 
-export function CardsToggle({ onToggle }: CardsToggleProps) {
-  const [isVisible, setIsVisible] = useState(true);
-
+export function CardsToggle({ isVisible, onToggle }: CardsToggleProps) {
   const handleToggle = () => {
     const newVisibility = !isVisible;
-    setIsVisible(newVisibility);
     onToggle?.(newVisibility);
   };
 

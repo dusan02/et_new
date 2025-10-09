@@ -49,6 +49,8 @@ export interface EarningsTableHeaderProps {
   lastUpdated?: Date | null;
   searchTerm?: string;
   onSearchChange?: (value: string) => void;
+  marketCapFilters?: string[];
+  onMarketCapFilterChange?: (filters: string[]) => void;
 }
 
 export interface EarningsTableBodyProps {
