@@ -29,8 +29,26 @@ jobs:
             echo "Current directory: $(pwd)"
             echo "User: $(whoami)"
             echo "Date: $(date)"
-
-            # Navigate to project directory
+            
+            # Update system and install required tools
+            echo "🔧 Installing system dependencies..."
+            apt-get update -y
+            apt-get install -y git curl wget
+            
+            # Install Node.js 18.x
+            echo "📦 Installing Node.js..."
+            curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+            apt-get install -y nodejs
+            
+            # Verify installations
+            echo "✅ Verifying installations:"
+            git --version
+            node --version
+            npm --version
+            
+            # Create project directory if it doesn't exist
+            echo "📁 Setting up project directory..."
+            mkdir -p /var/www/earnings-table
             cd /var/www/earnings-table
             echo "📁 Project directory: $(pwd)"
 
