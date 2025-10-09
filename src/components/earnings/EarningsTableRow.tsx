@@ -183,7 +183,7 @@ export function EarningsTableRow({ item, index }: EarningsTableRowProps) {
       </div>
 
       {/* 6. Revenue */}
-      <div className={`px-3 py-3 border-b border-gray-200 dark:border-gray-700 group-hover:bg-gray-100 dark:group-hover:bg-gray-700 transition-colors`}>
+      <div className={`px-3 py-3 border-b border-gray-200 dark:border-gray-700 group-hover:bg-gray-100 dark:group-hover:bg-gray-700 transition-colors ${rowBgClass}`}>
         <div className="flex flex-col text-right leading-snug">
           <span className="text-sm font-semibold text-gray-900 dark:text-white hover:text-gray-800 dark:hover:text-gray-100 transition-colors">
             {item.revenueActual !== null 
