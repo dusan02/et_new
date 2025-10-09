@@ -87,6 +87,10 @@ jobs:
             export REDIS_URL="redis://localhost:6379"
             export PARITY_SKIP=1  # Skip parity checks
             
+            # Set required API keys for build (using dummy values for build)
+            export FINNHUB_API_KEY="dummy_key_for_build"
+            export POLYGON_API_KEY="dummy_key_for_build"
+            
             # Build the application with timeout protection
             echo "🏗️ Building application..."
             timeout 600 npm run build || {
