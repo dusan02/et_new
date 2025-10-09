@@ -46,21 +46,25 @@ jobs:
             node --version
             npm --version
             
-            # Create project directory if it doesn't exist
-            echo "📁 Setting up project directory..."
-            mkdir -p /var/www/earnings-table
-            cd /var/www/earnings-table
-            echo "📁 Project directory: $(pwd)"
+# Create project directory if it doesn't exist
+echo "📁 Setting up project directory..."
+mkdir -p /var/www/earnings-table
+cd /var/www/earnings-table
+echo "📁 Project directory: $(pwd)"
 
-            # Check git status
-            echo "📋 Git status:"
-            git status --short
-
-            # Force reset to match remote exactly
-            echo "🧹 Force resetting to remote state..."
-            git fetch origin main
-            git reset --hard origin/main
-            git clean -fd
+# Clone repository if it doesn't exist
+if [ ! -d ".git" ]; then
+    echo "📥 Cloning repository..."
+    git clone https://github.com/dusan02/et_new.git .
+else
+    echo "📋 Git status:"
+    git status --short
+    # Force reset to match remote exactly
+    echo "🧹 Force resetting to remote state..."
+    git fetch origin main
+    git reset --hard origin/main
+    git clean -fd
+fi
 
             # Show current commit
             echo "📝 Current commit:"
