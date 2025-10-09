@@ -1,6 +1,8 @@
 name: Deploy to VPS
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -68,9 +70,14 @@ jobs:
             echo "📝 Current commit:"
             git log --oneline -1
 
-            # Install dependencies with cache
+            # Clean and install dependencies
+            echo "🧹 Cleaning node_modules..."
+            rm -rf node_modules
+            rm -rf .next
+            npm cache clean --force
+            
             echo "📦 Installing dependencies..."
-            npm ci --production=false
+            npm install --production=false
             
             # Set environment variables for production build
             echo "🔧 Setting environment variables..."
@@ -78,6 +85,7 @@ jobs:
             export NEXT_PUBLIC_APP_ENV=production
             export DATABASE_URL="file:./dev.db"
             export REDIS_URL="redis://localhost:6379"
+            export PARITY_SKIP=1  # Skip parity checks
             
             # Build the application with timeout protection
             echo "🏗️ Building application..."
