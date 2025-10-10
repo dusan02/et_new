@@ -547,6 +547,43 @@ export async function GET(request: NextRequest) {
     if (ttl > 0) {
       setCachedData(cacheKey, serializedData)
     }
+
+    // Create stats object for the frontend
+    const stats = {
+      totalEarnings: combinedData.length,
+      withEps: combinedData.filter(item => item.epsActual !== null).length,
+      withRevenue: combinedData.filter(item => item.revenueActual !== null).length,
+      sizeDistribution: [
+        { size: 'Mega', _count: { size: combinedData.filter(item => item.size === 'MEGA').length }, _sum: { marketCap: 0 } },
+        { size: 'Large', _count: { size: combinedData.filter(item => item.size === 'LARGE').length }, _sum: { marketCap: 0 } },
+        { size: 'Mid', _count: { size: combinedData.filter(item => item.size === 'MID').length }, _sum: { marketCap: 0 } },
+        { size: 'Small', _count: { size: combinedData.filter(item => item.size === 'SMALL').length }, _sum: { marketCap: 0 } }
+      ],
+      topGainers: combinedData
+        .filter(item => item.priceChangePercent !== null)
+        .sort((a, b) => (b.priceChangePercent || 0) - (a.priceChangePercent || 0))
+        .slice(0, 3)
+        .map(item => ({
+          ticker: item.ticker,
+          companyName: item.companyName || item.ticker,
+          priceChangePercent: item.priceChangePercent || 0,
+          marketCapDiffBillions: item.marketCapDiffBillions || 0
+        })),
+      topLosers: combinedData
+        .filter(item => item.priceChangePercent !== null)
+        .sort((a, b) => (a.priceChangePercent || 0) - (b.priceChangePercent || 0))
+        .slice(0, 3)
+        .map(item => ({
+          ticker: item.ticker,
+          companyName: item.companyName || item.ticker,
+          priceChangePercent: item.priceChangePercent || 0,
+          marketCapDiffBillions: item.marketCapDiffBillions || 0
+        })),
+      epsBeat: combinedData.find(item => item.epsActual !== null && item.epsEstimate !== null && item.epsActual > item.epsEstimate) || null,
+      revenueBeat: combinedData.find(item => item.revenueActual !== null && item.revenueEstimate !== null && Number(item.revenueActual) > Number(item.revenueEstimate)) || null,
+      epsMiss: combinedData.find(item => item.epsActual !== null && item.epsEstimate !== null && item.epsActual < item.epsEstimate) || null,
+      revenueMiss: combinedData.find(item => item.revenueActual !== null && item.revenueEstimate !== null && Number(item.revenueActual) < Number(item.revenueEstimate)) || null
+    }
     
     // Calculate debug statistics for fresh data
     let previousSourceStats = { aggs: 0, snapshot: 0, none: 0 }
@@ -601,7 +638,7 @@ export async function GET(request: NextRequest) {
           }
         )
       : ApiResponseBuilder.withMetrics(
-          serializedData,
+          { data: serializedData, stats },
           startTime,
           {
             total: combinedData.length,
