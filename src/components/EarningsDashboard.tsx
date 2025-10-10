@@ -29,7 +29,7 @@ export function EarningsDashboard({
         setIsLoading(true);
         setError(null);
         
-        const response = await fetch('/api/earnings');
+        const response = await fetch('/api/earnings?nocache=1');
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
