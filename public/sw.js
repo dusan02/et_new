@@ -69,7 +69,13 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Handle API requests with network-first strategy
+  // Skip caching for earnings API endpoints (always fresh data)
+  if (url.pathname.startsWith("/api/earnings")) {
+    console.log("[SW] Bypassing cache for earnings API:", url.pathname);
+    return; // Let browser handle normally
+  }
+
+  // Handle other API requests with network-first strategy
   if (url.pathname.startsWith("/api/")) {
     event.respondWith(
       caches.open(DATA_CACHE_NAME).then((cache) => {

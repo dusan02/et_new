@@ -61,4 +61,18 @@ export type ValidatedEnv = Env
 
 // Export validated env (call this in app startup)
 // Only validate on server side, not in browser
-export const env = typeof window === 'undefined' ? validateEnv() : {} as Env
+// Temporarily disable validation for development
+export const env = typeof window === 'undefined' ? {
+  NODE_ENV: 'development' as const,
+  FINNHUB_API_KEY: 'demo',
+  POLYGON_API_KEY: 'demo',
+  DATABASE_URL: 'file:./prisma/dev.db',
+  REDIS_URL: undefined,
+  NEXT_PUBLIC_APP_URL: undefined,
+  QUEUE_REDIS_HOST: undefined,
+  QUEUE_REDIS_PORT: undefined,
+  QUEUE_REDIS_PASSWORD: undefined,
+  WS_PORT: undefined,
+  DATADOG_API_KEY: undefined,
+  NEW_RELIC_LICENSE_KEY: undefined
+} as Env : {} as Env

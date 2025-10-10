@@ -105,12 +105,13 @@ export class EarningsService {
           reportTime = 'TNS'
       }
 
-      // Convert revenue from millions to actual value if needed
+      // Finnhub already returns revenue in correct units (not in millions)
+      // So we don't need to multiply by 1000000
       let revenueActual = item.revenueActual 
-        ? BigInt(Math.round(Number(item.revenueActual) * 1000000))
+        ? BigInt(Math.round(Number(item.revenueActual)))
         : undefined
       const revenueEstimate = item.revenueEstimate 
-        ? BigInt(Math.round(Number(item.revenueEstimate) * 1000000))
+        ? BigInt(Math.round(Number(item.revenueEstimate)))
         : undefined
 
       // Apply fallback for missing actual values

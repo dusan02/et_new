@@ -16,6 +16,15 @@ export async function resetCurrentDayData() {
     
     console.log(`🗑️ Resetting all data for ${today.toISOString()}`)
     
+    // Reset current day market data first (due to foreign key constraints)
+    const resetTodayMarket = await prisma.marketData.deleteMany({
+      where: {
+        reportDate: {
+          gte: today
+        }
+      }
+    })
+    
     // Reset current day earnings data
     const resetTodayEarnings = await prisma.earningsTickersToday.deleteMany({
       where: {
@@ -25,8 +34,8 @@ export async function resetCurrentDayData() {
       }
     })
     
-    // Reset current day market data
-    const resetTodayMarket = await prisma.todayEarningsMovements.deleteMany({
+    // Reset current day movements data
+    const resetTodayMovements = await prisma.todayEarningsMovements.deleteMany({
       where: {
         reportDate: {
           gte: today
@@ -39,14 +48,16 @@ export async function resetCurrentDayData() {
     
     console.log('✅ Current day reset completed successfully!')
     console.log(`📊 Reset records:`)
-    console.log(`   - Today's earnings: ${resetTodayEarnings.count}`)
     console.log(`   - Today's market data: ${resetTodayMarket.count}`)
+    console.log(`   - Today's earnings: ${resetTodayEarnings.count}`)
+    console.log(`   - Today's movements: ${resetTodayMovements.count}`)
     
     return {
       success: true,
       reset: {
+        market: resetTodayMarket.count,
         earnings: resetTodayEarnings.count,
-        market: resetTodayMarket.count
+        movements: resetTodayMovements.count
       }
     }
     
@@ -75,7 +86,16 @@ export async function clearOldData() {
     console.log(`🗑️ Removing data older than ${cutoffDate.toISOString()}`)
     console.log(`✅ Preserving today's data: ${today.toISOString()}`)
     
-    // 1. Clean up old earnings data (older than 7 days)
+    // 1. Clean up old market data first (older than 7 days) - due to foreign key constraints
+    const deletedMarket = await prisma.marketData.deleteMany({
+      where: {
+        reportDate: {
+          lt: cutoffDate
+        }
+      }
+    })
+    
+    // 2. Clean up old earnings data (older than 7 days)
     const deletedEarnings = await prisma.earningsTickersToday.deleteMany({
       where: {
         reportDate: {
@@ -84,8 +104,8 @@ export async function clearOldData() {
       }
     })
     
-    // 2. Clean up old market data (older than 7 days)
-    const deletedMarket = await prisma.todayEarningsMovements.deleteMany({
+    // 3. Clean up old movements data (older than 7 days)
+    const deletedMovements = await prisma.todayEarningsMovements.deleteMany({
       where: {
         reportDate: {
           lt: cutoffDate
@@ -93,7 +113,15 @@ export async function clearOldData() {
       }
     })
     
-    // 3. ✅ Safe cleanup: delete ONLY older data (not today)
+    // 4. ✅ Safe cleanup: delete ONLY older data (not today)
+    const cleanupYesterdayMarket = await prisma.marketData.deleteMany({
+      where: {
+        reportDate: {
+          lt: today
+        }
+      }
+    })
+    
     const cleanupYesterdayEarnings = await prisma.earningsTickersToday.deleteMany({
       where: {
         reportDate: {
@@ -102,7 +130,7 @@ export async function clearOldData() {
       }
     })
     
-    const cleanupYesterdayMarket = await prisma.todayEarningsMovements.deleteMany({
+    const cleanupYesterdayMovements = await prisma.todayEarningsMovements.deleteMany({
       where: {
         reportDate: {
           lt: today
@@ -123,19 +151,23 @@ export async function clearOldData() {
     
     console.log('✅ Cleanup completed successfully!')
     console.log(`📊 Deleted records:`)
-    console.log(`   - Old earnings (>7d): ${deletedEarnings.count}`)
     console.log(`   - Old market data (>7d): ${deletedMarket.count}`)
-    console.log(`   - Yesterday earnings: ${cleanupYesterdayEarnings.count}`)
+    console.log(`   - Old earnings (>7d): ${deletedEarnings.count}`)
+    console.log(`   - Old movements (>7d): ${deletedMovements.count}`)
     console.log(`   - Yesterday market data: ${cleanupYesterdayMarket.count}`)
+    console.log(`   - Yesterday earnings: ${cleanupYesterdayEarnings.count}`)
+    console.log(`   - Yesterday movements: ${cleanupYesterdayMovements.count}`)
     console.log(`   ✅ Today's data PRESERVED (not deleted)`)
     
     return {
       success: true,
       deleted: {
-        oldEarnings: deletedEarnings.count,
         oldMarket: deletedMarket.count,
+        oldEarnings: deletedEarnings.count,
+        oldMovements: deletedMovements.count,
+        yesterdayMarket: cleanupYesterdayMarket.count,
         yesterdayEarnings: cleanupYesterdayEarnings.count,
-        yesterdayMarket: cleanupYesterdayMarket.count
+        yesterdayMovements: cleanupYesterdayMovements.count
       }
     }
     
