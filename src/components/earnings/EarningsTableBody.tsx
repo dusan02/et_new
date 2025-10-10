@@ -1,8 +1,7 @@
 'use client';
 
 import React from 'react';
-import { SkeletonLoader, SkeletonCard } from '../ui/SkeletonLoader';
-import { MobileCard } from './MobileCard';
+import { SkeletonCard } from '../ui/SkeletonLoader';
 import { EarningsTableRow } from './EarningsTableRow';
 import { EarningsTableBodyProps } from './types';
 
@@ -119,24 +118,24 @@ export function EarningsTableBody({
                   <React.Fragment key={`skeleton-row-${index}`}>
                     <div className={`px-3 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center ${rowBgClass}`}>
                       <div className="space-y-1">
-                        <SkeletonLoader className="h-4 w-16" />
-                        <SkeletonLoader className="h-3 w-20" />
+                        <div className="h-4 w-16 bg-gray-200 rounded animate-pulse" />
+                        <div className="h-3 w-20 bg-gray-200 rounded animate-pulse" />
                       </div>
                     </div>
                     <div className={`px-6 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center ${rowBgClass}`}>
-                      <SkeletonLoader className="h-4 w-12" />
+                      <div className="h-4 w-12 bg-gray-200 rounded animate-pulse" />
                     </div>
                     <div className={`px-6 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center ${rowBgClass}`}>
-                      <SkeletonLoader className="h-4 w-16" />
+                      <div className="h-4 w-16 bg-gray-200 rounded animate-pulse" />
                     </div>
                     <div className={`px-6 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center ${rowBgClass}`}>
-                      <SkeletonLoader className="h-4 w-14" />
+                      <div className="h-4 w-14 bg-gray-200 rounded animate-pulse" />
                     </div>
                     <div className={`px-6 py-3 border-b border-gray-200 dark:border-gray-700 ${rowBgClass}`}>
-                      <SkeletonLoader className="h-4 w-18" />
+                      <div className="h-4 w-18 bg-gray-200 rounded animate-pulse" />
                     </div>
                     <div className={`px-6 py-3 border-b border-gray-200 dark:border-gray-700 ${rowBgClass}`}>
-                      <SkeletonLoader className="h-4 w-16" />
+                      <div className="h-4 w-16 bg-gray-200 rounded animate-pulse" />
                     </div>
                   </React.Fragment>
                 );
@@ -149,7 +148,7 @@ export function EarningsTableBody({
         {/* Mobile skeleton */}
         <div className="md:hidden space-y-4">
           {Array.from({ length: 3 }).map((_, index) => (
-            <SkeletonLoader key={index} type="card" />
+            <SkeletonCard key={index} />
           ))}
         </div>
       </div>
@@ -251,7 +250,30 @@ export function EarningsTableBody({
       {/* Mobile cards */}
       <div className="md:hidden space-y-4">
         {data.map((item, index) => (
-          <MobileCard key={`${item.ticker}-${index}`} item={item} index={index} />
+          <div key={`${item.ticker}-${index}`} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700">
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-white">{item.ticker}</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{item.companyName}</p>
+              </div>
+              <div className="text-right">
+                <p className="font-semibold text-gray-900 dark:text-white">${item.lastPrice}</p>
+                <p className={`text-sm ${item.priceChangePercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {item.priceChangePercent >= 0 ? '+' : ''}{item.priceChangePercent?.toFixed(2)}%
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-gray-600 dark:text-gray-400">Market Cap</p>
+                <p className="font-medium">{item.marketCap || '—'}</p>
+              </div>
+              <div>
+                <p className="text-gray-600 dark:text-gray-400">Time</p>
+                <p className="font-medium">{item.reportTime || '—'}</p>
+              </div>
+            </div>
+          </div>
         ))}
       </div>
     </div>
