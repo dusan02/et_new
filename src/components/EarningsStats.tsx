@@ -6,58 +6,30 @@ import { trackCardClick } from './Analytics';
 import { SkeletonCard } from './ui/SkeletonLoader';
 
 interface EarningsStatsProps {
-  stats: {
-    totalEarnings: number;
-    withEps: number;
-    withRevenue: number;
-    sizeDistribution: Array<{
-      size: string;
-      _count: { size: number };
-      _sum: { marketCap: bigint | null };
-    }>;
-    topGainers: Array<{
-      ticker: string;
-      companyName: string;
-      priceChangePercent: number;
-      marketCapDiffBillions: number;
-    }>;
-    topLosers: Array<{
-      ticker: string;
-      companyName: string;
-      priceChangePercent: number;
-      marketCapDiffBillions: number;
-    }>;
-    epsBeat: {
-      ticker: string;
-      epsActual: number;
-      epsEstimate: number;
-    } | null;
-    revenueBeat: {
-      ticker: string;
-      revenueActual: bigint;
-      revenueEstimate: bigint;
-    } | null;
-    epsMiss: {
-      ticker: string;
-      epsActual: number;
-      epsEstimate: number;
-    } | null;
-    revenueMiss: {
-      ticker: string;
-      revenueActual: bigint;
-      revenueEstimate: bigint;
-    } | null;
-  };
+  stats?: any;
+  isLoading?: boolean;
+  error?: string | null;
 }
 
-export function EarningsStats({ stats }: EarningsStatsProps) {
+export function EarningsStats({ stats, isLoading, error }: EarningsStatsProps) {
   // Handle undefined stats gracefully
-  if (!stats) {
+  if (!stats || isLoading) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12 gap-4 sm:gap-5 md:gap-6 lg:gap-8 mb-8 sm:mb-10 md:mb-12">
         {Array.from({ length: 12 }).map((_, i) => (
           <SkeletonCard key={i} />
         ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-8">
+        <div className="text-red-800">
+          <h3 className="text-sm font-medium">Error loading stats</h3>
+          <p className="text-sm mt-1">{error}</p>
+        </div>
       </div>
     );
   }
