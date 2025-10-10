@@ -174,7 +174,7 @@ export function EarningsTableBody({
     );
   }
 
-  if (data.length === 0) {
+  if (!data || data.length === 0) {
     return (
       <div className="text-center py-12">
         <div className="text-gray-400 dark:text-gray-500 mb-4">
