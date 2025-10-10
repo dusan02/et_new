@@ -38,7 +38,7 @@ export function EarningsDashboard({
         
         if (result.status === 'success') {
           setData(result.data || []);
-          setStats(result.stats || null);
+          setStats(result.meta?.stats || null);
           setLastUpdated(new Date());
         } else {
           throw new Error(result.message || 'Failed to fetch data');
