@@ -37,6 +37,7 @@ export function EarningsDashboard({
         const result = await response.json();
         
         if (result.status === 'success') {
+          console.log('[DEBUG] API response:', { data: result.data?.length, stats: result.meta?.stats });
           setData(result.data || []);
           setStats(result.meta?.stats || null);
           setLastUpdated(new Date());
@@ -61,6 +62,7 @@ export function EarningsDashboard({
   const [isClient, setIsClient] = useState(false);
   
   useEffect(() => {
+    console.log('[DEBUG] Setting isClient to true');
     setIsClient(true);
   }, []);
   return (
@@ -117,11 +119,14 @@ export function EarningsDashboard({
           
           <div className="lg:col-span-1">
             {isClient ? (
-              <EarningsStats
-                stats={stats}
-                isLoading={isLoading}
-                error={error}
-              />
+              <>
+                {console.log('[DEBUG] Rendering EarningsStats with:', { stats, isLoading, error })}
+                <EarningsStats
+                  stats={stats}
+                  isLoading={isLoading}
+                  error={error}
+                />
+              </>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12 gap-4 sm:gap-5 md:gap-6 lg:gap-8 mb-8 sm:mb-10 md:mb-12">
                 {Array.from({ length: 12 }).map((_, i) => (
