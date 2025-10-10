@@ -97,77 +97,77 @@ export default function EarningsStats({
   const fmtBill = (v?: number) => (v == null ? "—" : `${v > 0 ? "+" : ""}${v.toFixed(1)} B`);
 
   return (
-    <div className="grid grid-cols-1 gap-3">
+    <div className="grid grid-cols-1 gap-3 lg:gap-3">
       {/* BLUE — Size buckets */}
-      <div className="rounded-xl border bg-white dark:bg-gray-900 px-3 py-2 shadow-sm">
+      <div className="w-full rounded-xl border bg-white dark:bg-gray-900 px-3 py-3 shadow-sm">
         <div className="text-[11px] uppercase tracking-wide text-gray-500">LARGE+</div>
         <div className="text-lg font-semibold">{largePlusCount ?? "—"}</div>
         <div className="text-xs text-gray-400">{formatMarketCap(largePlusCap)}</div>
       </div>
       
-      <div className="rounded-xl border bg-white dark:bg-gray-900 px-3 py-2 shadow-sm">
+      <div className="w-full rounded-xl border bg-white dark:bg-gray-900 px-3 py-3 shadow-sm">
         <div className="text-[11px] uppercase tracking-wide text-gray-500">MID</div>
         <div className="text-lg font-semibold">{midCount ?? "—"}</div>
         <div className="text-xs text-gray-400">{formatMarketCap(midCap)}</div>
       </div>
       
-      <div className="rounded-xl border bg-white dark:bg-gray-900 px-3 py-2 shadow-sm">
+      <div className="w-full rounded-xl border bg-white dark:bg-gray-900 px-3 py-3 shadow-sm">
         <div className="text-[11px] uppercase tracking-wide text-gray-500">SMALL</div>
         <div className="text-lg font-semibold">{smallCount ?? "—"}</div>
         <div className="text-xs text-gray-400">{formatMarketCap(smallCap)}</div>
       </div>
       
-      <div className="rounded-xl border bg-white dark:bg-gray-900 px-3 py-2 shadow-sm">
+      <div className="w-full rounded-xl border bg-white dark:bg-gray-900 px-3 py-3 shadow-sm">
         <div className="text-[11px] uppercase tracking-wide text-gray-500">TOTAL</div>
         <div className="text-lg font-semibold">{stats.totalEarnings ?? "—"}</div>
         <div className="text-xs text-gray-400">Earnings</div>
       </div>
 
       {/* GREEN — Winners */}
-      <div className="rounded-xl border bg-green-50 dark:bg-green-900 px-3 py-2 shadow-sm">
+      <div className="w-full rounded-xl border bg-green-50 dark:bg-green-900 px-3 py-3 shadow-sm">
         <div className="text-[11px] uppercase tracking-wide text-green-600">PRICE</div>
         <div className="text-lg font-semibold text-green-700">{topPriceGainer?.ticker ?? "—"}</div>
         <div className="text-xs text-green-600">{fmtPct(topPriceGainer?.priceChangePercent)}</div>
       </div>
       
-      <div className="rounded-xl border bg-green-50 dark:bg-green-900 px-3 py-2 shadow-sm">
+      <div className="w-full rounded-xl border bg-green-50 dark:bg-green-900 px-3 py-3 shadow-sm">
         <div className="text-[11px] uppercase tracking-wide text-green-600">CAP DIFF</div>
         <div className="text-lg font-semibold text-green-700">{topCapGainer?.ticker ?? "—"}</div>
         <div className="text-xs text-green-600">{fmtBill(topCapGainer?.marketCapDiffBillions)}</div>
       </div>
       
-      <div className="rounded-xl border bg-green-50 dark:bg-green-900 px-3 py-2 shadow-sm">
+      <div className="w-full rounded-xl border bg-green-50 dark:bg-green-900 px-3 py-3 shadow-sm">
         <div className="text-[11px] uppercase tracking-wide text-green-600">EPS BEAT</div>
         <div className="text-lg font-semibold text-green-700">{stats.epsBeat?.ticker ?? "—"}</div>
         <div className="text-xs text-green-600">{stats.epsBeat && stats.epsBeat.epsEstimate !== 0 ? `+${((stats.epsBeat.epsActual - stats.epsBeat.epsEstimate) / Math.abs(stats.epsBeat.epsEstimate) * 100).toFixed(1)}%` : "—"}</div>
       </div>
       
-      <div className="rounded-xl border bg-green-50 dark:bg-green-900 px-3 py-2 shadow-sm">
+      <div className="w-full rounded-xl border bg-green-50 dark:bg-green-900 px-3 py-3 shadow-sm">
         <div className="text-[11px] uppercase tracking-wide text-green-600">REV BEAT</div>
         <div className="text-lg font-semibold text-green-700">{stats.revenueBeat?.ticker ?? "—"}</div>
         <div className="text-xs text-green-600">{stats.revenueBeat && Number(stats.revenueBeat.revenueEstimate) !== 0 ? `+${((Number(stats.revenueBeat.revenueActual) - Number(stats.revenueBeat.revenueEstimate)) / Math.abs(Number(stats.revenueBeat.revenueEstimate)) * 100).toFixed(1)}%` : "—"}</div>
       </div>
 
       {/* RED — Losers */}
-      <div className="rounded-xl border bg-red-50 dark:bg-red-900 px-3 py-2 shadow-sm">
+      <div className="w-full rounded-xl border bg-red-50 dark:bg-red-900 px-3 py-3 shadow-sm">
         <div className="text-[11px] uppercase tracking-wide text-red-600">PRICE</div>
         <div className="text-lg font-semibold text-red-700">{topPriceLoser?.ticker ?? "—"}</div>
         <div className="text-xs text-red-600">{fmtPct(topPriceLoser?.priceChangePercent)}</div>
       </div>
       
-      <div className="rounded-xl border bg-red-50 dark:bg-red-900 px-3 py-2 shadow-sm">
+      <div className="w-full rounded-xl border bg-red-50 dark:bg-red-900 px-3 py-3 shadow-sm">
         <div className="text-[11px] uppercase tracking-wide text-red-600">CAP DIFF</div>
         <div className="text-lg font-semibold text-red-700">{topCapLoser?.ticker ?? "—"}</div>
         <div className="text-xs text-red-600">{fmtBill(topCapLoser?.marketCapDiffBillions)}</div>
       </div>
       
-      <div className="rounded-xl border bg-red-50 dark:bg-red-900 px-3 py-2 shadow-sm">
+      <div className="w-full rounded-xl border bg-red-50 dark:bg-red-900 px-3 py-3 shadow-sm">
         <div className="text-[11px] uppercase tracking-wide text-red-600">EPS MISS</div>
         <div className="text-lg font-semibold text-red-700">{stats.epsMiss?.ticker ?? "—"}</div>
         <div className="text-xs text-red-600">{stats.epsMiss && stats.epsMiss.epsEstimate !== 0 ? `${((stats.epsMiss.epsActual - stats.epsMiss.epsEstimate) / Math.abs(stats.epsMiss.epsEstimate) * 100).toFixed(1)}%` : "—"}</div>
       </div>
       
-      <div className="rounded-xl border bg-red-50 dark:bg-red-900 px-3 py-2 shadow-sm">
+      <div className="w-full rounded-xl border bg-red-50 dark:bg-red-900 px-3 py-3 shadow-sm">
         <div className="text-[11px] uppercase tracking-wide text-red-600">REV MISS</div>
         <div className="text-lg font-semibold text-red-700">{stats.revenueMiss?.ticker ?? "—"}</div>
         <div className="text-xs text-red-600">{stats.revenueMiss && Number(stats.revenueMiss.revenueEstimate) !== 0 ? `${((Number(stats.revenueMiss.revenueActual) - Number(stats.revenueMiss.revenueEstimate)) / Math.abs(Number(stats.revenueMiss.revenueEstimate)) * 100).toFixed(1)}%` : "—"}</div>

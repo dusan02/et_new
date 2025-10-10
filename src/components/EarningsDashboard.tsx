@@ -43,6 +43,9 @@ export function EarningsDashboard({
           setData(result.data || []);
           setStats(result.meta?.stats || null);
           setLastUpdated(new Date());
+          
+          // Self-test logs
+          console.log('[TEST] items=', result.data?.length, 'stats=', result.meta?.stats);
         } else {
           throw new Error(result.message || 'Failed to fetch data');
         }
@@ -106,7 +109,7 @@ export function EarningsDashboard({
             />
           </div>
 
-          <aside className="col-span-12 lg:col-span-4">
+          <aside className="col-span-12 lg:col-span-4 xl:col-span-4 space-y-3 min-w-[280px]">
             <EarningsStats stats={memoizedStats} loading={isLoading} />
           </aside>
         </div>

@@ -9,6 +9,7 @@ import { loadEnvironmentConfig } from '../../../modules/shared/config/env.config
 import { createJsonResponse, stringifyHeaders } from '@/lib/json-utils'
 import { detectMarketSession, getTTLForSession, type MarketSession } from '@/lib/market-session'
 import { ApiResponseBuilder } from '@/lib/api-response-builder'
+import { classifyByMarketCap } from '@/lib/marketCapSize'
 // 🚫 GUIDANCE DISABLED FOR PRODUCTION - Import commented out
 // import { 
 //   isGuidanceCompatible, 
@@ -548,26 +549,30 @@ export async function GET(request: NextRequest) {
       setCachedData(cacheKey, serializedData)
     }
 
-    // Debug: Log size distribution
-    console.log('[DEBUG] Size distribution:', {
-      mega: combinedData.filter(item => item.size === 'MEGA').length,
-      large: combinedData.filter(item => item.size === 'LARGE').length,
-      mid: combinedData.filter(item => item.size === 'MID').length,
-      small: combinedData.filter(item => item.size === 'SMALL').length,
-      total: combinedData.length,
-      sampleSizes: combinedData.slice(0, 3).map(item => ({ ticker: item.ticker, size: item.size }))
-    });
+    // Calculate stats using consistent market cap classification
+    const items = combinedData; // published items
+    const sizeCounts = { MEGA: 0, LARGE: 0, MID: 0, SMALL: 0 };
+    let smallCapSum = 0, midCapSum = 0, largeCapSum = 0, megaCapSum = 0;
 
-    // Create stats object for the frontend - always return stats object
+    for (const it of items) {
+      const size = classifyByMarketCap(it.marketCap ?? null);
+      sizeCounts[size]++;
+      const cap = Number(it.marketCap ?? 0);
+      if (size === 'SMALL') smallCapSum += cap;
+      else if (size === 'MID') midCapSum += cap;
+      else if (size === 'LARGE') largeCapSum += cap;
+      else megaCapSum += cap;
+    }
+
     const stats = {
-      totalEarnings: combinedData.length,
-      withEps: combinedData.filter(item => item.epsActual !== null).length,
-      withRevenue: combinedData.filter(item => item.revenueActual !== null).length,
+      totalEarnings: items.length,
+      withEps: items.filter(item => item.epsActual !== null).length,
+      withRevenue: items.filter(item => item.revenueActual !== null).length,
       sizeDistribution: [
-        { size: 'Mega', _count: { size: combinedData.filter(item => item.size === 'MEGA').length }, _sum: { marketCap: combinedData.filter(item => item.size === 'MEGA').reduce((sum, item) => sum + (item.marketCap || 0), 0) } },
-        { size: 'Large', _count: { size: combinedData.filter(item => item.size === 'LARGE').length }, _sum: { marketCap: combinedData.filter(item => item.size === 'LARGE').reduce((sum, item) => sum + (item.marketCap || 0), 0) } },
-        { size: 'Mid', _count: { size: combinedData.filter(item => item.size === 'MID').length }, _sum: { marketCap: combinedData.filter(item => item.size === 'MID').reduce((sum, item) => sum + (item.marketCap || 0), 0) } },
-        { size: 'Small', _count: { size: combinedData.filter(item => item.size === 'SMALL').length }, _sum: { marketCap: combinedData.filter(item => item.size === 'SMALL').reduce((sum, item) => sum + (item.marketCap || 0), 0) } }
+        { size: 'Mega', _count: { size: sizeCounts.MEGA }, _sum: { marketCap: megaCapSum } },
+        { size: 'Large', _count: { size: sizeCounts.LARGE }, _sum: { marketCap: largeCapSum } },
+        { size: 'Mid', _count: { size: sizeCounts.MID }, _sum: { marketCap: midCapSum } },
+        { size: 'Small', _count: { size: sizeCounts.SMALL }, _sum: { marketCap: smallCapSum } }
       ],
       topGainers: combinedData
         .filter(item => item.priceChangePercent !== null)
@@ -594,6 +599,9 @@ export async function GET(request: NextRequest) {
       epsMiss: combinedData.find(item => item.epsActual !== null && item.epsEstimate !== null && item.epsActual < item.epsEstimate) || null,
       revenueMiss: combinedData.find(item => item.revenueActual !== null && item.revenueEstimate !== null && Number(item.revenueActual) < Number(item.revenueEstimate)) || null
     }
+
+    console.log('[DEBUG][stats] sizes=', sizeCounts, 'caps=', { small: smallCapSum, mid: midCapSum, large: largeCapSum, mega: megaCapSum }, 'sample=',
+      items.slice(0,3).map(x => ({t: x.ticker, cap: x.marketCap, s: classifyByMarketCap(x.marketCap)})));
     
     // Calculate debug statistics for fresh data
     let previousSourceStats = { aggs: 0, snapshot: 0, none: 0 }
