@@ -56,6 +56,13 @@ export function EarningsDashboard({
       fetchData();
     }
   }, [propData]);
+
+  // Prevent hydration mismatch by ensuring consistent initial state
+  const [isClient, setIsClient] = useState(false);
+  
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -90,21 +97,42 @@ export function EarningsDashboard({
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
-            <EarningsTableRefactored
-              data={data || []}
-              stats={stats}
-              isLoading={isLoading}
-              error={error}
-              lastUpdated={lastUpdated}
-            />
+            {isClient ? (
+              <EarningsTableRefactored
+                data={data || []}
+                stats={stats}
+                isLoading={isLoading}
+                error={error}
+                lastUpdated={lastUpdated}
+              />
+            ) : (
+              <div className="space-y-4">
+                <div className="animate-pulse">
+                  <div className="h-8 bg-gray-200 rounded mb-4"></div>
+                  <div className="h-64 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+            )}
           </div>
           
           <div className="lg:col-span-1">
-            <EarningsStats
-              stats={stats}
-              isLoading={isLoading}
-              error={error}
-            />
+            {isClient ? (
+              <EarningsStats
+                stats={stats}
+                isLoading={isLoading}
+                error={error}
+              />
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12 gap-4 sm:gap-5 md:gap-6 lg:gap-8 mb-8 sm:mb-10 md:mb-12">
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <div key={i} className="p-4 rounded-lg border-2 bg-gray-100 dark:bg-gray-800 animate-pulse">
+                    <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded mb-2"></div>
+                    <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded mb-1"></div>
+                    <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
