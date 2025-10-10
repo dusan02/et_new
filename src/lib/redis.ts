@@ -11,10 +11,30 @@ let useMockRedis = false;
 export function initRedis(): Redis {
   if (redis) return redis;
   
-  // Always use mock Redis for now to avoid connection issues
-  logger.info('Using mock Redis for development');
-  useMockRedis = true;
-  return initFileRedis() as any;
+  // Use real Redis in production, mock in development
+  if (process.env.NODE_ENV === 'production' && process.env.REDIS_URL) {
+    logger.info('Initializing production Redis connection');
+    redis = new Redis(process.env.REDIS_URL, {
+      retryDelayOnFailover: 100,
+      maxRetriesPerRequest: 3,
+      lazyConnect: true,
+    });
+    
+    redis.on('connect', () => {
+      logger.info('Redis connected successfully');
+    });
+    
+    redis.on('error', (error) => {
+      logger.error('Redis connection error:', error);
+    });
+    
+    return redis;
+  } else {
+    // Use mock Redis for development
+    logger.info('Using mock Redis for development');
+    useMockRedis = true;
+    return initFileRedis() as any;
+  }
 }
 
 /**
