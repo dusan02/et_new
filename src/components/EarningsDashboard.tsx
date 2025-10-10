@@ -1,22 +1,61 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { EarningsTableRefactored } from './earnings/EarningsTableRefactored';
 import { EarningsStats } from './EarningsStats';
 
 interface EarningsDashboardProps {
-  data: any[];
-  stats: any;
-  isLoading: boolean;
-  error: string | null;
-  lastUpdated: Date | null;
+  data?: any[];
+  stats?: any;
+  isLoading?: boolean;
+  error?: string | null;
+  lastUpdated?: Date | null;
 }
 
 export function EarningsDashboard({ 
-  data, 
-  stats, 
-  isLoading, 
-  error, 
-  lastUpdated 
+  data: propData, 
+  stats: propStats, 
+  isLoading: propIsLoading, 
+  error: propError, 
+  lastUpdated: propLastUpdated 
 }: EarningsDashboardProps) {
+  const [data, setData] = useState<any[]>(propData || []);
+  const [stats, setStats] = useState<any>(propStats || null);
+  const [isLoading, setIsLoading] = useState<boolean>(propIsLoading || true);
+  const [error, setError] = useState<string | null>(propError || null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(propLastUpdated || null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        const response = await fetch('/api/earnings');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+          setData(result.data || []);
+          setStats(result.stats || null);
+          setLastUpdated(new Date());
+        } else {
+          throw new Error(result.message || 'Failed to fetch data');
+        }
+      } catch (err) {
+        console.error('Error fetching earnings data:', err);
+        setError(err instanceof Error ? err.message : 'Unknown error occurred');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    // Only fetch if no data was passed as props
+    if (!propData) {
+      fetchData();
+    }
+  }, [propData]);
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
