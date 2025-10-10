@@ -29,6 +29,22 @@ export function EarningsTableBody({
           return 'text-center';
       }
     };
+
+    // Determine header text alignment (different from data alignment)
+    const getHeaderTextAlign = (col: string) => {
+      switch (col) {
+        case 'marketCap':
+          return 'text-center'; // Center Market Cap header
+        case 'price':
+        case 'eps':
+        case 'revenue':
+          return 'text-right';
+        case 'company':
+        case 'time':
+        default:
+          return 'text-center';
+      }
+    };
     
     // Determine padding based on column
     const getPadding = (col: string) => {
@@ -44,7 +60,7 @@ export function EarningsTableBody({
       }
     };
     
-    const baseClasses = `${getPadding(column)} py-3 ${getTextAlign(column)} text-xs font-medium uppercase tracking-wider cursor-pointer transition-colors duration-200`;
+    const baseClasses = `${getPadding(column)} py-3 ${getHeaderTextAlign(column)} text-xs font-medium uppercase tracking-wider cursor-pointer transition-colors duration-200`;
     const isActive = sortColumn === column;
     
     if (isActive) {

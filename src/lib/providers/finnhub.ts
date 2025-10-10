@@ -83,6 +83,14 @@ export class FinnhubProvider {
       );
 
       const calendarData = calendarResponse.data;
+      
+      // 🧩 [FINNHUB] Log tickers from API response
+      if (calendarData.earningsCalendar && Array.isArray(calendarData.earningsCalendar)) {
+        const tickers = calendarData.earningsCalendar.map((item: any) => item.symbol)
+        const uniqueTickers = [...new Set(tickers)]
+        console.log("🧩 [FINNHUB] Returned tickers:", uniqueTickers.length, uniqueTickers)
+      }
+      
       const earningsData = calendarData.earningsCalendar?.find((item: any) => 
         item.symbol === ticker
       );

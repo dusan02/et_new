@@ -17,6 +17,32 @@ export function EarningsTableRefactored({
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [marketCapFilters, setMarketCapFilters] = useState<string[]>([]);
 
+  // Calculate available market cap sizes from actual data
+  const availableMarketCapSizes = useMemo(() => {
+    if (!data || data.length === 0) return [];
+    
+    const sizes = new Set<string>();
+    
+    data.forEach(item => {
+      // Calculate size from marketCap if size property is missing
+      let itemSize = item.size;
+      if (!itemSize && item.marketCap) {
+        const marketCapValue = Number(item.marketCap);
+        if (marketCapValue > 100_000_000_000) itemSize = 'MEGA';
+        else if (marketCapValue >= 10_000_000_000) itemSize = 'LARGE';
+        else if (marketCapValue >= 2_000_000_000) itemSize = 'MID';
+        else itemSize = 'SMALL';
+      }
+      
+      if (itemSize) {
+        // Convert to uppercase to match filter format
+        sizes.add(itemSize.toUpperCase());
+      }
+    });
+    
+    return Array.from(sizes).sort();
+  }, [data]);
+
   const handleSort = (column: string) => {
     if (sortColumn === column) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -134,6 +160,7 @@ export function EarningsTableRefactored({
         onSearchChange={setSearchTerm}
         marketCapFilters={marketCapFilters}
         onMarketCapFilterChange={setMarketCapFilters}
+        availableMarketCapSizes={availableMarketCapSizes}
       />
       
       <EarningsTableBody 

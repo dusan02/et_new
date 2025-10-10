@@ -100,6 +100,11 @@ async function fetchFinnhubEarnings(date: string) {
     console.warn('No earnings data received from Finnhub')
     return []
   }
+
+  // 🧩 [FINNHUB] Log tickers from API response
+  const tickers = data.earningsCalendar.map((earning: any) => earning.symbol)
+  const uniqueTickers = [...new Set(tickers)]
+  console.log("🧩 [FINNHUB] Returned tickers:", uniqueTickers.length, uniqueTickers)
   
   return data.earningsCalendar.map((earning: any) => ({
     ticker: earning.symbol,

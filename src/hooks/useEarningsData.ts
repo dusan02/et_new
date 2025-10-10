@@ -66,40 +66,40 @@ const fetcher = async (url: string): Promise<ApiResponse<EarningsData[]>> => {
   
   const data = await response.json();
   
-  // Handle /api/earnings/today response format
-  if (url.includes('/api/earnings/today')) {
-    // Map Redis data format to frontend format
+  // Handle /api/earnings response format
+  if (url.includes('/api/earnings')) {
+    // Map API data format to frontend format
     const mappedData = (data.data || []).map((item: any) => ({
       ticker: item.ticker,
-      companyName: item.name || 'N/A',
+      companyName: item.companyName || 'N/A',
       sector: item.sector || 'N/A',
-      currentPrice: item.last_price || null,
-      priceChangePercent: item.price_change_percent || null,
-      marketCap: item.market_cap || null,
+      currentPrice: item.currentPrice || null,
+      priceChangePercent: item.priceChangePercent || null,
+      marketCap: item.marketCap || null,
       marketCapDiffBillions: item.marketCapDiffBillions || null,
-      reportTime: item.report_time || 'TNS',
-      epsEstimate: item.eps_est || null,
-      epsActual: item.eps_act || null,
-      revenueEstimate: item.rev_est || null,
-      revenueActual: item.rev_act || null,
-      actualPending: item.actual_pending || false,
-      source: item.source || 'unknown',
-      updatedAt: item.updated_at || new Date().toISOString()
+      reportTime: item.reportTime || 'TNS',
+      epsEstimate: item.epsEstimate || null,
+      epsActual: item.epsActual || null,
+      revenueEstimate: item.revenueEstimate || null,
+      revenueActual: item.revenueActual || null,
+      actualPending: item.actualPending || false,
+      source: item.dataSource || 'unknown',
+      updatedAt: item.updatedAt || new Date().toISOString()
     }));
 
     return {
-      status: data.status,
+      status: data.status || 'success',
       data: mappedData,
       meta: {
         total: mappedData.length,
-        ready: data.status === 'success',
-        duration: '0ms',
-        date: data.day,
-        requestedDate: data.day,
-        fallbackUsed: false,
-        cached: false
+        ready: data.meta?.ready || true,
+        duration: data.meta?.duration || '0ms',
+        date: data.meta?.date || new Date().toISOString().split('T')[0],
+        requestedDate: data.meta?.requestedDate || new Date().toISOString().split('T')[0],
+        fallbackUsed: data.meta?.fallbackUsed || false,
+        cached: data.meta?.cached || false
       },
-      timestamp: new Date().toISOString()
+      timestamp: data.timestamp || new Date().toISOString()
     };
   }
   
@@ -162,7 +162,7 @@ export function useEarningsData() {
     error: earningsError, 
     isLoading: earningsLoading,
     mutate: mutateEarnings
-  } = useSWR<ApiResponse<EarningsData[]>>('/api/earnings/today', fetcher, swrConfig);
+  } = useSWR<ApiResponse<EarningsData[]>>('/api/earnings?nocache=1', fetcher, swrConfig);
 
   // Fetch stats data from API
   const { 

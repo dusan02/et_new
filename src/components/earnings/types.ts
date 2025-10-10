@@ -51,6 +51,7 @@ export interface EarningsTableHeaderProps {
   onSearchChange?: (value: string) => void;
   marketCapFilters?: string[];
   onMarketCapFilterChange?: (filters: string[]) => void;
+  availableMarketCapSizes?: string[];
 }
 
 export interface EarningsTableBodyProps {

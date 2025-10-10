@@ -18,15 +18,30 @@ const prisma = new PrismaClient();
  */
 async function getTodaysTickers(): Promise<string[]> {
   const today = format(new Date(), 'yyyy-MM-dd');
-  const tickers = await prisma.pricesDaily.findMany({
+  
+  // 🧩 [CRON][SELECT] Log source and date
+  console.log(`[CRON][SELECT] date=${today}, tz=America/New_York, source=EarningsTickersToday`);
+  
+  // ✅ FIX: Use timezone-aware date range instead of exact time
+  const start = new Date(today + 'T00:00:00.000Z'); // Start of day UTC
+  const end = new Date(today + 'T23:59:59.999Z');   // End of day UTC
+  
+  const tickers = await prisma.earningsTickersToday.findMany({
     where: {
-      day: new Date(today),
+      reportDate: {
+        gte: start,
+        lte: end
+      }
     },
     select: {
       ticker: true,
     },
   });
-  return tickers.map(t => t.ticker);
+  
+  const tickerList = tickers.map(t => t.ticker);
+  console.log(`[CRON][RUN] symbols=[${tickerList.join(', ')}] count=${tickerList.length}`);
+  
+  return tickerList;
 }
 
 /**
@@ -72,11 +87,37 @@ async function dailyReset() {
  */
 async function pricesWorker() {
   try {
-    const tickers = await getTodaysTickers();
+    let tickers = await getTodaysTickers();
+    
+    // 🚨 FALLBACK: If DB=0 but Finnhub should have data, try to fetch
+    if (tickers.length === 0) {
+      console.log(`[CRON][FALLBACK] No tickers in DB - checking if we need to fetch from Finnhub...`);
+      
+      // Try to fetch from Finnhub as fallback
+      try {
+        const { UnifiedDataFetcher } = await import('../src/modules/data-integration/services/unified-fetcher.service.js');
+        const fetcher = new UnifiedDataFetcher();
+        const today = format(new Date(), 'yyyy-MM-dd');
+        
+        console.log(`[CRON][FALLBACK] Attempting to fetch earnings data for ${today}...`);
+        const result = await fetcher.fetchEarningsOnly(new Date(today));
+        
+        if (result.earningsCount > 0) {
+          console.log(`[CRON][FALLBACK] Successfully fetched ${result.earningsCount} earnings records`);
+          tickers = await getTodaysTickers(); // Re-fetch from DB
+        }
+      } catch (fallbackError) {
+        console.error(`[CRON][FALLBACK] Failed to fetch from Finnhub:`, fallbackError);
+      }
+    }
+    
     if (tickers.length === 0) {
       logger.warn('No tickers found for prices processing');
+      console.log(`[CRON][WARNING] No tickers found - this should not happen if Finnhub returned data!`);
       return;
     }
+    
+    console.log(`[CRON][PROCESSING] Found ${tickers.length} tickers for processing: [${tickers.join(', ')}]`);
     
     const today = format(new Date(), 'yyyy-MM-dd');
     await processPricesBatch(tickers, today);

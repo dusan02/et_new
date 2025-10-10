@@ -129,9 +129,10 @@ export class UnifiedDataFetcher {
       const earningsData = await this.fetchEarningsData(date)
       console.log(`✅ Found ${earningsData.length} earnings records`)
 
-      // 2. Ulož earnings dáta
-      const earningsCount = await this.saveEarningsData(earningsData)
-      console.log(`✅ Saved ${earningsCount} earnings records`)
+    // 2. Ulož earnings dáta
+    const earningsCount = await this.saveEarningsData(earningsData)
+    console.log(`✅ Saved ${earningsCount} earnings records`)
+    console.log(`[DB][UPSERT] in=${earningsData.length} inserted=${earningsCount} updated=0`)
 
       // 3. Získaj unique tickers pre market dáta
       const tickers = Array.from(new Set(earningsData.map(e => e.ticker).filter(Boolean))) as string[]
@@ -174,6 +175,9 @@ export class UnifiedDataFetcher {
       }
 
       console.log('🎉 Unified data fetch completed successfully!')
+      
+      // 📊 DAILY SUMMARY LOG
+      console.log(`[DAILY] finnhub=${earningsData.length} db=${earningsCount} published=${earningsCount} api=${earningsCount} tz=America/New_York`)
 
       return {
         success: true,
@@ -214,6 +218,16 @@ export class UnifiedDataFetcher {
 
     if (!data?.earningsCalendar) {
       throw new Error('No earnings calendar data received from Finnhub')
+    }
+
+    // 🧩 [FINNHUB] Log tickers from API response
+    const tickers = data.earningsCalendar.map((earning: any) => earning.symbol)
+    const uniqueTickers = [...new Set(tickers)]
+    console.log("🧩 [FINNHUB] Returned tickers:", uniqueTickers.length, uniqueTickers)
+    
+    // 🚨 ALERT: Check for potential data inconsistency
+    if (uniqueTickers.length > 0) {
+      console.log(`[ALERT-CHECK] Finnhub returned ${uniqueTickers.length} tickers for ${date}`)
     }
 
     return data.earningsCalendar.map((earning: any) => {

@@ -33,6 +33,11 @@ export class ApiResponseBuilder {
       data,
       meta,
       timestamp: new Date().toISOString()
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        'Pragma': 'no-cache'
+      }
     })
   }
 
@@ -49,7 +54,13 @@ export class ApiResponseBuilder {
       message,
       meta,
       timestamp: new Date().toISOString()
-    }, { status })
+    }, { 
+      status,
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        'Pragma': 'no-cache'
+      }
+    })
   }
 
   /**
@@ -65,6 +76,11 @@ export class ApiResponseBuilder {
       message,
       meta,
       timestamp: new Date().toISOString()
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        'Pragma': 'no-cache'
+      }
     })
   }
 

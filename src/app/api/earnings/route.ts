@@ -19,18 +19,27 @@ import {
   setCachedData, 
   getCacheAge 
 } from '@/lib/cache-utils'
+// import { env } from '@/lib/env'
+import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+import tz from 'dayjs/plugin/timezone'
 
-// Cache for 5 minutes for better performance
-export const revalidate = 300
-// Force dynamic rendering to avoid static generation issues with query parameters
-export const dynamic = 'force-dynamic'
+dayjs.extend(utc)
+dayjs.extend(tz)
+
+// ✅ FIX: Vypni všetky cache vrstvy
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now()
   let monitoring: any = null
   
   try {
+    // ✅ FIX: Logy na odhalenie "iné prostredie"
+    console.log('[API][ENV] NODE_ENV=', process.env.NODE_ENV, 'DB_URL set=', !!process.env.DATABASE_URL)
+    
     // Parse query parameters for debug mode and cache control
     const { searchParams } = new URL(request.url)
     const debugMode = searchParams.get('debug') === '1'
@@ -179,9 +188,18 @@ export async function GET(request: NextRequest) {
     console.log(`[API] Fetching combined data from database with optimized JOIN...`)
     
     // 🎯 OPTIMIZED: Use EarningsTickersToday as primary source, join with MarketData
+    console.log(`[API][QUERY] Fetching earnings for date: ${today.toISOString().split('T')[0]}`)
+    
+    // ✅ FIX: Použi UTC timezone (data v DB sú v UTC)
+    const start = dayjs().utc().startOf('day').toDate()
+    const end = dayjs().utc().endOf('day').toDate()
+    
     let combinedRows = await prisma.earningsTickersToday.findMany({
       where: { 
-        reportDate: today
+        reportDate: {
+          gte: start,
+          lte: end
+        }
       },
       select: {
         ticker: true,
@@ -219,6 +237,14 @@ export async function GET(request: NextRequest) {
       },
       take: 500,
     })
+    
+    console.log(`[API][QUERY] window=`, start.toISOString(), '→', end.toISOString(), 'count=', combinedRows.length)
+    console.log(`[API][VERIFY] /api/earnings count=${combinedRows.length}`)
+    console.log(`[API][DEBUG] combinedRows sample:`, combinedRows.slice(0, 2).map(r => ({ ticker: r.ticker, marketData: r.marketData ? 'present' : 'null' })))
+    
+    // ✅ FIX: Finálny debug log s sample
+    const sample = combinedRows.slice(0, 2).map(r => r.ticker)
+    console.log(`[API][FINAL] count=${combinedRows.length} sample=[${sample.join(', ')}]`)
     
     // Flatten the joined data structure
     const flattenedRows = combinedRows.map(row => {

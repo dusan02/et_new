@@ -8,7 +8,8 @@ export function EarningsTableHeader({
   searchTerm,
   onSearchChange,
   marketCapFilters = [],
-  onMarketCapFilterChange
+  onMarketCapFilterChange,
+  availableMarketCapSizes = []
 }: EarningsTableHeaderProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -27,12 +28,13 @@ export function EarningsTableHeader({
     };
   }, []);
 
+  // Generate market cap options based on available data
   const marketCapOptions = [
     { value: 'All', label: 'All' },
-    { value: 'MEGA', label: 'Mega' },
-    { value: 'LARGE', label: 'Large' },
-    { value: 'MID', label: 'Mid' },
-    { value: 'SMALL', label: 'Small' }
+    ...availableMarketCapSizes.map(size => ({
+      value: size,
+      label: size.charAt(0) + size.slice(1).toLowerCase() // Convert MEGA -> Mega, etc.
+    }))
   ];
 
   const handleFilterChange = (value: string) => {
@@ -41,11 +43,11 @@ export function EarningsTableHeader({
     let newFilters: string[];
     
     if (value === 'All') {
-      // If All is clicked, toggle all filters
+      // If All is clicked, toggle all available filters
       if (marketCapFilters.includes('All')) {
         newFilters = [];
       } else {
-        newFilters = ['All', 'MEGA', 'LARGE', 'MID', 'SMALL'];
+        newFilters = ['All', ...availableMarketCapSizes];
       }
     } else {
       // Toggle individual filter
@@ -56,8 +58,8 @@ export function EarningsTableHeader({
       }
       
       // If all individual filters are selected, add 'All'
-      if (newFilters.length === 4 && !newFilters.includes('All')) {
-        newFilters = ['All', 'MEGA', 'LARGE', 'MID', 'SMALL'];
+      if (newFilters.length === availableMarketCapSizes.length && !newFilters.includes('All')) {
+        newFilters = ['All', ...availableMarketCapSizes];
       }
     }
     
