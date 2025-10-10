@@ -97,7 +97,7 @@ export default function EarningsStats({
   const fmtBill = (v?: number) => (v == null ? "—" : `${v > 0 ? "+" : ""}${v.toFixed(1)} B`);
 
   return (
-    <div className="flex flex-wrap gap-3">
+    <div className="grid grid-cols-1 gap-3">
       {/* BLUE — Size buckets */}
       <div className="rounded-xl border bg-white dark:bg-gray-900 px-3 py-2 shadow-sm">
         <div className="text-[11px] uppercase tracking-wide text-gray-500">LARGE+</div>

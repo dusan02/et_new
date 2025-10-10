@@ -548,16 +548,26 @@ export async function GET(request: NextRequest) {
       setCachedData(cacheKey, serializedData)
     }
 
+    // Debug: Log size distribution
+    console.log('[DEBUG] Size distribution:', {
+      mega: combinedData.filter(item => item.size === 'MEGA').length,
+      large: combinedData.filter(item => item.size === 'LARGE').length,
+      mid: combinedData.filter(item => item.size === 'MID').length,
+      small: combinedData.filter(item => item.size === 'SMALL').length,
+      total: combinedData.length,
+      sampleSizes: combinedData.slice(0, 3).map(item => ({ ticker: item.ticker, size: item.size }))
+    });
+
     // Create stats object for the frontend - always return stats object
     const stats = {
       totalEarnings: combinedData.length,
       withEps: combinedData.filter(item => item.epsActual !== null).length,
       withRevenue: combinedData.filter(item => item.revenueActual !== null).length,
       sizeDistribution: [
-        { size: 'Mega', _count: { size: combinedData.filter(item => item.size === 'MEGA').length }, _sum: { marketCap: 0 } },
-        { size: 'Large', _count: { size: combinedData.filter(item => item.size === 'LARGE').length }, _sum: { marketCap: 0 } },
-        { size: 'Mid', _count: { size: combinedData.filter(item => item.size === 'MID').length }, _sum: { marketCap: 0 } },
-        { size: 'Small', _count: { size: combinedData.filter(item => item.size === 'SMALL').length }, _sum: { marketCap: 0 } }
+        { size: 'Mega', _count: { size: combinedData.filter(item => item.size === 'MEGA').length }, _sum: { marketCap: combinedData.filter(item => item.size === 'MEGA').reduce((sum, item) => sum + (item.marketCap || 0), 0) } },
+        { size: 'Large', _count: { size: combinedData.filter(item => item.size === 'LARGE').length }, _sum: { marketCap: combinedData.filter(item => item.size === 'LARGE').reduce((sum, item) => sum + (item.marketCap || 0), 0) } },
+        { size: 'Mid', _count: { size: combinedData.filter(item => item.size === 'MID').length }, _sum: { marketCap: combinedData.filter(item => item.size === 'MID').reduce((sum, item) => sum + (item.marketCap || 0), 0) } },
+        { size: 'Small', _count: { size: combinedData.filter(item => item.size === 'SMALL').length }, _sum: { marketCap: combinedData.filter(item => item.size === 'SMALL').reduce((sum, item) => sum + (item.marketCap || 0), 0) } }
       ],
       topGainers: combinedData
         .filter(item => item.priceChangePercent !== null)
