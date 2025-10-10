@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { EarningsTableHeader } from './EarningsTableHeader';
 import { EarningsTableBody } from './EarningsTableBody';
 import { EarningsTableProps } from './types';
@@ -16,6 +16,13 @@ export function EarningsTableRefactored({
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [marketCapFilters, setMarketCapFilters] = useState<string[]>([]);
+  
+  // Prevent hydration mismatch by ensuring consistent initial state
+  const [isClient, setIsClient] = useState(false);
+  
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Calculate available market cap sizes from actual data
   const availableMarketCapSizes = useMemo(() => {
@@ -151,6 +158,18 @@ export function EarningsTableRefactored({
       return 0;
     });
   }, [data, sortColumn, sortDirection, searchTerm, marketCapFilters]);
+
+  // Show loading state on server and until client hydration
+  if (!isClient) {
+    return (
+      <div className="space-y-4">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded mb-4"></div>
+          <div className="h-64 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

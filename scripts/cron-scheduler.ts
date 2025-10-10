@@ -250,16 +250,24 @@ function startCronScheduler() {
 if (require.main === module) {
   startCronScheduler();
   
-  // Keep process alive
-  process.on('SIGINT', () => {
-    logger.info('Received SIGINT, shutting down cron scheduler...');
+  // Graceful shutdown
+  const stop = async () => {
+    logger.info('Shutting down cron scheduler...');
+    try { 
+      await getRedis().quit(); 
+    } catch (error) {
+      logger.error('Error closing Redis connection:', error);
+    }
+    try { 
+      await prisma.$disconnect(); 
+    } catch (error) {
+      logger.error('Error closing database connection:', error);
+    }
     process.exit(0);
-  });
+  };
   
-  process.on('SIGTERM', () => {
-    logger.info('Received SIGTERM, shutting down cron scheduler...');
-    process.exit(0);
-  });
+  process.on('SIGINT', stop);
+  process.on('SIGTERM', stop);
 }
 
 export { startCronScheduler, dailyReset, pricesWorker, epsRevWorker, publishAttempt };

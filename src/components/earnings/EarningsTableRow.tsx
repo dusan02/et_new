@@ -1,7 +1,7 @@
 'use client';
 
 // Removed TrendingUp, TrendingDown imports - no longer using arrows
-import { formatRevenueSmart } from '@/modules/shared';
+import { formatRevenueSmart } from '@/modules/shared/utils/format.utils';
 import { EarningsTableRowProps } from './types';
 
 export function EarningsTableRow({ item, index }: EarningsTableRowProps) {

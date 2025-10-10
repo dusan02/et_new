@@ -1,75 +1,143 @@
 #!/bin/bash
 
-# Production Deployment Script
-set -e
+# 🔧 PRODUCTION DEPLOY SCRIPT - IDEMPOTENT
+# Zabezpečuje 1:1 paritu s localhost prostredím
 
-echo "🚀 Starting production deployment..."
+set -euo pipefail
 
-# 1. Environment check
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Logging function
+log() {
+    echo -e "${BLUE}[$(date +'%Y-%m-%d %H:%M:%S')]${NC} $1"
+}
+
+error() {
+    echo -e "${RED}[ERROR]${NC} $1" >&2
+}
+
+success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+# Check if .env.production exists
 if [ ! -f ".env.production" ]; then
-    echo "❌ .env.production not found. Please create it from env.production.example"
+    error ".env.production file not found!"
+    error "Please copy env.production.example to .env.production and fill in real values"
     exit 1
 fi
 
-# 2. Load production environment
-export $(cat .env.production | grep -v '^#' | xargs)
+log "Starting production deployment..."
 
-# 3. Verify required environment variables
-required_vars=("DATABASE_URL" "REDIS_URL" "POLYGON_API_KEY" "FINNHUB_API_KEY")
-for var in "${required_vars[@]}"; do
-    if [ -z "${!var}" ]; then
-        echo "❌ Required environment variable $var is not set"
+# Step 1: Start Redis with Docker Compose
+log "Starting Redis with Docker Compose..."
+docker compose up -d redis
+
+# Wait for Redis to be ready
+log "Waiting for Redis to be ready..."
+for i in {1..30}; do
+    if docker compose exec -T redis redis-cli ping > /dev/null 2>&1; then
+        success "Redis is ready"
+        break
+    fi
+    if [ $i -eq 30 ]; then
+        error "Redis failed to start after 30 seconds"
         exit 1
     fi
+    sleep 1
 done
 
-echo "✅ Environment variables validated"
+# Step 2: Install dependencies
+log "Installing dependencies..."
+npm ci
 
-# 4. Install dependencies
-echo "📦 Installing dependencies..."
-npm ci --production
-
-# 5. Build application
-echo "🔨 Building application..."
-npm run build
-
-# 6. Database migrations
-echo "🗄️ Running database migrations..."
+# Step 3: Deploy database migrations
+log "Deploying database migrations..."
 npx prisma migrate deploy
 
-# 7. Create logs directory
-mkdir -p logs
+# Step 4: Build application
+log "Building application..."
+npm run build
 
-# 8. Stop existing PM2 processes
-echo "🛑 Stopping existing processes..."
-pm2 stop ecosystem.production.config.js || true
-pm2 delete ecosystem.production.config.js || true
+# Step 5: Parity check
+log "Running parity check..."
+npm run parity:check
 
-# 9. Start Redis (if not running)
-echo "🔴 Starting Redis..."
-docker-compose up -d redis || echo "Redis already running"
+# Step 6: Start/restart PM2 processes
+log "Starting PM2 processes..."
+if pm2 list | grep -q "web\|scheduler\|watchdog"; then
+    log "Restarting existing PM2 processes..."
+    pm2 restart pm2.config.cjs
+else
+    log "Starting new PM2 processes..."
+    pm2 start pm2.config.cjs
+fi
 
-# 10. Wait for Redis
-echo "⏳ Waiting for Redis..."
-sleep 5
-
-# 11. Start application with PM2
-echo "🚀 Starting application..."
-pm2 start ecosystem.production.config.js
-
-# 12. Save PM2 configuration
+# Save PM2 configuration
 pm2 save
 
-# 13. Setup PM2 startup
-pm2 startup || echo "PM2 startup already configured"
+# Step 7: Warm-up (one-shot runs)
+log "Running warm-up processes..."
 
-# 14. Initial data publish
-echo "📊 Publishing initial data..."
-node scripts/publish-static.js || echo "Static publish failed, will be handled by workers"
+# Process prices
+log "Processing prices..."
+npm run process:prices
 
-echo "✅ Production deployment completed!"
-echo "📊 Check status: pm2 status"
-echo "📋 View logs: pm2 logs"
-echo "🌐 Application: http://localhost:3000"
-echo "💊 Health check: http://localhost:3000/api/health"
-echo "📈 DQ status: http://localhost:3000/api/dq"
+# Process EPS/Revenue (optional based on time)
+current_hour=$(date +%H)
+if [ "$current_hour" -ge 16 ]; then
+    log "Processing EPS/Revenue (after 4 PM ET)..."
+    npm run process:epsrev
+else
+    warning "Skipping EPS/Revenue processing (before 4 PM ET)"
+fi
+
+# Publish attempt
+log "Attempting to publish data..."
+npm run publish:attempt
+
+# Step 8: Smoke test
+log "Running smoke test..."
+npm run smoke:test
+
+# Step 8.5: Production sanity check
+log "Running production sanity check..."
+node scripts/production-sanity-check.js
+
+# Step 9: Final status check
+log "Checking final status..."
+
+# PM2 status
+log "PM2 Status:"
+pm2 status
+
+# Health check
+log "Health check:"
+if curl -f -s http://localhost:3000/api/health > /dev/null; then
+    success "Health endpoint is responding"
+else
+    error "Health endpoint is not responding"
+    exit 1
+fi
+
+# Earnings endpoint check
+log "Earnings endpoint check:"
+if curl -f -s http://localhost:3000/api/earnings/today > /dev/null; then
+    success "Earnings endpoint is responding"
+else
+    warning "Earnings endpoint is not responding (may be normal if no data)"
+fi
+
+success "Production deployment completed successfully!"
+log "Application is running on http://localhost:3000"
+log "PM2 processes: web, scheduler, watchdog"
+log "Redis is running on port 6379"

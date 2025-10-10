@@ -1,256 +1,124 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-import { LoadingSpinner } from './ui/LoadingSpinner';
-import { ErrorMessage } from './ui/ErrorMessage';
-import { Header } from './Header';
-import { Footer } from './Footer';
+import React, { useState, useEffect, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { EarningsTableRefactored } from './earnings/EarningsTableRefactored';
-import { EarningsStats } from './EarningsStats';
-import { ErrorBoundary } from './ErrorBoundary';
-import { useEarningsData } from '../hooks/useEarningsData';
 
-interface EarningsData {
-  ticker: string;
-  reportTime: string | null;
-  epsEstimate: number | null;
-  epsActual: number | null;
-  revenueEstimate: number | null; // BigInt serialized as number via serializeBigInts()
-  revenueActual: number | null; // BigInt serialized as number via serializeBigInts()
-  sector: string | null;
-  companyType: string | null;
-  dataSource: string | null;
-  fiscalPeriod: string | null;
-  fiscalYear: number | null;
-  primaryExchange: string | null;
-  // Market data from Polygon
-  companyName: string;
-  size: string | null;
-  marketCap: number | null; // BigInt serialized as number via serializeBigInts()
-  marketCapDiff: number | null; // BigInt serialized as number via serializeBigInts()
-  marketCapDiffBillions: number | null;
-  currentPrice: number | null;
-  previousClose: number | null;
-  priceChangePercent: number | null;
-  sharesOutstanding: number | null; // BigInt serialized as number via serializeBigInts()
-  // Guidance calculations
-  epsGuideSurprise: number | null;
-  epsGuideBasis: string | null;
-  epsGuideExtreme: boolean;
-  revenueGuideSurprise: number | null;
-  revenueGuideBasis: string | null;
-  revenueGuideExtreme: boolean;
-  // Raw guidance data for debugging
-  guidanceData: {
-    estimatedEpsGuidance: number | null;
-    estimatedRevenueGuidance: string | null;
-    epsGuideVsConsensusPct: number | null;
-    revenueGuideVsConsensusPct: number | null;
-    notes: string | null;
-    lastUpdated: string | null;
-    fiscalPeriod: string | null;
-    fiscalYear: number | null;
-  } | null;
-  // Surprise calculations
-  epsSurprise: number | null;
-  revenueSurprise: number | null;
+const EarningsStats = dynamic(() => import('./EarningsStats'), { ssr: false });
+
+interface EarningsDashboardProps {
+  data?: any[];
+  stats?: any;
+  isLoading?: boolean;
+  error?: string | null;
+  lastUpdated?: Date | null;
 }
 
-interface EarningsMeta {
-  total: number;
-  ready: boolean;
-  lastFetchAt?: string;
-  date: string;
-}
-
-interface EarningsStats {
-  totalEarnings: number;
-  withEps: number;
-  withRevenue: number;
-  sizeDistribution: Array<{
-    size: string;
-    _count: { size: number };
-    _sum: { marketCap: bigint | null };
-  }>;
-  topGainers: Array<{
-    ticker: string;
-    companyName: string;
-    priceChangePercent: number;
-    marketCapDiffBillions: number;
-  }>;
-  topLosers: Array<{
-    ticker: string;
-    companyName: string;
-    priceChangePercent: number;
-    marketCapDiffBillions: number;
-  }>;
-  epsBeat: {
-    ticker: string;
-    epsActual: number;
-    epsEstimate: number;
-  } | null;
-  revenueBeat: {
-    ticker: string;
-    revenueActual: bigint;
-    revenueEstimate: bigint;
-  } | null;
-  epsMiss: {
-    ticker: string;
-    epsActual: number;
-    epsEstimate: number;
-  } | null;
-  revenueMiss: {
-    ticker: string;
-    revenueActual: bigint;
-    revenueEstimate: bigint;
-  } | null;
-}
-
-export function EarningsDashboard() {
-  const [isClient, setIsClient] = useState(false);
-  
-  // Use optimized data fetching hook
-  const {
-    earningsData,
-    stats,
-    meta,
-    lastUpdated,
-    isLoading,
-    error,
-    refresh
-  } = useEarningsData();
+export function EarningsDashboard({ 
+  data: propData, 
+  stats: propStats, 
+  isLoading: propIsLoading, 
+  error: propError, 
+  lastUpdated: propLastUpdated 
+}: EarningsDashboardProps) {
+  const [data, setData] = useState<any[]>(propData || []);
+  const [stats, setStats] = useState<any>(propStats || null);
+  const [isLoading, setIsLoading] = useState<boolean>(propIsLoading || true);
+  const [error, setError] = useState<string | null>(propError || null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(propLastUpdated || null);
 
   useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  // Prevent hydration mismatch by showing consistent content on server and client
-  if (!isClient) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
-
-  // Don't show full screen loader if we have some data
-  const showFullScreenLoader = isLoading && !earningsData.length && !stats;
-
-  if (showFullScreenLoader) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <ErrorMessage message={error} onRetry={refresh} />
-      </div>
-    );
-  }
-
-  // If data not ready yet (initial fetch in progress), show loading state
-  if (!isLoading && meta && !meta.ready && earningsData.length === 0) {
-    return (
-      <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
-        <Header 
-          lastUpdated={lastUpdated}
-          stats={stats}
-        />
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
         
-        <main className="flex-1 flex items-center justify-center py-8" role="main" aria-label="Earnings dashboard main content">
-          <div className="text-center">
-            <LoadingSpinner size="lg" />
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-300 mt-6 mb-2">
-              Preparing Today's Earnings Data
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400">
-              Fetching latest earnings reports...
-            </p>
-          </div>
-        </main>
+        const response = await fetch('/api/earnings?nocache=1');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
         
-        <Footer />
-      </div>
-    );
-  }
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+          console.log('[DEBUG] API response:', { data: result.data?.length, stats: result.meta?.stats });
+          setData(result.data || []);
+          setStats(result.meta?.stats || null);
+          setLastUpdated(new Date());
+          
+          // Self-test logs
+          console.log('[TEST] items=', result.data?.length, 'stats=', result.meta?.stats);
+        } else {
+          throw new Error(result.message || 'Failed to fetch data');
+        }
+      } catch (err) {
+        console.error('Error fetching earnings data:', err);
+        setError(err instanceof Error ? err.message : 'Unknown error occurred');
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  // If no earnings data AND data is ready, show empty state
-  if (earningsData.length === 0 && !isLoading && meta?.ready) {
-    return (
-      <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
-        <Header 
-          lastUpdated={lastUpdated}
-          stats={stats}
-        />
-        
-        <main className="flex-1 flex items-center justify-center py-8" role="main" aria-label="Earnings dashboard main content">
-          <div className="text-center">
-            {/* Calendar icon with X */}
-            <div className="relative inline-block mb-6">
-              <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center">
-                <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-              {/* Red X in top right corner */}
-              <div className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </div>
-            </div>
-            
-            {/* No Earnings Message */}
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-300 mb-4">No Earnings Scheduled</h2>
-            <p className="text-gray-600 dark:text-gray-400 text-lg">
-              There are no earnings reports scheduled for today.
-            </p>
-            <p className="text-gray-600 dark:text-gray-400 text-lg">
-              Check back tomorrow for new earnings data.
-            </p>
-          </div>
-        </main>
-        
-        <Footer />
-      </div>
-    );
-  }
+    // Only fetch if no data was passed as props
+    if (!propData) {
+      fetchData();
+    }
+  }, [propData]);
 
+  // Memoize stats to ensure consistent object reference
+  const memoizedStats = useMemo(() => stats ?? null, [stats]);
   return (
-    <ErrorBoundary
-      onError={(error, errorInfo) => {
-        console.error('EarningsDashboard Error:', error, errorInfo);
-        // TODO: Send to error tracking service
-      }}
-    >
-      <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
-        <Header 
-          lastUpdated={lastUpdated}
-          stats={stats}
-        />
-        
-        <main className="flex-1 py-8" role="main" aria-label="Earnings dashboard main content">
-          <section className="w-full max-w-[1100px] mx-auto px-4" aria-label="Earnings data and statistics">
-            <div className="px-0">
-              <EarningsTableRefactored
-                data={earningsData}
-                stats={stats}
-                isLoading={isLoading}
-                error={error}
-                lastUpdated={lastUpdated}
-              />
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Earnings Dashboard
+          </h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
+            Today's earnings reports and market data
+          </p>
+        </div>
+
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">
+                  Error loading data
+                </h3>
+                <div className="mt-2 text-sm text-red-700">
+                  {error}
+                </div>
+              </div>
             </div>
-          </section>
-        </main>
-        
-        <Footer />
+          </div>
+        )}
+
+        {/* Grid layout: 12 columns, table = left column, cards = right column */}
+        <div className="grid grid-cols-12 gap-6">
+          <div className="col-span-12 lg:col-span-8">
+            <EarningsTableRefactored
+              data={data || []}
+              stats={memoizedStats}
+              isLoading={isLoading}
+              error={error}
+              lastUpdated={lastUpdated}
+            />
+          </div>
+
+          <aside className="col-span-12 lg:col-span-4 xl:col-span-4 space-y-3 min-w-[280px]">
+            <EarningsStats stats={memoizedStats} loading={isLoading} />
+          </aside>
+        </div>
+
+        {/* Footer/Disclaimer */}
+        <footer className="mt-10 text-xs text-gray-500">
+          Market data and estimates are provided "as is" without warranty. Not investment advice.
+        </footer>
       </div>
-    </ErrorBoundary>
+    </div>
   );
 }
-
-

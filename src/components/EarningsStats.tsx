@@ -1,70 +1,44 @@
 'use client';
 
-import { TrendingUp, TrendingDown, DollarSign, Building2 } from 'lucide-react';
-import StatCard from './StatCard';
-import { trackCardClick } from './Analytics';
-import { SkeletonCard } from './ui/SkeletonLoader';
+import React from 'react';
 
-interface EarningsStatsProps {
-  stats: {
-    totalEarnings: number;
-    withEps: number;
-    withRevenue: number;
-    sizeDistribution: Array<{
-      size: string;
-      _count: { size: number };
-      _sum: { marketCap: bigint | null };
-    }>;
-    topGainers: Array<{
-      ticker: string;
-      companyName: string;
-      priceChangePercent: number;
-      marketCapDiffBillions: number;
-    }>;
-    topLosers: Array<{
-      ticker: string;
-      companyName: string;
-      priceChangePercent: number;
-      marketCapDiffBillions: number;
-    }>;
-    epsBeat: {
-      ticker: string;
-      epsActual: number;
-      epsEstimate: number;
-    } | null;
-    revenueBeat: {
-      ticker: string;
-      revenueActual: bigint;
-      revenueEstimate: bigint;
-    } | null;
-    epsMiss: {
-      ticker: string;
-      epsActual: number;
-      epsEstimate: number;
-    } | null;
-    revenueMiss: {
-      ticker: string;
-      revenueActual: bigint;
-      revenueEstimate: bigint;
-    } | null;
-  };
-}
+type Stats = {
+  totalEarnings: number;
+  withEps: number;
+  withRevenue: number;
+  sizeDistribution: Array<{ size: string; _count: { size: number }; _sum: { marketCap: number } }>;
+  topGainers: Array<{ ticker: string; companyName: string; priceChangePercent: number; marketCapDiffBillions: number }>;
+  topLosers: Array<{ ticker: string; companyName: string; priceChangePercent: number; marketCapDiffBillions: number }>;
+  epsBeat: any;
+  revenueBeat: any;
+  epsMiss: any;
+  revenueMiss: any;
+};
 
-export function EarningsStats({ stats }: EarningsStatsProps) {
-  // Handle undefined stats gracefully
-  if (!stats) {
+export default function EarningsStats({
+  stats,
+  loading,
+}: {
+  stats: Stats | null | undefined;
+  loading?: boolean;
+}) {
+  if (loading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12 gap-4 sm:gap-5 md:gap-6 lg:gap-8 mb-8 sm:mb-10 md:mb-12">
-        {Array.from({ length: 12 }).map((_, i) => (
-          <SkeletonCard key={i} />
+      <div className="flex flex-wrap gap-3">
+        {Array.from({ length: 10 }).map((_, i) => (
+          <div key={i} className="h-24 w-24 rounded-xl bg-gray-200 dark:bg-gray-800 animate-pulse" />
         ))}
       </div>
     );
   }
 
-  const totalMarketCap = stats.sizeDistribution?.reduce((sum, item) => {
-    return sum + (item._sum.marketCap ? Number(item._sum.marketCap) : 0);
-  }, 0) || 0;
+  if (!stats) {
+    return (
+      <div className="text-sm text-gray-500">
+        No stats available for today.
+      </div>
+    );
+  }
 
   // Calculate market cap distribution
   const megaCount = stats.sizeDistribution?.find(d => d.size === 'Mega')?._count.size || 0;
@@ -123,24 +97,81 @@ export function EarningsStats({ stats }: EarningsStatsProps) {
   const fmtBill = (v?: number) => (v == null ? "—" : `${v > 0 ? "+" : ""}${v.toFixed(1)} B`);
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12 gap-4 sm:gap-5 md:gap-6 lg:gap-8 mb-8 sm:mb-10 md:mb-12">
+    <div className="grid grid-cols-1 gap-3 lg:gap-3">
       {/* BLUE — Size buckets */}
-      <StatCard title="LARGE+" main={largePlusCount ?? "—"} sub={formatMarketCap(largePlusCap)} variant="blue" onClick={() => trackCardClick('large_cap')} />
-      <StatCard title="MID" main={midCount ?? "—"} sub={formatMarketCap(midCap)} variant="blue" onClick={() => trackCardClick('mid_cap')} />
-      <StatCard title="SMALL" main={smallCount ?? "—"} sub={formatMarketCap(smallCap)} variant="blue" onClick={() => trackCardClick('small_cap')} />
-      <StatCard title="TOTAL" main={stats.totalEarnings ?? "—"} sub={`${(totalMarketCap / 1e9).toFixed(0)} B`} variant="blue" onClick={() => trackCardClick('total_earnings')} />
+      <div className="w-full rounded-xl border bg-white dark:bg-gray-900 px-3 py-3 shadow-sm">
+        <div className="text-[11px] uppercase tracking-wide text-gray-500">LARGE+</div>
+        <div className="text-lg font-semibold">{largePlusCount ?? "—"}</div>
+        <div className="text-xs text-gray-400">{formatMarketCap(largePlusCap)}</div>
+      </div>
+      
+      <div className="w-full rounded-xl border bg-white dark:bg-gray-900 px-3 py-3 shadow-sm">
+        <div className="text-[11px] uppercase tracking-wide text-gray-500">MID</div>
+        <div className="text-lg font-semibold">{midCount ?? "—"}</div>
+        <div className="text-xs text-gray-400">{formatMarketCap(midCap)}</div>
+      </div>
+      
+      <div className="w-full rounded-xl border bg-white dark:bg-gray-900 px-3 py-3 shadow-sm">
+        <div className="text-[11px] uppercase tracking-wide text-gray-500">SMALL</div>
+        <div className="text-lg font-semibold">{smallCount ?? "—"}</div>
+        <div className="text-xs text-gray-400">{formatMarketCap(smallCap)}</div>
+      </div>
+      
+      <div className="w-full rounded-xl border bg-white dark:bg-gray-900 px-3 py-3 shadow-sm">
+        <div className="text-[11px] uppercase tracking-wide text-gray-500">TOTAL</div>
+        <div className="text-lg font-semibold">{stats.totalEarnings ?? "—"}</div>
+        <div className="text-xs text-gray-400">Earnings</div>
+      </div>
 
       {/* GREEN — Winners */}
-      <StatCard title="PRICE" main={topPriceGainer?.ticker ?? "—"} sub={fmtPct(topPriceGainer?.priceChangePercent)} variant="green" onClick={() => trackCardClick('top_price_gainer')} />
-      <StatCard title="CAP DIFF" main={topCapGainer?.ticker ?? "—"} sub={fmtBill(topCapGainer?.marketCapDiffBillions)} variant="green" onClick={() => trackCardClick('top_cap_gainer')} />
-      <StatCard title="EPS BEAT" main={stats.epsBeat?.ticker ?? "—"} sub={stats.epsBeat && stats.epsBeat.epsEstimate !== 0 ? `+${((stats.epsBeat.epsActual - stats.epsBeat.epsEstimate) / Math.abs(stats.epsBeat.epsEstimate) * 100).toFixed(1)}%` : "—"} variant="green" onClick={() => trackCardClick('eps_beat')} />
-      <StatCard title="REV BEAT" main={stats.revenueBeat?.ticker ?? "—"} sub={stats.revenueBeat && Number(stats.revenueBeat.revenueEstimate) !== 0 ? `+${((Number(stats.revenueBeat.revenueActual) - Number(stats.revenueBeat.revenueEstimate)) / Math.abs(Number(stats.revenueBeat.revenueEstimate)) * 100).toFixed(1)}%` : "—"} variant="green" onClick={() => trackCardClick('revenue_beat')} />
+      <div className="w-full rounded-xl border bg-green-50 dark:bg-green-900 px-3 py-3 shadow-sm">
+        <div className="text-[11px] uppercase tracking-wide text-green-600">PRICE</div>
+        <div className="text-lg font-semibold text-green-700">{topPriceGainer?.ticker ?? "—"}</div>
+        <div className="text-xs text-green-600">{fmtPct(topPriceGainer?.priceChangePercent)}</div>
+      </div>
+      
+      <div className="w-full rounded-xl border bg-green-50 dark:bg-green-900 px-3 py-3 shadow-sm">
+        <div className="text-[11px] uppercase tracking-wide text-green-600">CAP DIFF</div>
+        <div className="text-lg font-semibold text-green-700">{topCapGainer?.ticker ?? "—"}</div>
+        <div className="text-xs text-green-600">{fmtBill(topCapGainer?.marketCapDiffBillions)}</div>
+      </div>
+      
+      <div className="w-full rounded-xl border bg-green-50 dark:bg-green-900 px-3 py-3 shadow-sm">
+        <div className="text-[11px] uppercase tracking-wide text-green-600">EPS BEAT</div>
+        <div className="text-lg font-semibold text-green-700">{stats.epsBeat?.ticker ?? "—"}</div>
+        <div className="text-xs text-green-600">{stats.epsBeat && stats.epsBeat.epsEstimate !== 0 ? `+${((stats.epsBeat.epsActual - stats.epsBeat.epsEstimate) / Math.abs(stats.epsBeat.epsEstimate) * 100).toFixed(1)}%` : "—"}</div>
+      </div>
+      
+      <div className="w-full rounded-xl border bg-green-50 dark:bg-green-900 px-3 py-3 shadow-sm">
+        <div className="text-[11px] uppercase tracking-wide text-green-600">REV BEAT</div>
+        <div className="text-lg font-semibold text-green-700">{stats.revenueBeat?.ticker ?? "—"}</div>
+        <div className="text-xs text-green-600">{stats.revenueBeat && Number(stats.revenueBeat.revenueEstimate) !== 0 ? `+${((Number(stats.revenueBeat.revenueActual) - Number(stats.revenueBeat.revenueEstimate)) / Math.abs(Number(stats.revenueBeat.revenueEstimate)) * 100).toFixed(1)}%` : "—"}</div>
+      </div>
 
       {/* RED — Losers */}
-      <StatCard title="PRICE" main={topPriceLoser?.ticker ?? "—"} sub={fmtPct(topPriceLoser?.priceChangePercent)} variant="red" onClick={() => trackCardClick('top_price_loser')} />
-      <StatCard title="CAP DIFF" main={topCapLoser?.ticker ?? "—"} sub={fmtBill(topCapLoser?.marketCapDiffBillions)} variant="red" onClick={() => trackCardClick('top_cap_loser')} />
-      <StatCard title="EPS MISS" main={stats.epsMiss?.ticker ?? "—"} sub={stats.epsMiss && stats.epsMiss.epsEstimate !== 0 ? `${((stats.epsMiss.epsActual - stats.epsMiss.epsEstimate) / Math.abs(stats.epsMiss.epsEstimate) * 100).toFixed(1)}%` : "—"} variant="red" onClick={() => trackCardClick('eps_miss')} />
-      <StatCard title="REV MISS" main={stats.revenueMiss?.ticker ?? "—"} sub={stats.revenueMiss && Number(stats.revenueMiss.revenueEstimate) !== 0 ? `${((Number(stats.revenueMiss.revenueActual) - Number(stats.revenueMiss.revenueEstimate)) / Math.abs(Number(stats.revenueMiss.revenueEstimate)) * 100).toFixed(1)}%` : "—"} variant="red" onClick={() => trackCardClick('revenue_miss')} />
+      <div className="w-full rounded-xl border bg-red-50 dark:bg-red-900 px-3 py-3 shadow-sm">
+        <div className="text-[11px] uppercase tracking-wide text-red-600">PRICE</div>
+        <div className="text-lg font-semibold text-red-700">{topPriceLoser?.ticker ?? "—"}</div>
+        <div className="text-xs text-red-600">{fmtPct(topPriceLoser?.priceChangePercent)}</div>
+      </div>
+      
+      <div className="w-full rounded-xl border bg-red-50 dark:bg-red-900 px-3 py-3 shadow-sm">
+        <div className="text-[11px] uppercase tracking-wide text-red-600">CAP DIFF</div>
+        <div className="text-lg font-semibold text-red-700">{topCapLoser?.ticker ?? "—"}</div>
+        <div className="text-xs text-red-600">{fmtBill(topCapLoser?.marketCapDiffBillions)}</div>
+      </div>
+      
+      <div className="w-full rounded-xl border bg-red-50 dark:bg-red-900 px-3 py-3 shadow-sm">
+        <div className="text-[11px] uppercase tracking-wide text-red-600">EPS MISS</div>
+        <div className="text-lg font-semibold text-red-700">{stats.epsMiss?.ticker ?? "—"}</div>
+        <div className="text-xs text-red-600">{stats.epsMiss && stats.epsMiss.epsEstimate !== 0 ? `${((stats.epsMiss.epsActual - stats.epsMiss.epsEstimate) / Math.abs(stats.epsMiss.epsEstimate) * 100).toFixed(1)}%` : "—"}</div>
+      </div>
+      
+      <div className="w-full rounded-xl border bg-red-50 dark:bg-red-900 px-3 py-3 shadow-sm">
+        <div className="text-[11px] uppercase tracking-wide text-red-600">REV MISS</div>
+        <div className="text-lg font-semibold text-red-700">{stats.revenueMiss?.ticker ?? "—"}</div>
+        <div className="text-xs text-red-600">{stats.revenueMiss && Number(stats.revenueMiss.revenueEstimate) !== 0 ? `${((Number(stats.revenueMiss.revenueActual) - Number(stats.revenueMiss.revenueEstimate)) / Math.abs(Number(stats.revenueMiss.revenueEstimate)) * 100).toFixed(1)}%` : "—"}</div>
+      </div>
     </div>
   );
 }
