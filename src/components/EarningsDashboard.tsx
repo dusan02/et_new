@@ -91,7 +91,7 @@ export function EarningsDashboard({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
             <EarningsTableRefactored
-              data={data}
+              data={data || []}
               stats={stats}
               isLoading={isLoading}
               error={error}
