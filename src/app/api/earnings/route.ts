@@ -638,7 +638,7 @@ export async function GET(request: NextRequest) {
           }
         )
       : ApiResponseBuilder.withMetrics(
-          { data: serializedData, stats },
+          serializedData,
           startTime,
           {
             total: combinedData.length,
@@ -647,6 +647,7 @@ export async function GET(request: NextRequest) {
             requestedDate: today.toISOString().split('T')[0],
             fallbackUsed: false,
             cached: false,
+            stats,
             ...debugInfo
           }
         )
