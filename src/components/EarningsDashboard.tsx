@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { EarningsTableRefactored } from './earnings/EarningsTableRefactored';
-import { EarningsStats } from './EarningsStats';
+
+const EarningsStats = dynamic(() => import('./EarningsStats'), { ssr: false });
 
 interface EarningsDashboardProps {
   data?: any[];
@@ -58,13 +60,8 @@ export function EarningsDashboard({
     }
   }, [propData]);
 
-  // Prevent hydration mismatch by ensuring consistent initial state
-  const [isClient, setIsClient] = useState(false);
-  
-  useEffect(() => {
-    console.log('[DEBUG] Setting isClient to true');
-    setIsClient(true);
-  }, []);
+  // Memoize stats to ensure consistent object reference
+  const memoizedStats = useMemo(() => stats ?? null, [stats]);
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -97,49 +94,27 @@ export function EarningsDashboard({
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            {isClient ? (
-              <EarningsTableRefactored
-                data={data || []}
-                stats={stats}
-                isLoading={isLoading}
-                error={error}
-                lastUpdated={lastUpdated}
-              />
-            ) : (
-              <div className="space-y-4">
-                <div className="animate-pulse">
-                  <div className="h-8 bg-gray-200 rounded mb-4"></div>
-                  <div className="h-64 bg-gray-200 rounded"></div>
-                </div>
-              </div>
-            )}
+        {/* Grid layout: 12 columns, table = left column, cards = right column */}
+        <div className="grid grid-cols-12 gap-6">
+          <div className="col-span-12 lg:col-span-8">
+            <EarningsTableRefactored
+              data={data || []}
+              stats={memoizedStats}
+              isLoading={isLoading}
+              error={error}
+              lastUpdated={lastUpdated}
+            />
           </div>
-          
-          <div className="lg:col-span-1">
-            {isClient ? (
-              <>
-                {console.log('[DEBUG] Rendering EarningsStats with:', { stats, isLoading, error })}
-                <EarningsStats
-                  stats={stats}
-                  isLoading={isLoading}
-                  error={error}
-                />
-              </>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12 gap-4 sm:gap-5 md:gap-6 lg:gap-8 mb-8 sm:mb-10 md:mb-12">
-                {Array.from({ length: 12 }).map((_, i) => (
-                  <div key={i} className="p-4 rounded-lg border-2 bg-gray-100 dark:bg-gray-800 animate-pulse">
-                    <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded mb-2"></div>
-                    <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded mb-1"></div>
-                    <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded"></div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+
+          <aside className="col-span-12 lg:col-span-4">
+            <EarningsStats stats={memoizedStats} loading={isLoading} />
+          </aside>
         </div>
+
+        {/* Footer/Disclaimer */}
+        <footer className="mt-10 text-xs text-gray-500">
+          Market data and estimates are provided "as is" without warranty. Not investment advice.
+        </footer>
       </div>
     </div>
   );

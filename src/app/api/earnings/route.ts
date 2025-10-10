@@ -548,7 +548,7 @@ export async function GET(request: NextRequest) {
       setCachedData(cacheKey, serializedData)
     }
 
-    // Create stats object for the frontend
+    // Create stats object for the frontend - always return stats object
     const stats = {
       totalEarnings: combinedData.length,
       withEps: combinedData.filter(item => item.epsActual !== null).length,
