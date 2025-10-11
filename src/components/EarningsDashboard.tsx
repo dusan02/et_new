@@ -10,6 +10,7 @@ interface EarningsDashboardProps {
   isLoading?: boolean;
   error?: string | null;
   lastUpdated?: Date | null;
+  onLastUpdatedChange?: (date: Date | null) => void;
 }
 
 export function EarningsDashboard({ 
@@ -17,7 +18,8 @@ export function EarningsDashboard({
   stats: propStats, 
   isLoading: propIsLoading, 
   error: propError, 
-  lastUpdated: propLastUpdated 
+  lastUpdated: propLastUpdated,
+  onLastUpdatedChange
 }: EarningsDashboardProps) {
   const [data, setData] = useState<any[]>(propData || []);
   const [stats, setStats] = useState<any>(propStats || null);
@@ -42,7 +44,9 @@ export function EarningsDashboard({
           console.log('[DEBUG] API response:', { data: result.data?.length, stats: result.meta?.stats });
           setData(result.data || []);
           setStats(result.meta?.stats || null);
-          setLastUpdated(new Date());
+          const newLastUpdated = new Date();
+          setLastUpdated(newLastUpdated);
+          onLastUpdatedChange?.(newLastUpdated);
           
           // Self-test logs
           console.log('[TEST] items=', result.data?.length, 'stats=', result.meta?.stats);
@@ -66,16 +70,7 @@ export function EarningsDashboard({
   // Memoize stats to ensure consistent object reference
   const memoizedStats = useMemo(() => stats ?? null, [stats]);
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Earnings Dashboard
-          </h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Today's earnings reports and market data
-          </p>
-        </div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
@@ -114,11 +109,6 @@ export function EarningsDashboard({
           </aside>
         </div>
 
-        {/* Footer/Disclaimer */}
-        <footer className="mt-10 text-xs text-gray-500">
-          Market data and estimates are provided "as is" without warranty. Not investment advice.
-        </footer>
-      </div>
     </div>
   );
 }
