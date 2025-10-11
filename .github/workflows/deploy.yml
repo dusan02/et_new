@@ -117,166 +117,53 @@ jobs:
             fi
             rm -f app.pid
             
-            # Install lsof if not available
-            echo "🔧 Ensuring lsof is available..."
-            apt-get install -y lsof || echo "lsof installation failed, trying alternative methods"
-            
-            # Kill any processes using port 3001 with multiple methods
-            echo "🔍 Checking for processes using port 3001..."
-            
-            # Method 1: Using lsof
-            PORT_PID=$(lsof -ti:3001 2>/dev/null || true)
-            if [ ! -z "$PORT_PID" ]; then
-                echo "Found process $PORT_PID using port 3001 (lsof), killing it..."
-                kill -TERM $PORT_PID 2>/dev/null || true
-                sleep 3
-                kill -KILL $PORT_PID 2>/dev/null || true
-            fi
-            
-            # Method 2: Using netstat and fuser as backup
-            echo "🔍 Checking with netstat..."
-            NETSTAT_PID=$(netstat -tlnp 2>/dev/null | grep :3001 | awk '{print $7}' | cut -d'/' -f1 | head -1 || true)
-            if [ ! -z "$NETSTAT_PID" ] && [ "$NETSTAT_PID" != "-" ]; then
-                echo "Found process $NETSTAT_PID using port 3001 (netstat), killing it..."
-                kill -TERM $NETSTAT_PID 2>/dev/null || true
-                sleep 3
-                kill -KILL $NETSTAT_PID 2>/dev/null || true
-            fi
-            
-            # Method 3: Using fuser as final backup
-            echo "🔍 Checking with fuser..."
-            fuser -k 3001/tcp 2>/dev/null || true
-            
-            # Method 4: Kill any node processes that might be hanging
-            echo "🔍 Killing any hanging node processes..."
-            pkill -f "node.*next.*start" 2>/dev/null || true
-            pkill -f "npm.*start" 2>/dev/null || true
-            
-            # Wait a bit for processes to fully terminate
-            echo "⏳ Waiting for processes to terminate..."
-            sleep 5
-            
-            # Final check
-            FINAL_CHECK=$(lsof -ti:3001 2>/dev/null || netstat -tlnp 2>/dev/null | grep :3001 || true)
-            if [ ! -z "$FINAL_CHECK" ]; then
-                echo "⚠️ Warning: Port 3001 still appears to be in use:"
-                echo "$FINAL_CHECK"
-                echo "Attempting force kill..."
-                fuser -k 3001/tcp 2>/dev/null || true
-                sleep 2
-            else
-                echo "✅ Port 3001 is now free"
-            fi
+# Quick and aggressive port cleanup
+echo "🛑 Quick port cleanup..."
+pkill -f node 2>/dev/null || true
+pkill -f npm 2>/dev/null || true
+fuser -k 3001/tcp 2>/dev/null || true
+sleep 2
+echo "✅ Port cleanup completed"
 
             # Start the application with pidfile and retry logic
             echo "▶️ Starting application..."
             echo "Current working directory: $(pwd)"
             echo "Checking if .next directory exists: $(ls -la .next 2>/dev/null || echo 'No .next directory')"
             
-            # Try starting the application up to 3 times
-            for attempt in 1 2 3; do
-                echo "🚀 Starting attempt $attempt/3..."
-                
-                # Clear any existing PID file
-                rm -f app.pid
-                
-                # Start the application
-                echo "Starting npm start command with pidfile..."
-                nohup env NODE_ENV=production PORT=3001 npm start > logs/app.out 2> logs/app.err < /dev/null & echo $! > app.pid
-                
-                # Wait a moment for the process to start
-                sleep 3
-                
-                # Check if PID file was created and contains a valid PID
-                if [ -f app.pid ] && [ -s app.pid ]; then
-                    APP_PID=$(cat app.pid)
-                    echo "Application started with PID: $APP_PID"
-                    
-                    # Wait for startup
-                    echo "Waiting 8 seconds for application to start..."
-                    sleep 8
-                    
-                    # Check if process is still running
-                    if ps -p $APP_PID > /dev/null 2>&1; then
-                        echo "✅ Application process is running (PID: $APP_PID)"
-                        break
-                    else
-                        echo "❌ Application process died on attempt $attempt, checking logs..."
-                        if [ -f "logs/app.err" ]; then
-                            echo "Last 20 lines of app.err:"
-                            tail -20 logs/app.err
-                        fi
-                        
-                        if [ $attempt -lt 3 ]; then
-                            echo "🔄 Retrying in 5 seconds..."
-                            sleep 5
-                        else
-                            echo "❌ All startup attempts failed"
-                            exit 1
-                        fi
-                    fi
-                else
-                    echo "❌ Failed to create PID file on attempt $attempt"
-                    if [ $attempt -lt 3 ]; then
-                        echo "🔄 Retrying in 5 seconds..."
-                        sleep 5
-                    else
-                        echo "❌ All startup attempts failed - no PID file created"
-                        exit 1
-                    fi
-                fi
-            done
+# Start the application
+echo "🚀 Starting application..."
+nohup env NODE_ENV=production PORT=3001 npm start > logs/app.out 2> logs/app.err < /dev/null &
+APP_PID=$!
+echo "Application started with PID: $APP_PID"
 
-            # Comprehensive health check with retries
-            echo "🏥 Health check..."
-            sleep 5
-            
-            # Try health check up to 3 times
-            HEALTH_CHECK_PASSED=false
-            for health_attempt in 1 2 3; do
-                echo "🏥 Health check attempt $health_attempt/3..."
-                
-                if curl -f http://localhost:3001 > /dev/null 2>&1; then
-                    echo "✅ Health check passed!"
-                    HEALTH_CHECK_PASSED=true
-                    break
-                else
-                    echo "⚠️ Health check attempt $health_attempt failed"
-                    if [ $health_attempt -lt 3 ]; then
-                        echo "🔄 Retrying health check in 5 seconds..."
-                        sleep 5
-                    fi
-                fi
-            done
-            
-            if [ "$HEALTH_CHECK_PASSED" = false ]; then
-                echo "❌ All health checks failed - checking logs..."
-                echo "Checking if log files exist:"
-                ls -la logs/ 2>/dev/null || echo "No logs directory found"
-                
-                if [ -f "logs/app.out" ]; then
-                    echo "Last 30 lines of app.out:"
-                    tail -30 logs/app.out
-                fi
-                if [ -f "logs/app.err" ]; then
-                    echo "Last 30 lines of app.err:"
-                    tail -30 logs/app.err
-                fi
-                
-                # Check if process is still running
-                if [ -f app.pid ]; then
-                    APP_PID=$(cat app.pid)
-                    if ps -p $APP_PID > /dev/null 2>&1; then
-                        echo "⚠️ Process is running but not responding to HTTP requests"
-                    else
-                        echo "❌ Process is not running"
-                    fi
-                fi
-                
-                echo "⚠️ Deployment completed but health check failed"
-            else
-                echo "✅ Deployment successful!"
-            fi
+# Wait for startup
+echo "Waiting 10 seconds for application to start..."
+sleep 10
+
+# Check if process is still running
+if ps -p $APP_PID > /dev/null 2>&1; then
+    echo "✅ Application process is running (PID: $APP_PID)"
+else
+    echo "❌ Application process died, checking logs..."
+    if [ -f "logs/app.err" ]; then
+        echo "Last 20 lines of app.err:"
+        tail -20 logs/app.err
+    fi
+    exit 1
+fi
+
+# Quick health check
+echo "🏥 Health check..."
+sleep 5
+if curl -f http://localhost:3001 > /dev/null 2>&1; then
+    echo "✅ Deployment successful!"
+else
+    echo "⚠️ Health check failed - checking logs..."
+    if [ -f "logs/app.err" ]; then
+        echo "Last 20 lines of app.err:"
+        tail -20 logs/app.err
+    fi
+fi
 
             echo "🎉 Deployment completed!"
 
