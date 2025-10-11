@@ -8,7 +8,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
       - name: Checkout code
@@ -21,8 +21,8 @@ jobs:
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
           port: 22
-          timeout: 600s
-          command_timeout: 40m
+          timeout: 900s
+          command_timeout: 50m
           debug: true
           script: |
             echo "🚀 Starting deployment..."
@@ -70,14 +70,14 @@ jobs:
             echo "📝 Current commit:"
             git log --oneline -1
 
-            # Clean and install dependencies
+            # Clean and install dependencies (optimized)
             echo "🧹 Cleaning node_modules..."
             rm -rf node_modules
             rm -rf .next
-            npm cache clean --force
             
-            echo "📦 Installing dependencies..."
-            npm install --production=false
+            echo "📦 Installing dependencies (optimized)..."
+            # Use npm ci for faster, reliable installs
+            npm ci --production=false --prefer-offline --no-audit --no-fund
             
             # Set environment variables for production build
             echo "🔧 Setting environment variables..."
@@ -91,9 +91,15 @@ jobs:
             export FINNHUB_API_KEY="dummy_key_for_build"
             export POLYGON_API_KEY="dummy_key_for_build"
             
-            # Build the application using optimized production script
+            # Build the application using optimized production script with timeout
             echo "🏗️ Building application with optimized script..."
-            npm run build:production
+            timeout 600 npm run build:production || {
+                echo "⚠️ Production build timed out, trying direct Next.js build..."
+                timeout 300 npx next build || {
+                    echo "❌ All build attempts failed"
+                    exit 1
+                }
+            }
 
             # Create logs directory
             mkdir -p logs

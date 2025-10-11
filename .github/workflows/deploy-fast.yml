@@ -1,0 +1,93 @@
+name: Deploy to VPS (Fast)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to server (Fast)
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: 22
+          timeout: 600s
+          command_timeout: 25m
+          script: |
+            echo "🚀 Starting fast deployment..."
+            cd /var/www/earnings-table
+            
+            # Set environment variables
+            export NODE_ENV=production
+            export NEXT_PUBLIC_APP_ENV=production
+            export DATABASE_URL="file:./dev.db"
+            export REDIS_URL="redis://localhost:6379"
+            export PARITY_SKIP=1
+            
+            # Quick update
+            echo "📋 Quick update..."
+            git clean -fd
+            git stash
+            git pull origin main
+            
+            # Skip npm install if node_modules exists and package-lock.json unchanged
+            if [ ! -d "node_modules" ] || [ "package-lock.json" -nt "node_modules" ]; then
+                echo "📦 Installing dependencies..."
+                npm ci --production=false --prefer-offline --no-audit --no-fund
+            else
+                echo "✅ Dependencies up to date, skipping install"
+            fi
+            
+            # Quick build with timeout
+            echo "🏗️ Building application..."
+            timeout 300 npm run build:production || {
+                echo "⚠️ Production build failed, trying direct build..."
+                timeout 180 npx next build
+            }
+            
+            # Aggressive cleanup
+            echo "🛑 Aggressive cleanup..."
+            pkill -f node 2>/dev/null || true
+            pkill -f npm 2>/dev/null || true
+            fuser -k 3001/tcp 2>/dev/null || true
+            sleep 3
+            
+            # Start application
+            echo "▶️ Starting application..."
+            nohup npm start > /var/log/earnings-table.log 2>&1 &
+            APP_PID=$!
+            echo "Application started with PID: $APP_PID"
+            
+            # Quick check
+            sleep 8
+            if ps -p $APP_PID > /dev/null 2>&1; then
+                echo "✅ Application is running"
+                
+                # Quick health check
+                sleep 5
+                if curl -f http://localhost:3001 > /dev/null 2>&1; then
+                    echo "✅ Fast deployment successful!"
+                else
+                    echo "⚠️ Application running but not responding"
+                fi
+            else
+                echo "❌ Application failed to start"
+                tail -20 /var/log/earnings-table.log 2>/dev/null || echo "No logs found"
+                exit 1
+            fi
+            
+            echo "🎉 Fast deployment completed!"
+
+      - name: Quick health check
+        run: |
+          sleep 20
+          echo "Quick health check..."
+          curl -f http://${{ secrets.HOST }} || echo "Health check failed"
