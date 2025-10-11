@@ -29,23 +29,23 @@ jobs:
             echo "Current directory: $(pwd)"
             echo "User: $(whoami)"
             echo "Date: $(date)"
-            
+
             # Update system and install required tools
             echo "🔧 Installing system dependencies..."
             apt-get update -y
             apt-get install -y git curl wget
-            
+
             # Install Node.js 18.x
             echo "📦 Installing Node.js..."
             curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
             apt-get install -y nodejs
-            
+
             # Verify installations
             echo "✅ Verifying installations:"
             git --version
             node --version
             npm --version
-            
+
             # Create project directory if it doesn't exist
             echo "📁 Setting up project directory..."
             mkdir -p /var/www/earnings-table
@@ -74,11 +74,11 @@ jobs:
             echo "🧹 Cleaning node_modules..."
             rm -rf node_modules
             rm -rf .next
-            
+
             echo "📦 Installing dependencies (optimized)..."
             # Use npm ci for faster, reliable installs
             npm ci --production=false --prefer-offline --no-audit --no-fund
-            
+
             # Set environment variables for production build
             echo "🔧 Setting environment variables..."
             export NODE_ENV=production
@@ -86,11 +86,11 @@ jobs:
             export DATABASE_URL="file:./dev.db"
             export REDIS_URL="redis://localhost:6379"
             export PARITY_SKIP=1  # Skip parity checks
-            
+
             # Set required API keys for build (using dummy values for build)
             export FINNHUB_API_KEY="dummy_key_for_build"
             export POLYGON_API_KEY="dummy_key_for_build"
-            
+
             # Build the application using optimized production script with timeout
             echo "🏗️ Building application with optimized script..."
             timeout 600 npm run build:production || {
@@ -116,24 +116,33 @@ jobs:
                 echo "No existing process found or PID file missing"
             fi
             rm -f app.pid
-            
-            # Quick and aggressive port cleanup
-            echo "🛑 Quick port cleanup..."
-            pkill -f node 2>/dev/null || true
-            pkill -f npm 2>/dev/null || true
-            fuser -k 3001/tcp 2>/dev/null || true
-            sleep 2
+
+            # Safe port cleanup - only kill processes on port 3001
+            echo "🛑 Safe port cleanup..."
+            # Find and kill only processes using port 3001
+            PORT_PIDS=$(lsof -ti:3001 2>/dev/null || true)
+            if [ -n "$PORT_PIDS" ]; then
+                echo "Killing processes on port 3001: $PORT_PIDS"
+                echo "$PORT_PIDS" | xargs kill -TERM 2>/dev/null || true
+                sleep 2
+                # Force kill if still running
+                echo "$PORT_PIDS" | xargs kill -KILL 2>/dev/null || true
+            else
+                echo "No processes found on port 3001"
+            fi
+            sleep 1
             echo "✅ Port cleanup completed"
 
             # Start the application
             echo "▶️ Starting application..."
             echo "Current working directory: $(pwd)"
             echo "Checking if .next directory exists: $(ls -la .next 2>/dev/null || echo 'No .next directory')"
-            
+
             echo "🚀 Starting application..."
             nohup env NODE_ENV=production PORT=3001 npm start > logs/app.out 2> logs/app.err < /dev/null &
             APP_PID=$!
             echo "Application started with PID: $APP_PID"
+            echo "$APP_PID" > app.pid
 
             # Wait for startup
             echo "Waiting 10 seconds for application to start..."
@@ -148,6 +157,11 @@ jobs:
                     echo "Last 20 lines of app.err:"
                     tail -20 logs/app.err
                 fi
+                if [ -f "logs/app.out" ]; then
+                    echo "Last 20 lines of app.out:"
+                    tail -20 logs/app.out
+                fi
+                echo "❌ Deployment failed - application did not start"
                 exit 1
             fi
 
@@ -162,6 +176,11 @@ jobs:
                     echo "Last 20 lines of app.err:"
                     tail -20 logs/app.err
                 fi
+                if [ -f "logs/app.out" ]; then
+                    echo "Last 20 lines of app.out:"
+                    tail -20 logs/app.out
+                fi
+                echo "⚠️ Health check failed but deployment may still be working"
             fi
 
             echo "🎉 Deployment completed!"
@@ -180,25 +199,25 @@ jobs:
     needs: deploy
     runs-on: ubuntu-latest
     if: always()
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
-          
+          node-version: "18"
+          cache: "npm"
+
       - name: Install dependencies
         run: npm ci
-        
+
       - name: Wait for deployment
         run: |
           echo "Waiting for deployment to be ready..."
           sleep 30
-          
+
       - name: Run API smoke test
         run: |
           # Wait for API to be available
@@ -210,10 +229,10 @@ jobs:
             echo "Waiting for API... ($i/30)"
             sleep 10
           done
-          
+
           # Run smoke test
           node scripts/api-smoke-test.js
-          
+
       - name: Health check
         run: |
           HEALTH=$(curl -s http://${{ secrets.HOST }}/api/earnings | jq '
@@ -223,41 +242,41 @@ jobs:
             insaneRevenue: ([.data[] | select(.revenueActual != null and .revenueActual > 1e12)] | length),
             missingPrice: ([.data[] | select((.currentPrice != null) and (.previousClose == null))] | length)
           }')
-          
+
           echo "Health check results:"
           echo $HEALTH | jq .
-          
+
           # Validate thresholds
           TOTAL=$(echo $HEALTH | jq -r '.total')
           INSANE_REVENUE=$(echo $HEALTH | jq -r '.insaneRevenue')
           MISSING_PRICE=$(echo $HEALTH | jq -r '.missingPrice')
-          
+
           if [ "$TOTAL" -eq 0 ]; then
             echo "❌ No data returned"
             exit 1
           fi
-          
+
           if [ "$INSANE_REVENUE" -gt 0 ]; then
             echo "❌ Found $INSANE_REVENUE records with insane revenue values"
             exit 1
           fi
-          
+
           if [ "$MISSING_PRICE" -gt 0 ]; then
             echo "⚠️ Found $MISSING_PRICE records with missing price data"
           fi
-          
+
           echo "✅ Health check passed"
-          
+
       - name: Performance check
         run: |
           # Check API response time
           RESPONSE_TIME=$(curl -w "%{time_total}" -s -o /dev/null http://${{ secrets.HOST }}/api/earnings)
           echo "API response time: ${RESPONSE_TIME}s"
-          
+
           # Fail if response time > 2 seconds
           if (( $(echo "$RESPONSE_TIME > 2.0" | bc -l) )); then
             echo "❌ API response time too slow: ${RESPONSE_TIME}s"
             exit 1
           fi
-          
+
           echo "✅ Performance check passed"
