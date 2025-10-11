@@ -59,7 +59,7 @@ export function EarningsTableBody({
       }
     };
     
-    const baseClasses = `${getPadding(column)} py-3 ${getHeaderTextAlign(column)} text-xs font-medium uppercase tracking-wider cursor-pointer transition-colors duration-200`;
+    const baseClasses = `${getPadding(column)} py-3 ${getHeaderTextAlign(column)} text-xs font-bold uppercase tracking-wider cursor-pointer transition-colors duration-200`;
     const isActive = sortColumn === column;
     
     if (isActive) {
@@ -81,29 +81,28 @@ export function EarningsTableBody({
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-2">
         {/* Desktop skeleton */}
         <div className="hidden md:block">
-          <div className="overflow-x-auto shadow ring-1 ring-black ring-opacity-5 dark:ring-1 dark:ring-white dark:ring-opacity-20 md:rounded-lg w-full">
-            <div className="flex justify-center">
-              <div className="grid grid-cols-[3fr_2fr_1fr_1fr_1fr_1.2fr] w-full max-w-[1100px] mx-auto">
+          <div className="overflow-x-auto border border-gray-300 dark:border-gray-600 rounded-lg w-full">
+            <div className="grid grid-cols-[3fr_2fr_1fr_1fr_1fr_1.2fr] w-full">
               {/* Header Row */}
-              <div className="px-3 py-3 text-center text-xs font-medium text-blue-800 bg-blue-100 dark:bg-blue-900 dark:text-blue-200 uppercase tracking-wider">
+              <div className="px-3 py-3 text-center text-xs font-bold text-blue-800 bg-blue-100 dark:bg-blue-900 dark:text-blue-200 uppercase tracking-wider">
                 Company
               </div>
-              <div className="px-3 py-3 text-right text-xs font-medium text-blue-800 bg-blue-100 dark:bg-blue-900 dark:text-blue-200 uppercase tracking-wider">
+              <div className="px-3 py-3 text-right text-xs font-bold text-blue-800 bg-blue-100 dark:bg-blue-900 dark:text-blue-200 uppercase tracking-wider">
                 Market Cap
               </div>
-              <div className="px-3 py-3 text-right text-xs font-medium text-blue-800 bg-blue-100 dark:bg-blue-900 dark:text-blue-200 uppercase tracking-wider">
+              <div className="px-3 py-3 text-right text-xs font-bold text-blue-800 bg-blue-100 dark:bg-blue-900 dark:text-blue-200 uppercase tracking-wider">
                 Price
               </div>
-              <div className="px-3 py-3 text-center text-xs font-medium text-blue-800 bg-blue-100 dark:bg-blue-900 dark:text-blue-200 uppercase tracking-wider">
+              <div className="px-3 py-3 text-center text-xs font-bold text-blue-800 bg-blue-100 dark:bg-blue-900 dark:text-blue-200 uppercase tracking-wider">
                 Time
               </div>
-              <div className="px-3 py-3 text-right text-xs font-medium text-blue-800 bg-blue-100 dark:bg-blue-900 dark:text-blue-200 uppercase tracking-wider">
+              <div className="px-3 py-3 text-right text-xs font-bold text-blue-800 bg-blue-100 dark:bg-blue-900 dark:text-blue-200 uppercase tracking-wider">
                 EPS
               </div>
-              <div className="px-3 py-3 text-right text-xs font-medium text-blue-800 bg-blue-100 dark:bg-blue-900 dark:text-blue-200 uppercase tracking-wider">
+              <div className="px-3 py-3 text-right text-xs font-bold text-blue-800 bg-blue-100 dark:bg-blue-900 dark:text-blue-200 uppercase tracking-wider">
                 Revenue
               </div>
               
@@ -140,13 +139,12 @@ export function EarningsTableBody({
                   </React.Fragment>
                 );
               })}
-              </div>
             </div>
           </div>
         </div>
 
         {/* Mobile skeleton */}
-        <div className="md:hidden space-y-4">
+        <div className="md:hidden space-y-2">
           {Array.from({ length: 3 }).map((_, index) => (
             <SkeletonCard key={index} />
           ))}
@@ -157,16 +155,16 @@ export function EarningsTableBody({
 
   if (error) {
     return (
-      <div className="text-center py-12">
-        <div className="text-red-600 dark:text-red-400 mb-4">
-          <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="text-center py-6">
+        <div className="text-red-600 dark:text-red-400 mb-2">
+          <svg className="mx-auto h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
           </svg>
         </div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+        <h3 className="text-base font-medium text-gray-900 dark:text-white mb-1">
           Error loading data
         </h3>
-        <p className="text-gray-600 dark:text-gray-400">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
           {error}
         </p>
       </div>
@@ -175,16 +173,16 @@ export function EarningsTableBody({
 
   if (!data || data.length === 0) {
     return (
-      <div className="text-center py-12">
-        <div className="text-gray-400 dark:text-gray-500 mb-4">
-          <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="text-center py-6">
+        <div className="text-gray-400 dark:text-gray-500 mb-2">
+          <svg className="mx-auto h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
         </div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+        <h3 className="text-base font-medium text-gray-900 dark:text-white mb-1">
           No Earnings Scheduled
         </h3>
-        <p className="text-gray-600 dark:text-gray-400">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
           There are no earnings reports scheduled for today. Check back tomorrow for new earnings data.
         </p>
       </div>
@@ -192,12 +190,11 @@ export function EarningsTableBody({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       {/* Desktop table */}
       <div className="hidden md:block">
-        <div className="overflow-x-auto shadow ring-1 ring-black ring-opacity-5 dark:ring-1 dark:ring-white dark:ring-opacity-20 md:rounded-lg w-full">
-          <div className="flex justify-center">
-            <div className="grid grid-cols-[3fr_2fr_1fr_1fr_1fr_1.2fr] w-full max-w-[1100px] mx-auto">
+        <div className="overflow-x-auto border border-gray-300 dark:border-gray-600 rounded-lg w-full">
+          <div className="grid grid-cols-[3fr_2fr_1fr_1fr_1fr_1.2fr] w-full">
             {/* Header Row */}
             <div 
               className={getHeaderClasses('company')}
@@ -242,15 +239,14 @@ export function EarningsTableBody({
                 <EarningsTableRow item={item} index={index} />
               </div>
             ))}
-            </div>
           </div>
         </div>
       </div>
 
       {/* Mobile cards */}
-      <div className="md:hidden space-y-4">
+      <div className="md:hidden space-y-2">
         {data.map((item, index) => (
-          <div key={`${item.ticker}-${index}`} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700">
+          <div key={`${item.ticker}-${index}`} className="bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 p-3">
             <div className="flex justify-between items-start mb-2">
               <div>
                 <h3 className="font-semibold text-gray-900 dark:text-white">{item.ticker}</h3>

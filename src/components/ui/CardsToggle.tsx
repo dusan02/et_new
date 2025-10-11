@@ -1,6 +1,6 @@
 'use client';
 
-import { Grid3X3, Eye, EyeOff } from 'lucide-react';
+import { Grid3X3, Eye, EyeOff, CreditCard } from 'lucide-react';
 
 interface CardsToggleProps {
   isVisible: boolean;
@@ -16,17 +16,23 @@ export function CardsToggle({ isVisible, onToggle }: CardsToggleProps) {
   return (
     <button
       onClick={handleToggle}
-      className="flex items-center gap-1.5 sm:gap-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg px-3 sm:px-4 py-1.5 sm:py-2 border border-blue-200 dark:border-blue-800 shadow-sm hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors duration-200"
+      className={`flex items-center justify-center rounded-lg border transition-all duration-200 hover:scale-105 ${
+        isVisible 
+          ? 'bg-white border-blue-300 shadow-md' 
+          : 'bg-white border-gray-300 shadow-sm'
+      }`}
       title={isVisible ? 'Hide stats cards' : 'Show stats cards'}
     >
-      {isVisible ? (
-        <Eye className="h-4 w-4 text-blue-600 dark:text-blue-400" aria-hidden="true" />
-      ) : (
-        <EyeOff className="h-4 w-4 text-blue-600 dark:text-blue-400" aria-hidden="true" />
-      )}
-      <span className="text-xs sm:text-sm font-medium text-blue-700 dark:text-blue-300">
-        {isVisible ? 'Cards' : 'Cards'}
-      </span>
+      <div className="p-2">
+        <CreditCard 
+          className={`h-4 w-4 transition-colors duration-200 ${
+            isVisible 
+              ? 'text-blue-600' 
+              : 'text-gray-500'
+          }`} 
+          aria-hidden="true" 
+        />
+      </div>
     </button>
   );
 }

@@ -4,7 +4,7 @@ import { Clock, RefreshCw } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { ThemeToggle } from './ui/ThemeToggle';
 import { CardsToggle } from './ui/CardsToggle';
-import { EarningsStats } from './EarningsStats';
+import EarningsStats from './EarningsStats';
 
 interface HeaderProps {
   lastUpdated: Date | null;
@@ -53,7 +53,7 @@ interface HeaderProps {
 }
 
 export function Header({ lastUpdated, stats }: HeaderProps) {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState<Date | null>(null);
   const [showCards, setShowCards] = useState(() => {
     // Load from localStorage on initial render
     if (typeof window !== 'undefined') {
@@ -63,8 +63,10 @@ export function Header({ lastUpdated, stats }: HeaderProps) {
     return true;
   });
 
-  // Update date every minute
+  // Initialize date on client side
   useEffect(() => {
+    setCurrentDate(new Date());
+    
     const timer = setInterval(() => {
       setCurrentDate(new Date());
     }, 60000); // Update every minute
@@ -96,7 +98,7 @@ export function Header({ lastUpdated, stats }: HeaderProps) {
   };
 
   return (
-    <header className="relative overflow-hidden bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 transition-colors duration-300" role="banner">
+    <header className="relative overflow-hidden bg-white dark:bg-gray-900 transition-colors duration-300" role="banner">
       {/* Subtle Background Pattern */}
       <div className="absolute inset-0 opacity-30" style={{
         backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%236366f1' fill-opacity='0.03'%3E%3Ccircle cx='20' cy='20' r='1'/%3E%3C/g%3E%3C/svg%3E")`
@@ -104,7 +106,7 @@ export function Header({ lastUpdated, stats }: HeaderProps) {
       
       {/* Subtle Background Elements - removed white balls */}
 
-      <div className="relative w-full px-[10%] py-4 sm:py-6 md:py-8">
+      <div className="relative w-full px-2 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
         <div className="text-center">
           {/* Main Title */}
           <div className="mb-4">
@@ -119,23 +121,29 @@ export function Header({ lastUpdated, stats }: HeaderProps) {
             <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 sm:gap-2 bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-lg px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-200 dark:border-gray-700 shadow-sm">
               <Clock className="h-4 w-4 text-gray-600 dark:text-gray-300" aria-hidden="true" />
-              <time 
-                className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300" 
-                dateTime={currentDate.toISOString()}
-                aria-label={`Current date: ${currentDate.toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}`}
-              >
-                {currentDate.toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </time>
+              {currentDate ? (
+                <time 
+                  className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300" 
+                  dateTime={currentDate.toISOString()}
+                  aria-label={`Current date: ${currentDate.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}`}
+                >
+                  {currentDate.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </time>
+              ) : (
+                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Loading...
+                </span>
+              )}
             </div>
             
             <div className="flex items-center gap-1.5 sm:gap-2 bg-green-50 dark:bg-green-900/20 rounded-lg px-3 sm:px-4 py-1.5 sm:py-2 border border-green-200 dark:border-green-800 shadow-sm">
@@ -156,7 +164,7 @@ export function Header({ lastUpdated, stats }: HeaderProps) {
 
         {/* Stats Cards */}
         {stats && (
-          <div className={`mt-8 overflow-hidden transition-all duration-500 ease-in-out ${
+          <div className={`mt-8 mb-12 overflow-hidden transition-all duration-500 ease-in-out ${
             showCards 
               ? 'max-h-[500px] opacity-100' 
               : 'max-h-0 opacity-0'

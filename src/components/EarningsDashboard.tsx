@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import dynamic from 'next/dynamic';
 import { EarningsTableRefactored } from './earnings/EarningsTableRefactored';
-
-const EarningsStats = dynamic(() => import('./EarningsStats'), { ssr: false });
 
 interface EarningsDashboardProps {
   data?: any[];
@@ -11,6 +8,7 @@ interface EarningsDashboardProps {
   error?: string | null;
   lastUpdated?: Date | null;
   onLastUpdatedChange?: (date: Date | null) => void;
+  onStatsChange?: (stats: any) => void;
 }
 
 export function EarningsDashboard({ 
@@ -19,7 +17,8 @@ export function EarningsDashboard({
   isLoading: propIsLoading, 
   error: propError, 
   lastUpdated: propLastUpdated,
-  onLastUpdatedChange
+  onLastUpdatedChange,
+  onStatsChange
 }: EarningsDashboardProps) {
   const [data, setData] = useState<any[]>(propData || []);
   const [stats, setStats] = useState<any>(propStats || null);
@@ -43,7 +42,9 @@ export function EarningsDashboard({
         if (result.status === 'success') {
           console.log('[DEBUG] API response:', { data: result.data?.length, stats: result.meta?.stats });
           setData(result.data || []);
-          setStats(result.meta?.stats || null);
+          const newStats = result.meta?.stats || null;
+          setStats(newStats);
+          onStatsChange?.(newStats);
           const newLastUpdated = new Date();
           setLastUpdated(newLastUpdated);
           onLastUpdatedChange?.(newLastUpdated);
@@ -70,45 +71,34 @@ export function EarningsDashboard({
   // Memoize stats to ensure consistent object reference
   const memoizedStats = useMemo(() => stats ?? null, [stats]);
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">
-                  Error loading data
-                </h3>
-                <div className="mt-2 text-sm text-red-700">
-                  {error}
-                </div>
+    <div className="w-full">
+      {error && (
+        <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-3">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-4 w-4 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-2">
+              <h3 className="text-sm font-medium text-red-800">
+                Error loading data
+              </h3>
+              <div className="mt-1 text-sm text-red-700">
+                {error}
               </div>
             </div>
           </div>
-        )}
-
-        {/* Grid layout: 12 columns, table = left column, cards = right column */}
-        <div className="grid grid-cols-12 gap-6">
-          <div className="col-span-12 lg:col-span-8">
-            <EarningsTableRefactored
-              data={data || []}
-              stats={memoizedStats}
-              isLoading={isLoading}
-              error={error}
-              lastUpdated={lastUpdated}
-            />
-          </div>
-
-          <aside className="col-span-12 lg:col-span-4 xl:col-span-4 space-y-3 min-w-[280px]">
-            <EarningsStats stats={memoizedStats} loading={isLoading} />
-          </aside>
         </div>
+      )}
 
+      <EarningsTableRefactored
+        data={data || []}
+        stats={memoizedStats}
+        isLoading={isLoading}
+        error={error}
+        lastUpdated={lastUpdated}
+      />
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 export function Footer() {
   return (
-    <footer className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 mt-auto transition-colors duration-300">
+    <footer className="bg-white dark:bg-gray-900 mt-auto transition-colors duration-300">
       <div className="w-3/5 mx-auto px-4 py-8">
         <div className="text-center">
           <div className="mb-6">
@@ -15,7 +15,7 @@ export function Footer() {
             </p>
           </div>
           
-          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="pt-4">
             <p className="text-sm text-gray-500 dark:text-gray-400">
               © 2025 EarningsTable. All rights reserved. | Data sourced from Polygon.io
             </p>

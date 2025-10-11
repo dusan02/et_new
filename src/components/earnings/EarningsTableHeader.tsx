@@ -73,39 +73,39 @@ export function EarningsTableHeader({
     return `${marketCapFilters.length} selected`;
   };
   return (
-    <div className="w-full max-w-[1100px] mx-auto px-4 mb-6">
+    <div className="w-full px-4 mb-3">
       <div className="flex flex-col md:flex-row justify-between items-center w-full">
         
         {/* Earnings Dashboard Text - Left Side */}
         <div className="flex flex-col text-left w-full md:w-1/2">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Earnings Dashboard
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-gray-800 via-blue-700 to-indigo-700 dark:from-gray-200 dark:via-blue-400 dark:to-indigo-400 bg-clip-text text-transparent mb-2 sm:mb-3 tracking-tight">
+            EARNINGS DASHBOARD
           </h1>
           {lastUpdated && (
             <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mt-1">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
               <span>Last updated: {lastUpdated.toLocaleTimeString()}</span>
             </div>
           )}
         </div>
 
         {/* Search Bar and Filter - Right Side */}
-        <div className="w-full md:w-1/2 md:flex md:justify-end mt-4 md:mt-0">
-          <div className="flex gap-3 w-full md:w-auto">
+        <div className="w-full md:w-1/2 md:flex md:justify-end mt-3 md:mt-0">
+          <div className="flex gap-2 w-full md:w-auto">
             {/* Search Bar */}
-            <div className="relative flex-1 md:w-80">
+            <div className="relative flex-1 md:w-72">
               <input
                 type="text"
                 placeholder="Search ticker or company name..."
                 value={searchTerm || ''}
                 onChange={(e) => onSearchChange?.(e.target.value)}
-                className="w-full px-4 py-2 pl-10 border border-gray-300 dark:border-gray-600 rounded-lg 
-                           focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 
-                           text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 h-10"
+                className="w-full px-3 py-2 pl-9 border border-gray-300 dark:border-gray-600 rounded-md 
+                           focus:ring-1 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 
+                           text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 h-9"
               />
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
                 <svg
-                  className="h-5 w-5 text-gray-400"
+                  className="h-4 w-4 text-gray-400"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -124,34 +124,34 @@ export function EarningsTableHeader({
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsFilterOpen(!isFilterOpen)}
-                className="flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                className="flex items-center gap-1.5 px-2.5 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
                            bg-white dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-600
-                           focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors h-10"
+                           focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors h-9"
               >
-                <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                 </svg>
                 <span className="text-sm">{getFilterDisplayText()}</span>
-                <svg className={`h-4 w-4 text-gray-400 transition-transform ${isFilterOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={`h-3.5 w-3.5 text-gray-400 transition-transform ${isFilterOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
 
               {/* Dropdown Menu */}
               {isFilterOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg z-10">
-                  <div className="py-2">
+                <div className="absolute right-0 mt-1 w-40 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg z-10">
+                  <div className="py-1">
                     {marketCapOptions.map((option) => (
                       <label
                         key={option.value}
-                        className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer"
+                        className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer"
                       >
                         <input
                           type="checkbox"
                           checked={marketCapFilters.includes(option.value)}
                           onChange={() => handleFilterChange(option.value)}
-                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 
-                                     dark:focus:ring-blue-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                          className="w-3.5 h-3.5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 
+                                     dark:focus:ring-blue-600 dark:ring-offset-gray-700 focus:ring-1 dark:bg-gray-600 dark:border-gray-500"
                         />
                         <span className="text-sm text-gray-900 dark:text-white">{option.label}</span>
                       </label>
