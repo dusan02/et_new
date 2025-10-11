@@ -102,126 +102,126 @@ export default function EarningsStats({
   return (
     <div className="flex flex-nowrap justify-center gap-2 sm:gap-3 md:gap-4 overflow-x-auto">
       {/* BLUE — Size buckets */}
-      <div className="group relative rounded-xl bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-700 shadow-lg min-w-[100px] sm:min-w-[110px] md:min-w-[120px] flex-shrink-0">
-        <div className="absolute top-0 left-0 right-0 h-3 bg-blue-400 z-10 rounded-t-xl"></div>
-        <div className="relative p-5 pt-7 pb-7 bg-white dark:bg-gray-800 text-center">
-          <div className="text-[14px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-3">LARGE+</div>
-          <div className="text-[18px] font-bold text-blue-800 dark:text-blue-200 mb-2 leading-tight">{largePlusCount ?? "—"}</div>
-          <div className="text-[14px] font-bold text-blue-600 dark:text-blue-400">{formatMarketCap(largePlusCap)}</div>
+      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-blue-600 z-10 rounded-t-xl"></div>
+        <div className="relative p-3 pt-4 pb-4 bg-white dark:bg-gray-800 text-center">
+          <div className="text-[12px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-2">LARGE+</div>
+          <div className="text-[16px] font-bold text-blue-800 dark:text-blue-200 mb-1 leading-tight">{largePlusCount ?? "—"}</div>
+          <div className="text-[12px] font-bold text-blue-600 dark:text-blue-400">{formatMarketCap(largePlusCap)}</div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 h-3 bg-blue-400 z-10 rounded-b-xl"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 z-10 rounded-b-xl"></div>
       </div>
       
-      <div className="group relative rounded-xl bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-700 shadow-lg min-w-[100px] sm:min-w-[110px] md:min-w-[120px] flex-shrink-0">
-        <div className="absolute top-0 left-0 right-0 h-3 bg-blue-400 z-10 rounded-t-xl"></div>
-        <div className="relative p-5 pt-7 pb-7 bg-white dark:bg-gray-800 text-center">
-          <div className="text-[14px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-3">MID</div>
-          <div className="text-[18px] font-bold text-blue-800 dark:text-blue-200 mb-2 leading-tight">{midCount ?? "—"}</div>
-          <div className="text-[14px] font-bold text-blue-600 dark:text-blue-400">{formatMarketCap(midCap)}</div>
+      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-blue-600 z-10 rounded-t-xl"></div>
+        <div className="relative p-3 pt-4 pb-4 bg-white dark:bg-gray-800 text-center">
+          <div className="text-[12px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-2">MID</div>
+          <div className="text-[16px] font-bold text-blue-800 dark:text-blue-200 mb-1 leading-tight">{midCount ?? "—"}</div>
+          <div className="text-[12px] font-bold text-blue-600 dark:text-blue-400">{formatMarketCap(midCap)}</div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 h-3 bg-blue-400 z-10 rounded-b-xl"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 z-10 rounded-b-xl"></div>
       </div>
       
-      <div className="group relative rounded-xl bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-700 shadow-lg min-w-[100px] sm:min-w-[110px] md:min-w-[120px] flex-shrink-0">
-        <div className="absolute top-0 left-0 right-0 h-3 bg-blue-400 z-10 rounded-t-xl"></div>
-        <div className="relative p-5 pt-7 pb-7 bg-white dark:bg-gray-800 text-center">
-          <div className="text-[14px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-3">SMALL</div>
-          <div className="text-[18px] font-bold text-blue-800 dark:text-blue-200 mb-2 leading-tight">{smallCount ?? "—"}</div>
-          <div className="text-[14px] font-bold text-blue-600 dark:text-blue-400">{formatMarketCap(smallCap)}</div>
+      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-blue-600 z-10 rounded-t-xl"></div>
+        <div className="relative p-3 pt-4 pb-4 bg-white dark:bg-gray-800 text-center">
+          <div className="text-[12px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-2">SMALL</div>
+          <div className="text-[16px] font-bold text-blue-800 dark:text-blue-200 mb-1 leading-tight">{smallCount ?? "—"}</div>
+          <div className="text-[12px] font-bold text-blue-600 dark:text-blue-400">{formatMarketCap(smallCap)}</div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 h-3 bg-blue-400 z-10 rounded-b-xl"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 z-10 rounded-b-xl"></div>
       </div>
       
-      <div className="group relative rounded-xl bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-700 shadow-lg min-w-[100px] sm:min-w-[110px] md:min-w-[120px] flex-shrink-0">
-        <div className="absolute top-0 left-0 right-0 h-3 bg-blue-400 z-10 rounded-t-xl"></div>
-        <div className="relative p-5 pt-7 pb-7 bg-white dark:bg-gray-800 text-center">
-          <div className="text-[14px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-3">TOTAL</div>
-          <div className="text-[18px] font-bold text-blue-800 dark:text-blue-200 mb-2 leading-tight">{stats.totalEarnings ?? "—"}</div>
-          <div className="text-[14px] font-bold text-blue-600 dark:text-blue-400">{formatMarketCap(totalMarketCap)}</div>
+      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-blue-600 z-10 rounded-t-xl"></div>
+        <div className="relative p-3 pt-4 pb-4 bg-white dark:bg-gray-800 text-center">
+          <div className="text-[12px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-2">TOTAL</div>
+          <div className="text-[16px] font-bold text-blue-800 dark:text-blue-200 mb-1 leading-tight">{stats.totalEarnings ?? "—"}</div>
+          <div className="text-[12px] font-bold text-blue-600 dark:text-blue-400">{formatMarketCap(totalMarketCap)}</div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 h-3 bg-blue-400 z-10 rounded-b-xl"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 z-10 rounded-b-xl"></div>
       </div>
 
       {/* GREEN — Winners */}
-      <div className="group relative rounded-xl bg-white dark:bg-gray-800 border border-green-200 dark:border-green-700 shadow-lg min-w-[100px] sm:min-w-[110px] md:min-w-[120px] flex-shrink-0">
-        <div className="absolute top-0 left-0 right-0 h-3 bg-emerald-400 z-10 rounded-t-xl"></div>
-        <div className="relative p-5 pt-7 pb-7 bg-white dark:bg-gray-800 text-center">
-          <div className="text-[14px] font-bold uppercase tracking-widest text-green-600 dark:text-green-400 mb-3">PRICE</div>
-          <div className="text-[18px] font-bold text-green-800 dark:text-green-200 mb-2 leading-tight">{topPriceGainer?.ticker ?? "—"}</div>
-          <div className="text-[14px] font-bold text-green-600 dark:text-green-400">{fmtPct(topPriceGainer?.priceChangePercent)}</div>
+      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-600 z-10 rounded-t-xl"></div>
+        <div className="relative p-3 pt-4 pb-4 bg-white dark:bg-gray-800 text-center">
+          <div className="text-[12px] font-bold uppercase tracking-widest text-green-600 dark:text-green-400 mb-2">PRICE</div>
+          <div className="text-[16px] font-bold text-green-800 dark:text-green-200 mb-1 leading-tight">{topPriceGainer?.ticker ?? "—"}</div>
+          <div className="text-[12px] font-bold text-green-600 dark:text-green-400">{fmtPct(topPriceGainer?.priceChangePercent)}</div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 h-3 bg-emerald-400 z-10 rounded-b-xl"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-600 z-10 rounded-b-xl"></div>
       </div>
       
-      <div className="group relative rounded-xl bg-white dark:bg-gray-800 border border-green-200 dark:border-green-700 shadow-lg min-w-[100px] sm:min-w-[110px] md:min-w-[120px] flex-shrink-0">
-        <div className="absolute top-0 left-0 right-0 h-3 bg-emerald-400 z-10 rounded-t-xl"></div>
-        <div className="relative p-5 pt-7 pb-7 bg-white dark:bg-gray-800 text-center">
-          <div className="text-[14px] font-bold uppercase tracking-widest text-green-600 dark:text-green-400 mb-3">CAP DIFF</div>
-          <div className="text-[18px] font-bold text-green-800 dark:text-green-200 mb-2 leading-tight">{topCapGainer?.ticker ?? "—"}</div>
-          <div className="text-[14px] font-bold text-green-600 dark:text-green-400">{fmtBill(topCapGainer?.marketCapDiffBillions)}</div>
+      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-600 z-10 rounded-t-xl"></div>
+        <div className="relative p-3 pt-4 pb-4 bg-white dark:bg-gray-800 text-center">
+          <div className="text-[12px] font-bold uppercase tracking-widest text-green-600 dark:text-green-400 mb-2">CAP DIFF</div>
+          <div className="text-[16px] font-bold text-green-800 dark:text-green-200 mb-1 leading-tight">{topCapGainer?.ticker ?? "—"}</div>
+          <div className="text-[12px] font-bold text-green-600 dark:text-green-400">{fmtBill(topCapGainer?.marketCapDiffBillions)}</div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 h-3 bg-emerald-400 z-10 rounded-b-xl"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-600 z-10 rounded-b-xl"></div>
       </div>
       
-      <div className="group relative rounded-xl bg-white dark:bg-gray-800 border border-green-200 dark:border-green-700 shadow-lg min-w-[100px] sm:min-w-[110px] md:min-w-[120px] flex-shrink-0">
-        <div className="absolute top-0 left-0 right-0 h-3 bg-emerald-400 z-10 rounded-t-xl"></div>
-        <div className="relative p-5 pt-7 pb-7 bg-white dark:bg-gray-800 text-center">
-          <div className="text-[14px] font-bold uppercase tracking-widest text-green-600 dark:text-green-400 mb-3">EPS BEAT</div>
-          <div className="text-[18px] font-bold text-green-800 dark:text-green-200 mb-2 leading-tight">{stats.epsBeat?.ticker ?? "—"}</div>
-          <div className="text-[14px] font-bold text-green-600 dark:text-green-400">{stats.epsBeat && stats.epsBeat.epsEstimate !== 0 ? `+${((stats.epsBeat.epsActual - stats.epsBeat.epsEstimate) / Math.abs(stats.epsBeat.epsEstimate) * 100).toFixed(1)}%` : "—"}</div>
+      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-600 z-10 rounded-t-xl"></div>
+        <div className="relative p-3 pt-4 pb-4 bg-white dark:bg-gray-800 text-center">
+          <div className="text-[12px] font-bold uppercase tracking-widest text-green-600 dark:text-green-400 mb-2">EPS BEAT</div>
+          <div className="text-[16px] font-bold text-green-800 dark:text-green-200 mb-1 leading-tight">{stats.epsBeat?.ticker ?? "—"}</div>
+          <div className="text-[12px] font-bold text-green-600 dark:text-green-400">{stats.epsBeat && stats.epsBeat.epsEstimate !== 0 ? `+${((stats.epsBeat.epsActual - stats.epsBeat.epsEstimate) / Math.abs(stats.epsBeat.epsEstimate) * 100).toFixed(1)}%` : "—"}</div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 h-3 bg-emerald-400 z-10 rounded-b-xl"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-600 z-10 rounded-b-xl"></div>
       </div>
       
-      <div className="group relative rounded-xl bg-white dark:bg-gray-800 border border-green-200 dark:border-green-700 shadow-lg min-w-[100px] sm:min-w-[110px] md:min-w-[120px] flex-shrink-0">
-        <div className="absolute top-0 left-0 right-0 h-3 bg-emerald-400 z-10 rounded-t-xl"></div>
-        <div className="relative p-5 pt-7 pb-7 bg-white dark:bg-gray-800 text-center">
-          <div className="text-[14px] font-bold uppercase tracking-widest text-green-600 dark:text-green-400 mb-3">REV BEAT</div>
-          <div className="text-[18px] font-bold text-green-800 dark:text-green-200 mb-2 leading-tight">{stats.revenueBeat?.ticker ?? "—"}</div>
-          <div className="text-[14px] font-bold text-green-600 dark:text-green-400">{stats.revenueBeat && Number(stats.revenueBeat.revenueEstimate) !== 0 ? `+${((Number(stats.revenueBeat.revenueActual) - Number(stats.revenueBeat.revenueEstimate)) / Math.abs(Number(stats.revenueBeat.revenueEstimate)) * 100).toFixed(1)}%` : "—"}</div>
+      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-600 z-10 rounded-t-xl"></div>
+        <div className="relative p-3 pt-4 pb-4 bg-white dark:bg-gray-800 text-center">
+          <div className="text-[12px] font-bold uppercase tracking-widest text-green-600 dark:text-green-400 mb-2">REV BEAT</div>
+          <div className="text-[16px] font-bold text-green-800 dark:text-green-200 mb-1 leading-tight">{stats.revenueBeat?.ticker ?? "—"}</div>
+          <div className="text-[12px] font-bold text-green-600 dark:text-green-400">{stats.revenueBeat && Number(stats.revenueBeat.revenueEstimate) !== 0 ? `+${((Number(stats.revenueBeat.revenueActual) - Number(stats.revenueBeat.revenueEstimate)) / Math.abs(Number(stats.revenueBeat.revenueEstimate)) * 100).toFixed(1)}%` : "—"}</div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 h-3 bg-emerald-400 z-10 rounded-b-xl"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-600 z-10 rounded-b-xl"></div>
       </div>
 
       {/* RED — Losers */}
-      <div className="group relative rounded-xl bg-white dark:bg-gray-800 border border-red-200 dark:border-red-700 shadow-lg min-w-[100px] sm:min-w-[110px] md:min-w-[120px] flex-shrink-0">
-        <div className="absolute top-0 left-0 right-0 h-3 bg-rose-400 z-10 rounded-t-xl"></div>
-        <div className="relative p-5 pt-7 pb-7 bg-white dark:bg-gray-800 text-center">
-          <div className="text-[14px] font-bold uppercase tracking-widest text-red-600 dark:text-red-400 mb-3">PRICE</div>
-          <div className="text-[18px] font-bold text-red-800 dark:text-red-200 mb-2 leading-tight">{topPriceLoser?.ticker ?? "—"}</div>
-          <div className="text-[14px] font-bold text-red-600 dark:text-red-400">{fmtPct(topPriceLoser?.priceChangePercent)}</div>
+      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-rose-600 z-10 rounded-t-xl"></div>
+        <div className="relative p-3 pt-4 pb-4 bg-white dark:bg-gray-800 text-center">
+          <div className="text-[12px] font-bold uppercase tracking-widest text-red-600 dark:text-red-400 mb-2">PRICE</div>
+          <div className="text-[16px] font-bold text-red-800 dark:text-red-200 mb-1 leading-tight">{topPriceLoser?.ticker ?? "—"}</div>
+          <div className="text-[12px] font-bold text-red-600 dark:text-red-400">{fmtPct(topPriceLoser?.priceChangePercent)}</div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 h-3 bg-rose-400 z-10 rounded-b-xl"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-rose-600 z-10 rounded-b-xl"></div>
       </div>
       
-      <div className="group relative rounded-xl bg-white dark:bg-gray-800 border border-red-200 dark:border-red-700 shadow-lg min-w-[100px] sm:min-w-[110px] md:min-w-[120px] flex-shrink-0">
-        <div className="absolute top-0 left-0 right-0 h-3 bg-rose-400 z-10 rounded-t-xl"></div>
-        <div className="relative p-5 pt-7 pb-7 bg-white dark:bg-gray-800 text-center">
-          <div className="text-[14px] font-bold uppercase tracking-widest text-red-600 dark:text-red-400 mb-3">CAP DIFF</div>
-          <div className="text-[18px] font-bold text-red-800 dark:text-red-200 mb-2 leading-tight">{topCapLoser?.ticker ?? "—"}</div>
-          <div className="text-[14px] font-bold text-red-600 dark:text-red-400">{fmtBill(topCapLoser?.marketCapDiffBillions)}</div>
+      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-rose-600 z-10 rounded-t-xl"></div>
+        <div className="relative p-3 pt-4 pb-4 bg-white dark:bg-gray-800 text-center">
+          <div className="text-[12px] font-bold uppercase tracking-widest text-red-600 dark:text-red-400 mb-2">CAP DIFF</div>
+          <div className="text-[16px] font-bold text-red-800 dark:text-red-200 mb-1 leading-tight">{topCapLoser?.ticker ?? "—"}</div>
+          <div className="text-[12px] font-bold text-red-600 dark:text-red-400">{fmtBill(topCapLoser?.marketCapDiffBillions)}</div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 h-3 bg-rose-400 z-10 rounded-b-xl"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-rose-600 z-10 rounded-b-xl"></div>
       </div>
       
-      <div className="group relative rounded-xl bg-white dark:bg-gray-800 border border-red-200 dark:border-red-700 shadow-lg min-w-[100px] sm:min-w-[110px] md:min-w-[120px] flex-shrink-0">
-        <div className="absolute top-0 left-0 right-0 h-3 bg-rose-400 z-10 rounded-t-xl"></div>
-        <div className="relative p-5 pt-7 pb-7 bg-white dark:bg-gray-800 text-center">
-          <div className="text-[14px] font-bold uppercase tracking-widest text-red-600 dark:text-red-400 mb-3">EPS MISS</div>
-          <div className="text-[18px] font-bold text-red-800 dark:text-red-200 mb-2 leading-tight">{stats.epsMiss?.ticker ?? "—"}</div>
-          <div className="text-[14px] font-bold text-red-600 dark:text-red-400">{stats.epsMiss && stats.epsMiss.epsEstimate !== 0 ? `${((stats.epsMiss.epsActual - stats.epsMiss.epsEstimate) / Math.abs(stats.epsMiss.epsEstimate) * 100).toFixed(1)}%` : "—"}</div>
+      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-rose-600 z-10 rounded-t-xl"></div>
+        <div className="relative p-3 pt-4 pb-4 bg-white dark:bg-gray-800 text-center">
+          <div className="text-[12px] font-bold uppercase tracking-widest text-red-600 dark:text-red-400 mb-2">EPS MISS</div>
+          <div className="text-[16px] font-bold text-red-800 dark:text-red-200 mb-1 leading-tight">{stats.epsMiss?.ticker ?? "—"}</div>
+          <div className="text-[12px] font-bold text-red-600 dark:text-red-400">{stats.epsMiss && stats.epsMiss.epsEstimate !== 0 ? `${((stats.epsMiss.epsActual - stats.epsMiss.epsEstimate) / Math.abs(stats.epsMiss.epsEstimate) * 100).toFixed(1)}%` : "—"}</div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 h-3 bg-rose-400 z-10 rounded-b-xl"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-rose-600 z-10 rounded-b-xl"></div>
       </div>
       
-      <div className="group relative rounded-xl bg-white dark:bg-gray-800 border border-red-200 dark:border-red-700 shadow-lg min-w-[100px] sm:min-w-[110px] md:min-w-[120px] flex-shrink-0">
-        <div className="absolute top-0 left-0 right-0 h-3 bg-rose-400 z-10 rounded-t-xl"></div>
-        <div className="relative p-5 pt-7 pb-7 bg-white dark:bg-gray-800 text-center">
-          <div className="text-[14px] font-bold uppercase tracking-widest text-red-600 dark:text-red-400 mb-3">REV MISS</div>
-          <div className="text-[18px] font-bold text-red-800 dark:text-red-200 mb-2 leading-tight">{stats.revenueMiss?.ticker ?? "—"}</div>
-          <div className="text-[14px] font-bold text-red-600 dark:text-red-400">{stats.revenueMiss && Number(stats.revenueMiss.revenueEstimate) !== 0 ? `${((Number(stats.revenueMiss.revenueActual) - Number(stats.revenueMiss.revenueEstimate)) / Math.abs(Number(stats.revenueMiss.revenueEstimate)) * 100).toFixed(1)}%` : "—"}</div>
+      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-rose-600 z-10 rounded-t-xl"></div>
+        <div className="relative p-3 pt-4 pb-4 bg-white dark:bg-gray-800 text-center">
+          <div className="text-[12px] font-bold uppercase tracking-widest text-red-600 dark:text-red-400 mb-2">REV MISS</div>
+          <div className="text-[16px] font-bold text-red-800 dark:text-red-200 mb-1 leading-tight">{stats.revenueMiss?.ticker ?? "—"}</div>
+          <div className="text-[12px] font-bold text-red-600 dark:text-red-400">{stats.revenueMiss && Number(stats.revenueMiss.revenueEstimate) !== 0 ? `${((Number(stats.revenueMiss.revenueActual) - Number(stats.revenueMiss.revenueEstimate)) / Math.abs(Number(stats.revenueMiss.revenueEstimate)) * 100).toFixed(1)}%` : "—"}</div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 h-3 bg-rose-400 z-10 rounded-b-xl"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-rose-600 z-10 rounded-b-xl"></div>
       </div>
     </div>
   );

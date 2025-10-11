@@ -9,6 +9,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    # Cancel previous runs if new one starts
+    concurrency:
+      group: deploy-${{ github.ref }}
+      cancel-in-progress: true
 
     steps:
       - name: Checkout code
@@ -21,24 +25,31 @@ jobs:
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
           port: 22
-          timeout: 600s
-          command_timeout: 30m
+          timeout: 300s
+          command_timeout: 15m
           debug: true
+          retry: 2
+          retry_interval: 5s
+          retry_timeout: 15s
+          # Force cancel on timeout
+          force_kill: true
           script: |
+            set -e  # Exit on any error
             echo "🚀 Starting deployment..."
             echo "Current directory: $(pwd)"
             echo "User: $(whoami)"
             echo "Date: $(date)"
+            echo "SSH connection established successfully"
 
             # Update system and install required tools
             echo "🔧 Installing system dependencies..."
-            apt-get update -y
-            apt-get install -y git curl wget
+            apt-get update -y || { echo "❌ apt-get update failed"; exit 1; }
+            apt-get install -y git curl wget || { echo "❌ Package installation failed"; exit 1; }
 
             # Install Node.js 18.x
             echo "📦 Installing Node.js..."
-            curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
-            apt-get install -y nodejs
+            curl -fsSL https://deb.nodesource.com/setup_18.x | bash - || { echo "❌ Node.js setup failed"; exit 1; }
+            apt-get install -y nodejs || { echo "❌ Node.js installation failed"; exit 1; }
 
             # Verify installations
             echo "✅ Verifying installations:"
@@ -55,15 +66,15 @@ jobs:
             # Clone repository if it doesn't exist
             if [ ! -d ".git" ]; then
                 echo "📥 Cloning repository..."
-                git clone https://github.com/dusan02/et_new.git .
+                git clone https://github.com/dusan02/et_new.git . || { echo "❌ Git clone failed"; exit 1; }
             else
                 echo "📋 Git status:"
                 git status --short
                 # Force reset to match remote exactly
                 echo "🧹 Force resetting to remote state..."
-                git fetch origin main
-                git reset --hard origin/main
-                git clean -fd
+                git fetch origin main || { echo "❌ Git fetch failed"; exit 1; }
+                git reset --hard origin/main || { echo "❌ Git reset failed"; exit 1; }
+                git clean -fd || { echo "❌ Git clean failed"; exit 1; }
             fi
 
             # Show current commit
@@ -76,12 +87,12 @@ jobs:
             rm -rf .next
 
             echo "📦 Installing dependencies (optimized with timeout)..."
-            echo "Starting npm ci with 10 minute timeout..."
+            echo "Starting npm ci with 5 minute timeout..."
             # Use npm ci for faster, reliable installs with timeout
-            timeout 600 npm ci --production=false --prefer-offline --no-audit --no-fund || {
-                echo "⚠️ npm ci timed out after 10 minutes, trying npm install..."
-                echo "Starting npm install with 5 minute timeout..."
-                timeout 300 npm install --production=false --no-audit --no-fund || {
+            timeout 300 npm ci --production=false --prefer-offline --no-audit --no-fund || {
+                echo "⚠️ npm ci timed out after 5 minutes, trying npm install..."
+                echo "Starting npm install with 3 minute timeout..."
+                timeout 180 npm install --production=false --no-audit --no-fund || {
                     echo "❌ All dependency installation attempts failed"
                     echo "This usually indicates network issues or package conflicts"
                     exit 1
@@ -103,9 +114,9 @@ jobs:
 
             # Build the application using optimized production script with timeout
             echo "🏗️ Building application with optimized script..."
-            timeout 600 npm run build:production || {
+            timeout 300 npm run build:production || {
                 echo "⚠️ Production build timed out, trying direct Next.js build..."
-                timeout 300 npx next build || {
+                timeout 180 npx next build || {
                     echo "❌ All build attempts failed"
                     exit 1
                 }
@@ -116,6 +127,19 @@ jobs:
 
             # Stop any existing processes (pidfile-safe, no pkill!)
             echo "🛑 Stopping existing processes safely..."
+
+            # Check for any running deployment processes
+            echo "🔍 Checking for running deployment processes..."
+            DEPLOYMENT_PIDS=$(ps aux | grep -E "(npm|node|next)" | grep -v grep | awk '{print $2}' || true)
+            if [ -n "$DEPLOYMENT_PIDS" ]; then
+                echo "Found running Node.js processes: $DEPLOYMENT_PIDS"
+                echo "Stopping all Node.js processes..."
+                echo "$DEPLOYMENT_PIDS" | xargs kill -TERM 2>/dev/null || true
+                sleep 3
+                echo "$DEPLOYMENT_PIDS" | xargs kill -KILL 2>/dev/null || true
+            fi
+
+            # Stop app.pid process if exists
             if [ -f app.pid ] && kill -0 "$(cat app.pid)" 2>/dev/null; then
                 echo "Stopping process with PID: $(cat app.pid)"
                 kill -TERM "$(cat app.pid)" || true
@@ -130,6 +154,11 @@ jobs:
             # Install lsof if not available and safe port cleanup
             echo "🛑 Installing lsof and safe port cleanup..."
             apt-get install -y lsof || true
+
+            # Check for any hanging SSH connections
+            echo "🔍 Checking for hanging SSH connections..."
+            SSH_CONNECTIONS=$(who | grep -E "(pts|tty)" | wc -l || true)
+            echo "Current SSH connections: $SSH_CONNECTIONS"
 
             # Multiple methods to find and kill processes on port 3001
             echo "Finding processes on port 3001..."
@@ -223,6 +252,11 @@ jobs:
             fi
 
             echo "🎉 Deployment completed!"
+
+            # Cleanup on success
+            echo "🧹 Cleaning up temporary files..."
+            rm -f app.pid
+            echo "✅ Cleanup completed"
 
       - name: Health check (SSL disabled)
         run: |
