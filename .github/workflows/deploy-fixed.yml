@@ -1,0 +1,102 @@
+name: Deploy to VPS (Fixed)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to server (Fixed)
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: 22
+          timeout: 600s
+          command_timeout: 25m
+          script: |
+            echo "🚀 Starting fixed deployment..."
+            cd /var/www/earnings-table
+            
+            # Set environment variables
+            export NODE_ENV=production
+            export NEXT_PUBLIC_APP_ENV=production
+            export DATABASE_URL="file:./dev.db"
+            export REDIS_URL="redis://localhost:6379"
+            export PARITY_SKIP=1
+            
+            # Update code
+            echo "📋 Updating code..."
+            git clean -fd
+            git stash
+            git pull origin main
+            
+            # Install dependencies
+            echo "📦 Installing dependencies..."
+            npm ci --production=false --prefer-offline --no-audit --no-fund
+            
+            # Build application
+            echo "🏗️ Building application..."
+            npm run build:production
+            
+            # Aggressive port cleanup
+            echo "🛑 Aggressive port cleanup..."
+            
+            # Kill all node processes
+            pkill -f node 2>/dev/null || true
+            pkill -f npm 2>/dev/null || true
+            pkill -f next 2>/dev/null || true
+            
+            # Use fuser to kill anything on port 3001
+            fuser -k 3001/tcp 2>/dev/null || true
+            
+            # Wait for cleanup
+            sleep 5
+            
+            # Verify port is free
+            if lsof -ti:3001 >/dev/null 2>&1; then
+                echo "⚠️ Port 3001 still in use, forcing cleanup..."
+                fuser -k 3001/tcp 2>/dev/null || true
+                sleep 3
+            fi
+            
+            # Start application
+            echo "▶️ Starting application..."
+            nohup npm start > /var/log/earnings-table.log 2>&1 &
+            APP_PID=$!
+            echo "Application started with PID: $APP_PID"
+            
+            # Wait and check
+            sleep 10
+            
+            if ps -p $APP_PID > /dev/null 2>&1; then
+                echo "✅ Application is running"
+                
+                # Health check
+                sleep 5
+                if curl -f http://localhost:3001 > /dev/null 2>&1; then
+                    echo "✅ Deployment successful!"
+                else
+                    echo "⚠️ Application running but not responding"
+                fi
+            else
+                echo "❌ Application failed to start"
+                echo "Checking logs:"
+                tail -20 /var/log/earnings-table.log 2>/dev/null || echo "No logs found"
+                exit 1
+            fi
+            
+            echo "🎉 Fixed deployment completed!"
+
+      - name: Final health check
+        run: |
+          sleep 30
+          echo "Final health check..."
+          curl -f http://${{ secrets.HOST }} || echo "Final health check failed"
