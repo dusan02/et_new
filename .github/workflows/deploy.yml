@@ -117,20 +117,49 @@ jobs:
             fi
             rm -f app.pid
 
-            # Safe port cleanup - only kill processes on port 3001
-            echo "🛑 Safe port cleanup..."
-            # Find and kill only processes using port 3001
+            # Install lsof if not available and safe port cleanup
+            echo "🛑 Installing lsof and safe port cleanup..."
+            apt-get install -y lsof || true
+
+            # Multiple methods to find and kill processes on port 3001
+            echo "Finding processes on port 3001..."
+
+            # Method 1: lsof
             PORT_PIDS=$(lsof -ti:3001 2>/dev/null || true)
             if [ -n "$PORT_PIDS" ]; then
-                echo "Killing processes on port 3001: $PORT_PIDS"
+                echo "Method 1 (lsof): Found processes on port 3001: $PORT_PIDS"
                 echo "$PORT_PIDS" | xargs kill -TERM 2>/dev/null || true
                 sleep 2
-                # Force kill if still running
                 echo "$PORT_PIDS" | xargs kill -KILL 2>/dev/null || true
-            else
-                echo "No processes found on port 3001"
             fi
-            sleep 1
+
+            # Method 2: netstat + ps
+            NETSTAT_PIDS=$(netstat -tlnp 2>/dev/null | grep :3001 | awk '{print $7}' | cut -d'/' -f1 | grep -v '-' || true)
+            if [ -n "$NETSTAT_PIDS" ]; then
+                echo "Method 2 (netstat): Found processes on port 3001: $NETSTAT_PIDS"
+                echo "$NETSTAT_PIDS" | xargs kill -TERM 2>/dev/null || true
+                sleep 2
+                echo "$NETSTAT_PIDS" | xargs kill -KILL 2>/dev/null || true
+            fi
+
+            # Method 3: fuser (more aggressive but targeted)
+            echo "Method 3 (fuser): Killing processes on port 3001..."
+            fuser -k 3001/tcp 2>/dev/null || true
+
+            sleep 3
+
+            # Verify port is free
+            echo "🔍 Verifying port 3001 is free..."
+            FINAL_CHECK=$(lsof -ti:3001 2>/dev/null || true)
+            if [ -n "$FINAL_CHECK" ]; then
+                echo "⚠️ Warning: Port 3001 still in use by: $FINAL_CHECK"
+                echo "Attempting final cleanup..."
+                echo "$FINAL_CHECK" | xargs kill -KILL 2>/dev/null || true
+                sleep 2
+            else
+                echo "✅ Port 3001 is confirmed free"
+            fi
+
             echo "✅ Port cleanup completed"
 
             # Start the application
