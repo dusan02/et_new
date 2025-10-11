@@ -282,3 +282,90 @@ jobs:
           echo "Checking HTTPS connection (SSL verification disabled)..."
           curl -k -f https://${{ secrets.HOST }} || echo "HTTPS check failed - SSL certificate issue"
           echo "Health check completed (SSL verification disabled)"
+
+  # Post-deploy validation job
+  post-deploy-validation:
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Wait for deployment
+        run: |
+          echo "Waiting for deployment to be ready..."
+          sleep 30
+          
+      - name: Run API smoke test
+        run: |
+          # Wait for API to be available
+          for i in {1..30}; do
+            if curl -f -s http://${{ secrets.HOST }}/api/earnings > /dev/null; then
+              echo "API is ready"
+              break
+            fi
+            echo "Waiting for API... ($i/30)"
+            sleep 10
+          done
+          
+          # Run smoke test
+          node scripts/api-smoke-test.js
+          
+      - name: Health check
+        run: |
+          HEALTH=$(curl -s http://${{ secrets.HOST }}/api/earnings | jq '
+          {
+            total: (.data | length),
+            status: .status,
+            insaneRevenue: ([.data[] | select(.revenueActual != null and .revenueActual > 1e12)] | length),
+            missingPrice: ([.data[] | select((.currentPrice != null) and (.previousClose == null))] | length)
+          }')
+          
+          echo "Health check results:"
+          echo $HEALTH | jq .
+          
+          # Validate thresholds
+          TOTAL=$(echo $HEALTH | jq -r '.total')
+          INSANE_REVENUE=$(echo $HEALTH | jq -r '.insaneRevenue')
+          MISSING_PRICE=$(echo $HEALTH | jq -r '.missingPrice')
+          
+          if [ "$TOTAL" -eq 0 ]; then
+            echo "❌ No data returned"
+            exit 1
+          fi
+          
+          if [ "$INSANE_REVENUE" -gt 0 ]; then
+            echo "❌ Found $INSANE_REVENUE records with insane revenue values"
+            exit 1
+          fi
+          
+          if [ "$MISSING_PRICE" -gt 0 ]; then
+            echo "⚠️ Found $MISSING_PRICE records with missing price data"
+          fi
+          
+          echo "✅ Health check passed"
+          
+      - name: Performance check
+        run: |
+          # Check API response time
+          RESPONSE_TIME=$(curl -w "%{time_total}" -s -o /dev/null http://${{ secrets.HOST }}/api/earnings)
+          echo "API response time: ${RESPONSE_TIME}s"
+          
+          # Fail if response time > 2 seconds
+          if (( $(echo "$RESPONSE_TIME > 2.0" | bc -l) )); then
+            echo "❌ API response time too slow: ${RESPONSE_TIME}s"
+            exit 1
+          fi
+          
+          echo "✅ Performance check passed"

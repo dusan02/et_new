@@ -1,8 +1,9 @@
 name: Post-Deploy Validation
 
 on:
-  push:
-    branches: [main, production]
+  # Temporarily disabled to prevent double deployment
+  # push:
+  #   branches: [main, production]
   workflow_dispatch:
 
 jobs:
