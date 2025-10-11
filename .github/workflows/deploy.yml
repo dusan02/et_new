@@ -28,11 +28,6 @@ jobs:
           timeout: 300s
           command_timeout: 15m
           debug: true
-          retry: 2
-          retry_interval: 5s
-          retry_timeout: 15s
-          # Force cancel on timeout
-          force_kill: true
           script: |
             set -e  # Exit on any error
             echo "🚀 Starting deployment..."
@@ -43,13 +38,13 @@ jobs:
 
             # Update system and install required tools
             echo "🔧 Installing system dependencies..."
-            apt-get update -y || { echo "❌ apt-get update failed"; exit 1; }
-            apt-get install -y git curl wget || { echo "❌ Package installation failed"; exit 1; }
+            timeout 120 apt-get update -y || { echo "❌ apt-get update failed"; exit 1; }
+            timeout 180 apt-get install -y git curl wget || { echo "❌ Package installation failed"; exit 1; }
 
             # Install Node.js 18.x
             echo "📦 Installing Node.js..."
-            curl -fsSL https://deb.nodesource.com/setup_18.x | bash - || { echo "❌ Node.js setup failed"; exit 1; }
-            apt-get install -y nodejs || { echo "❌ Node.js installation failed"; exit 1; }
+            timeout 60 curl -fsSL https://deb.nodesource.com/setup_18.x | bash - || { echo "❌ Node.js setup failed"; exit 1; }
+            timeout 120 apt-get install -y nodejs || { echo "❌ Node.js installation failed"; exit 1; }
 
             # Verify installations
             echo "✅ Verifying installations:"
@@ -153,7 +148,7 @@ jobs:
 
             # Install lsof if not available and safe port cleanup
             echo "🛑 Installing lsof and safe port cleanup..."
-            apt-get install -y lsof || true
+            timeout 60 apt-get install -y lsof || true
 
             # Check for any hanging SSH connections
             echo "🔍 Checking for hanging SSH connections..."
