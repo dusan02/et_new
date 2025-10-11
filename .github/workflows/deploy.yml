@@ -18,17 +18,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy to server
-        uses: appleboy/ssh-action@v1.1.0
+      - name: Deploy to server (with retry)
+        uses: nick-invision/retry@v2
         with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          password: ${{ secrets.PASSWORD }}
-          port: 22
-          timeout: 300s
-          command_timeout: 15m
-          debug: true
-          script: |
+          timeout_minutes: 20
+          max_attempts: 3
+          command: |
+            echo "Attempting SSH deployment (attempt ${{ github.run_attempt }})..."
+            # Use curl to test SSH connectivity first
+            timeout 10 bash -c "</dev/tcp/${{ secrets.HOST }}/22" || {
+              echo "❌ SSH port 22 not reachable"
+              exit 1
+            }
+            echo "✅ SSH port 22 is reachable"
+
+            # Now run the actual deployment
+            echo "🚀 Starting deployment via SSH..."
+            ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${{ secrets.USERNAME }}@${{ secrets.HOST }} 'bash -s' << 'EOF'
             set -e  # Exit on any error
             echo "🚀 Starting deployment..."
             echo "Current directory: $(pwd)"
@@ -252,6 +258,7 @@ jobs:
             echo "🧹 Cleaning up temporary files..."
             rm -f app.pid
             echo "✅ Cleanup completed"
+            EOF
 
       - name: Health check (SSL disabled)
         run: |
