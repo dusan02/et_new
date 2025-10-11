@@ -21,8 +21,8 @@ jobs:
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
           port: 22
-          timeout: 900s
-          command_timeout: 50m
+          timeout: 600s
+          command_timeout: 30m
           debug: true
           script: |
             echo "🚀 Starting deployment..."
@@ -75,9 +75,19 @@ jobs:
             rm -rf node_modules
             rm -rf .next
 
-            echo "📦 Installing dependencies (optimized)..."
-            # Use npm ci for faster, reliable installs
-            npm ci --production=false --prefer-offline --no-audit --no-fund
+            echo "📦 Installing dependencies (optimized with timeout)..."
+            echo "Starting npm ci with 10 minute timeout..."
+            # Use npm ci for faster, reliable installs with timeout
+            timeout 600 npm ci --production=false --prefer-offline --no-audit --no-fund || {
+                echo "⚠️ npm ci timed out after 10 minutes, trying npm install..."
+                echo "Starting npm install with 5 minute timeout..."
+                timeout 300 npm install --production=false --no-audit --no-fund || {
+                    echo "❌ All dependency installation attempts failed"
+                    echo "This usually indicates network issues or package conflicts"
+                    exit 1
+                }
+            }
+            echo "✅ Dependencies installed successfully"
 
             # Set environment variables for production build
             echo "🔧 Setting environment variables..."
