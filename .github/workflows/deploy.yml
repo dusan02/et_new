@@ -25,6 +25,10 @@ jobs:
           max_attempts: 3
           command: |
             echo "Attempting SSH deployment (attempt ${{ github.run_attempt }})..."
+            # Install sshpass for password authentication
+            sudo apt-get update -y
+            sudo apt-get install -y sshpass
+
             # Use curl to test SSH connectivity first
             timeout 10 bash -c "</dev/tcp/${{ secrets.HOST }}/22" || {
               echo "❌ SSH port 22 not reachable"
@@ -34,7 +38,8 @@ jobs:
 
             # Now run the actual deployment
             echo "🚀 Starting deployment via SSH..."
-            ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${{ secrets.USERNAME }}@${{ secrets.HOST }} 'bash -s' << 'EOF'
+            echo "Using password authentication for SSH..."
+            sshpass -p '${{ secrets.PASSWORD }}' ssh -o ConnectTimeout=15 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PreferredAuthentications=password -o PubkeyAuthentication=no -v ${{ secrets.USERNAME }}@${{ secrets.HOST }} 'bash -s' << 'EOF'
             set -e  # Exit on any error
             echo "🚀 Starting deployment..."
             echo "Current directory: $(pwd)"

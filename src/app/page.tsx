@@ -10,14 +10,14 @@ export default function Home() {
   const [stats, setStats] = useState<any>(null);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:!bg-gray-900 transition-colors duration-300">
       {/* Horná časť - 0-100-0 (plná šírka) */}
       <Header lastUpdated={lastUpdated} stats={stats} />
       
       {/* Stredná a spodná časť - 20-60-20 */}
       <div className="flex min-h-[calc(100vh-200px)]">
         {/* Ľavý prázdny priestor - 20% */}
-        <div className="w-[20%] bg-white dark:bg-gray-900"></div>
+        <div className="w-[20%] bg-white dark:!bg-gray-900 transition-colors duration-300"></div>
         
         {/* Hlavný obsah - 60% */}
         <div className="w-[60%] flex flex-col">
@@ -28,7 +28,7 @@ export default function Home() {
         </div>
         
         {/* Pravý prázdny priestor - 20% */}
-        <div className="w-[20%] bg-white dark:bg-gray-900"></div>
+        <div className="w-[20%] bg-white dark:!bg-gray-900 transition-colors duration-300"></div>
       </div>
     </div>
   );

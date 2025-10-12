@@ -102,7 +102,7 @@ export default function EarningsStats({
   return (
     <div className="flex flex-nowrap justify-center gap-2 sm:gap-3 md:gap-4 overflow-x-auto">
       {/* BLUE — Size buckets */}
-      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
+      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-700 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
         <div className="absolute top-0 left-0 right-0 h-1 bg-blue-600 z-10 rounded-t-xl"></div>
         <div className="relative p-3 pt-4 pb-4 bg-white dark:bg-gray-800 text-center">
           <div className="text-[12px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-2">LARGE+</div>
@@ -112,7 +112,7 @@ export default function EarningsStats({
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 z-10 rounded-b-xl"></div>
       </div>
       
-      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
+      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-700 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
         <div className="absolute top-0 left-0 right-0 h-1 bg-blue-600 z-10 rounded-t-xl"></div>
         <div className="relative p-3 pt-4 pb-4 bg-white dark:bg-gray-800 text-center">
           <div className="text-[12px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-2">MID</div>
@@ -122,7 +122,7 @@ export default function EarningsStats({
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 z-10 rounded-b-xl"></div>
       </div>
       
-      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
+      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-700 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
         <div className="absolute top-0 left-0 right-0 h-1 bg-blue-600 z-10 rounded-t-xl"></div>
         <div className="relative p-3 pt-4 pb-4 bg-white dark:bg-gray-800 text-center">
           <div className="text-[12px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-2">SMALL</div>
@@ -132,7 +132,7 @@ export default function EarningsStats({
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 z-10 rounded-b-xl"></div>
       </div>
       
-      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
+      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-700 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
         <div className="absolute top-0 left-0 right-0 h-1 bg-blue-600 z-10 rounded-t-xl"></div>
         <div className="relative p-3 pt-4 pb-4 bg-white dark:bg-gray-800 text-center">
           <div className="text-[12px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-2">TOTAL</div>
@@ -143,7 +143,7 @@ export default function EarningsStats({
       </div>
 
       {/* GREEN — Winners */}
-      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
+      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-700 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
         <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-600 z-10 rounded-t-xl"></div>
         <div className="relative p-3 pt-4 pb-4 bg-white dark:bg-gray-800 text-center">
           <div className="text-[12px] font-bold uppercase tracking-widest text-green-600 dark:text-green-400 mb-2">PRICE</div>
@@ -153,7 +153,7 @@ export default function EarningsStats({
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-600 z-10 rounded-b-xl"></div>
       </div>
       
-      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
+      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-700 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
         <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-600 z-10 rounded-t-xl"></div>
         <div className="relative p-3 pt-4 pb-4 bg-white dark:bg-gray-800 text-center">
           <div className="text-[12px] font-bold uppercase tracking-widest text-green-600 dark:text-green-400 mb-2">CAP DIFF</div>
@@ -163,7 +163,7 @@ export default function EarningsStats({
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-600 z-10 rounded-b-xl"></div>
       </div>
       
-      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
+      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-700 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
         <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-600 z-10 rounded-t-xl"></div>
         <div className="relative p-3 pt-4 pb-4 bg-white dark:bg-gray-800 text-center">
           <div className="text-[12px] font-bold uppercase tracking-widest text-green-600 dark:text-green-400 mb-2">EPS BEAT</div>
@@ -173,7 +173,7 @@ export default function EarningsStats({
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-600 z-10 rounded-b-xl"></div>
       </div>
       
-      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
+      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-700 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
         <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-600 z-10 rounded-t-xl"></div>
         <div className="relative p-3 pt-4 pb-4 bg-white dark:bg-gray-800 text-center">
           <div className="text-[12px] font-bold uppercase tracking-widest text-green-600 dark:text-green-400 mb-2">REV BEAT</div>
@@ -184,7 +184,7 @@ export default function EarningsStats({
       </div>
 
       {/* RED — Losers */}
-      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
+      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-700 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
         <div className="absolute top-0 left-0 right-0 h-1 bg-rose-600 z-10 rounded-t-xl"></div>
         <div className="relative p-3 pt-4 pb-4 bg-white dark:bg-gray-800 text-center">
           <div className="text-[12px] font-bold uppercase tracking-widest text-red-600 dark:text-red-400 mb-2">PRICE</div>
@@ -194,7 +194,7 @@ export default function EarningsStats({
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-rose-600 z-10 rounded-b-xl"></div>
       </div>
       
-      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
+      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-700 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
         <div className="absolute top-0 left-0 right-0 h-1 bg-rose-600 z-10 rounded-t-xl"></div>
         <div className="relative p-3 pt-4 pb-4 bg-white dark:bg-gray-800 text-center">
           <div className="text-[12px] font-bold uppercase tracking-widest text-red-600 dark:text-red-400 mb-2">CAP DIFF</div>
@@ -204,7 +204,7 @@ export default function EarningsStats({
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-rose-600 z-10 rounded-b-xl"></div>
       </div>
       
-      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
+      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-700 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
         <div className="absolute top-0 left-0 right-0 h-1 bg-rose-600 z-10 rounded-t-xl"></div>
         <div className="relative p-3 pt-4 pb-4 bg-white dark:bg-gray-800 text-center">
           <div className="text-[12px] font-bold uppercase tracking-widest text-red-600 dark:text-red-400 mb-2">EPS MISS</div>
@@ -214,7 +214,7 @@ export default function EarningsStats({
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-rose-600 z-10 rounded-b-xl"></div>
       </div>
       
-      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
+      <div className="group relative rounded-lg bg-white dark:bg-gray-800 border border-gray-700 dark:border-gray-600 shadow-sm min-w-[80px] sm:min-w-[90px] md:min-w-[100px] flex-shrink-0">
         <div className="absolute top-0 left-0 right-0 h-1 bg-rose-600 z-10 rounded-t-xl"></div>
         <div className="relative p-3 pt-4 pb-4 bg-white dark:bg-gray-800 text-center">
           <div className="text-[12px] font-bold uppercase tracking-widest text-red-600 dark:text-red-400 mb-2">REV MISS</div>

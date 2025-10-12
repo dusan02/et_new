@@ -98,7 +98,7 @@ export function Header({ lastUpdated, stats }: HeaderProps) {
   };
 
   return (
-    <header className="relative overflow-hidden bg-white dark:bg-gray-900 transition-colors duration-300" role="banner">
+    <header className="relative overflow-hidden bg-white dark:!bg-gray-900 transition-colors duration-300" role="banner">
       {/* Subtle Background Pattern */}
       <div className="absolute inset-0 opacity-30" style={{
         backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%236366f1' fill-opacity='0.03'%3E%3Ccircle cx='20' cy='20' r='1'/%3E%3C/g%3E%3C/svg%3E")`

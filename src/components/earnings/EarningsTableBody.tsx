@@ -84,7 +84,7 @@ export function EarningsTableBody({
       <div className="space-y-2">
         {/* Desktop skeleton */}
         <div className="hidden md:block">
-          <div className="overflow-x-auto border border-gray-300 dark:border-gray-600 rounded-lg w-full">
+          <div className="overflow-x-auto border border-gray-700 dark:border-gray-600 rounded-lg w-full">
             <div className="grid grid-cols-[3fr_2fr_1fr_1fr_1fr_1.2fr] w-full">
               {/* Header Row */}
               <div className="px-3 py-3 text-center text-xs font-bold text-blue-800 bg-blue-100 dark:bg-blue-900 dark:text-blue-200 uppercase tracking-wider">
@@ -115,25 +115,25 @@ export function EarningsTableBody({
                 
                 return (
                   <React.Fragment key={`skeleton-row-${index}`}>
-                    <div className={`px-3 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center ${rowBgClass}`}>
+                    <div className={`px-3 py-3 border-b border-gray-700 dark:border-gray-700 flex items-center ${rowBgClass}`}>
                       <div className="space-y-1">
                         <div className="h-4 w-16 bg-gray-200 rounded animate-pulse" />
                         <div className="h-3 w-20 bg-gray-200 rounded animate-pulse" />
                       </div>
                     </div>
-                    <div className={`px-6 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center ${rowBgClass}`}>
+                    <div className={`px-6 py-3 border-b border-gray-700 dark:border-gray-700 flex items-center ${rowBgClass}`}>
                       <div className="h-4 w-12 bg-gray-200 rounded animate-pulse" />
                     </div>
-                    <div className={`px-6 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center ${rowBgClass}`}>
+                    <div className={`px-6 py-3 border-b border-gray-700 dark:border-gray-700 flex items-center ${rowBgClass}`}>
                       <div className="h-4 w-16 bg-gray-200 rounded animate-pulse" />
                     </div>
-                    <div className={`px-6 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center ${rowBgClass}`}>
+                    <div className={`px-6 py-3 border-b border-gray-700 dark:border-gray-700 flex items-center ${rowBgClass}`}>
                       <div className="h-4 w-14 bg-gray-200 rounded animate-pulse" />
                     </div>
-                    <div className={`px-6 py-3 border-b border-gray-200 dark:border-gray-700 ${rowBgClass}`}>
+                    <div className={`px-6 py-3 border-b border-gray-700 dark:border-gray-700 ${rowBgClass}`}>
                       <div className="h-4 w-18 bg-gray-200 rounded animate-pulse" />
                     </div>
-                    <div className={`px-6 py-3 border-b border-gray-200 dark:border-gray-700 ${rowBgClass}`}>
+                    <div className={`px-6 py-3 border-b border-gray-700 dark:border-gray-700 ${rowBgClass}`}>
                       <div className="h-4 w-16 bg-gray-200 rounded animate-pulse" />
                     </div>
                   </React.Fragment>
@@ -193,7 +193,7 @@ export function EarningsTableBody({
     <div className="space-y-2">
       {/* Desktop table */}
       <div className="hidden md:block">
-        <div className="overflow-x-auto border border-gray-300 dark:border-gray-600 rounded-lg w-full">
+        <div className="overflow-x-auto border border-gray-700 dark:border-gray-600 rounded-lg w-full">
           <div className="grid grid-cols-[3fr_2fr_1fr_1fr_1fr_1.2fr] w-full">
             {/* Header Row */}
             <div 
@@ -246,7 +246,7 @@ export function EarningsTableBody({
       {/* Mobile cards */}
       <div className="md:hidden space-y-2">
         {data.map((item, index) => (
-          <div key={`${item.ticker}-${index}`} className="bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 p-3">
+          <div key={`${item.ticker}-${index}`} className="bg-white dark:bg-gray-800 rounded-md border border-gray-700 dark:border-gray-700 p-3">
             <div className="flex justify-between items-start mb-2">
               <div>
                 <h3 className="font-semibold text-gray-900 dark:text-white">{item.ticker}</h3>
