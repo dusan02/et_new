@@ -14,7 +14,7 @@ async function runSmokeTest() {
 
     // Use environment variable for host, fallback to localhost:3001 for production
     const host = process.env.HOST || "localhost:3001";
-    const protocol = process.env.HOST ? "https" : "http";
+    const protocol = process.env.HOST ? "http" : "http"; // Use HTTP for now, HTTPS later
     const apiUrl = `${protocol}://${host}/api/earnings`;
     
     console.log(`🔗 Testing API at: ${apiUrl}`);
