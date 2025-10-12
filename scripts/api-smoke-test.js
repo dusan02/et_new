@@ -16,7 +16,7 @@ async function runSmokeTest() {
     const host = process.env.HOST || "localhost:3001";
     const protocol = process.env.HOST ? "http" : "http"; // Use HTTP for now, HTTPS later
     const apiUrl = `${protocol}://${host}/api/earnings`;
-    
+
     console.log(`🔗 Testing API at: ${apiUrl}`);
     const response = await fetch(apiUrl);
 

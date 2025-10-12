@@ -10,7 +10,7 @@ async function testLiveData() {
   
   console.log('\n📊 Results:')
   console.log('  Count:', result.data.length)
-  console.log('  Sample:', result.data.slice(0, 3).map(d => d.ticker))
+  console.log('  Sample:', result.data.slice(0, 3).map((d: any) => d.ticker))
   console.log('  Stats total:', result.meta.stats?.totalEarnings)
   console.log('  Has stats:', result.meta.stats !== null)
 }

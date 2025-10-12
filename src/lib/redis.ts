@@ -72,3 +72,21 @@ export async function testConnection(): Promise<boolean> {
 }
 
 export default redis;
+
+// Additional exports needed by other modules
+export const getRedis = () => redis;
+export const renameKey = async (oldKey: string, newKey: string) => {
+  const value = await redis.get(oldKey);
+  if (value) {
+    await redis.set(newKey, value);
+    await redis.del(oldKey);
+  }
+};
+export const initRedis = async () => {
+  try {
+    await redis.ping();
+    return true;
+  } catch {
+    return false;
+  }
+};
