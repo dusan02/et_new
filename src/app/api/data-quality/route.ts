@@ -54,7 +54,7 @@ async function getMetrics() {
       summary: {
         totalMeasurements: allMetrics.length,
         averageQuality: allMetrics.length > 0 
-          ? allMetrics.reduce((sum, m) => sum + m.qualityScore, 0) / allMetrics.length 
+          ? allMetrics.reduce((sum: number, m: any) => sum + (m.qualityScore || 0), 0) / allMetrics.length 
           : 0,
         lastUpdate: latestMetrics?.timestamp || null
       }
