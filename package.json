@@ -27,7 +27,7 @@
         "smoke": "dotenv -e .env -- tsx scripts/smoke-cron-today.ts",
         "smoke:api": "node scripts/api-smoke-test.js",
         "contract:test": "npm test -- src/app/api/earnings/__tests__/api-contract.spec.ts",
-        "health:check": "curl http://localhost:3000/api/health",
+        "health:check": "curl http://localhost:3001/api/health",
         "migrate:revenue-units": "node scripts/migrate-bad-revenue-data.js",
         "job:fetch:today": "dotenv -e .env -- tsx src/jobs/fetch-today.ts",
         "job:status": "node scripts/check-app-status.js",

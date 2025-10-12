@@ -12,7 +12,13 @@ async function runSmokeTest() {
   try {
     console.log("🧪 Running API smoke test...");
 
-    const response = await fetch("http://localhost:3000/api/earnings");
+    // Use environment variable for host, fallback to localhost:3001 for production
+    const host = process.env.HOST || "localhost:3001";
+    const protocol = process.env.HOST ? "https" : "http";
+    const apiUrl = `${protocol}://${host}/api/earnings`;
+    
+    console.log(`🔗 Testing API at: ${apiUrl}`);
+    const response = await fetch(apiUrl);
 
     if (!response.ok) {
       throw new Error(

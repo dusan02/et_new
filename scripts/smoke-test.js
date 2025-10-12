@@ -10,7 +10,7 @@ import { config } from "dotenv";
 // Load environment variables
 config();
 
-const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
+const BASE_URL = process.env.BASE_URL || "http://localhost:3001";
 
 async function makeRequest(endpoint, description) {
   try {

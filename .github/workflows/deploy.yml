@@ -310,8 +310,8 @@ jobs:
             sleep 10
           done
 
-          # Run smoke test
-          node scripts/api-smoke-test.js
+          # Run smoke test with HOST environment variable
+          HOST=${{ secrets.HOST }} node scripts/api-smoke-test.js
 
       - name: Health check
         run: |
